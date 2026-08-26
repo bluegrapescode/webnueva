@@ -98,15 +98,15 @@ function NavGroup({ item, activePath, activeSearch, play }) {
   };
 
   return (
-    <div className="relative" onMouseEnter={doOpen} onMouseLeave={() => doClose()} data-testid={`nav-group-${item.id}`}>
+    <div className="relative h-full flex items-center" onMouseEnter={doOpen} onMouseLeave={() => doClose()} data-testid={`nav-group-${item.id}`}>
       <button
         onClick={() => (open ? doClose(true) : doOpen())}
         data-testid={`nav-group-trigger-${item.id}`}
-        className={`relative flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 ${anyActive || open ? "text-gold" : "text-muted-foreground hover:text-foreground"}`}
+        className={`relative h-full flex items-center gap-1.5 px-3.5 text-[12px] font-bold uppercase tracking-[0.08em] transition-colors duration-200 ${anyActive || open ? "text-gold bg-gold/[0.06]" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05]"}`}
       >
         {item.label}
-        <ChevronDown size={14} className={`transition-transform duration-300 ease-out ${open ? "rotate-180" : ""}`} />
-        {anyActive && <motion.span layoutId="nav-active" className="absolute inset-x-3 -bottom-0.5 h-0.5 bg-gold rounded-full" />}
+        <ChevronDown size={13} className={`transition-transform duration-300 ease-out ${open ? "rotate-180" : ""}`} />
+        {(anyActive || open) && <motion.span layoutId="nav-active" className="absolute inset-x-0 -bottom-px h-[3px] bg-gold" />}
       </button>
 
       <AnimatePresence>
@@ -116,10 +116,10 @@ function NavGroup({ item, activePath, activeSearch, play }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-72"
+            className="absolute left-1/2 -translate-x-1/2 top-full pt-2 w-72"
             data-testid={`nav-dropdown-${item.id}`}
           >
-            <div className="glass-strong rounded-2xl p-2 shadow-2xl border border-white/10 ring-1 ring-gold/5">
+            <div className="bg-[#0c0d0a]/95 backdrop-blur-xl rounded-md p-1.5 shadow-[0_16px_50px_rgba(0,0,0,0.6)] border border-gold/20 border-t-2 border-t-gold/60">
               {item.children.map((c) => {
                 const Icon = c.icon;
                 const active = linkMatches(c.to, activePath, activeSearch);
@@ -129,14 +129,14 @@ function NavGroup({ item, activePath, activeSearch, play }) {
                       to={c.to}
                       data-testid={`nav-link-${c.id}`}
                       onClick={() => { play("click"); doClose(true); }}
-                      className={`group/item flex items-start gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 ${active ? "bg-gold/10" : "hover:bg-white/5"}`}
+                      className={`group/item flex items-start gap-3 px-2.5 py-2.5 rounded-sm border-l-2 transition-colors duration-200 ${active ? "bg-gold/10 border-gold" : "border-transparent hover:bg-white/5 hover:border-gold/40"}`}
                     >
-                      <span className={`mt-0.5 flex-shrink-0 grid place-items-center w-9 h-9 rounded-lg border transition-all duration-200 ${active ? "border-gold/40 bg-gold/15 text-gold" : "border-white/10 bg-white/5 text-muted-foreground group-hover/item:text-gold group-hover/item:border-gold/30 group-hover/item:scale-105"}`}>
+                      <span className={`mt-0.5 flex-shrink-0 grid place-items-center w-9 h-9 rounded-md border transition-all duration-200 ${active ? "border-gold/40 bg-gold/15 text-gold" : "border-white/10 bg-white/5 text-muted-foreground group-hover/item:text-gold group-hover/item:border-gold/30"}`}>
                         <Icon size={16} />
                       </span>
                       <span className="min-w-0">
-                        <span className={`block text-sm font-semibold ${active ? "text-gold" : "text-foreground"}`}>{c.label}</span>
-                        {c.desc && <span className="block text-xs text-muted-foreground leading-tight mt-0.5">{c.desc}</span>}
+                        <span className={`block text-[13px] font-bold uppercase tracking-wide ${active ? "text-gold" : "text-foreground"}`}>{c.label}</span>
+                        {c.desc && <span className="block text-xs text-muted-foreground leading-tight mt-0.5 normal-case tracking-normal font-normal">{c.desc}</span>}
                       </span>
                     </Link>
                   </motion.div>
@@ -180,15 +180,16 @@ export function Navbar() {
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? "glass-strong shadow-2xl" : "bg-transparent"}`}
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 border-b ${scrolled ? "bg-[#0b0c09]/90 backdrop-blur-xl border-gold/30 shadow-[0_10px_40px_rgba(0,0,0,0.55)]" : "bg-gradient-to-b from-black/70 to-transparent border-white/5"}`}
       data-testid="navbar"
     >
-      <nav className="max-w-[88rem] mx-auto px-4 sm:px-6 h-[68px] flex items-center justify-between gap-2">
-        <Link to="/" className="flex items-center gap-2 group flex-shrink-0" data-testid="nav-logo" onMouseEnter={() => play("hover")}>
+      <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+      <nav className="max-w-[90rem] mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between gap-2">
+        <Link to="/" className="flex items-center gap-3 group flex-shrink-0 pr-4 mr-1 border-r border-white/10" data-testid="nav-logo" onMouseEnter={() => play("hover")}>
           <img src={MEDIA.logo} alt="Isla Nublar LATAM" className="h-10 w-auto group-hover:scale-105 transition-transform" />
         </Link>
 
-        <div className="hidden xl:flex items-center gap-0.5">
+        <div className="hidden xl:flex items-center h-full">
           {nav.map((item) =>
             item.type === "group" ? (
               <NavGroup key={item.id} item={item} activePath={activePath} activeSearch={activeSearch} play={play} />
@@ -199,10 +200,10 @@ export function Navbar() {
                 data-testid={`nav-link-${item.id}`}
                 onMouseEnter={() => play("hover")}
                 onClick={() => play("click")}
-                className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${activePath === item.to ? "text-gold" : "text-muted-foreground hover:text-foreground"}`}
+                className={`relative h-full flex items-center px-3.5 text-[12px] font-bold uppercase tracking-[0.08em] transition-colors duration-200 ${activePath === item.to ? "text-gold bg-gold/[0.06]" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05]"}`}
               >
                 {item.label}
-                {activePath === item.to && <motion.span layoutId="nav-active" className="absolute inset-x-3 -bottom-0.5 h-0.5 bg-gold rounded-full" />}
+                {activePath === item.to && <motion.span layoutId="nav-active" className="absolute inset-x-0 -bottom-px h-[3px] bg-gold" />}
               </Link>
             )
           )}
@@ -213,14 +214,14 @@ export function Navbar() {
             onClick={() => { toggle(); play("click"); }}
             data-testid="sound-toggle"
             aria-label="Activar o desactivar sonido"
-            className="p-2 rounded-lg text-muted-foreground hover:text-gold hover:bg-white/5 transition-colors"
+            className="p-2 rounded-md text-muted-foreground hover:text-gold hover:bg-white/5 transition-colors"
           >
             {enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
 
-          <button onClick={() => { setOpen(true); play("click"); }} data-testid="nav-cart" className="relative p-2 rounded-lg text-muted-foreground hover:text-gold hover:bg-white/5 transition-colors">
+          <button onClick={() => { setOpen(true); play("click"); }} data-testid="nav-cart" className="relative p-2 rounded-md text-muted-foreground hover:text-gold hover:bg-white/5 transition-colors">
             <ShoppingCart size={18} />
-            {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-crimson text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{count}</span>}
+            {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-crimson text-white text-[10px] font-bold rounded-sm w-4 h-4 flex items-center justify-center">{count}</span>}
           </button>
 
           {user ? (
@@ -231,7 +232,7 @@ export function Navbar() {
                 onClick={() => { setProfileOpen((o) => !o); play("click"); }}
                 onMouseEnter={() => play("hover")}
                 data-testid="profile-menu-button"
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full glass hover:border-gold/40 transition-colors"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md border border-white/10 bg-white/5 hover:border-gold/40 transition-colors"
               >
                 <img src={user.avatar || MEDIA.logo} alt="" className="w-7 h-7 rounded-full object-cover border border-gold/30" />
                 <ChevronDown size={14} className={`text-muted-foreground transition-transform ${profileOpen ? "rotate-180" : ""}`} />
@@ -269,13 +270,13 @@ export function Navbar() {
               onClick={steamLogin}
               onMouseEnter={() => play("hover")}
               data-testid="steam-login-button"
-              className="hidden sm:inline-flex items-center gap-2 bg-gold text-background font-bold text-sm px-4 py-2 rounded-lg hover:brightness-110 hover:gold-glow transition-all"
+              className="hidden sm:inline-flex items-center gap-2 bg-gold text-background font-extrabold text-[12px] uppercase tracking-wider px-4 py-2.5 rounded-md hover:brightness-110 hover:gold-glow transition-all"
             >
               Iniciar sesión con Steam
             </button>
           )}
 
-          <button onClick={() => { setMobile((m) => !m); play("click"); }} data-testid="mobile-menu-button" className="xl:hidden p-2 rounded-lg hover:bg-white/5">
+          <button onClick={() => { setMobile((m) => !m); play("click"); }} data-testid="mobile-menu-button" className="xl:hidden p-2 rounded-md border border-white/10 hover:bg-white/5">
             {mobile ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
