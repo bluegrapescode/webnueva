@@ -97,8 +97,19 @@ function NavGroup({ item, activePath, activeSearch, play }) {
     timer.current = setTimeout(() => setOpen((was) => { if (was) play("menuClose"); return false; }), immediate ? 0 : 120);
   };
 
+  // Click-only: close when clicking outside the group or pressing Escape.
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) doClose(true); };
+    const onEsc = (e) => { if (e.key === "Escape") doClose(true); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="relative h-full flex items-center" onMouseEnter={doOpen} onMouseLeave={() => doClose()} data-testid={`nav-group-${item.id}`}>
+    <div ref={wrapRef} className="relative h-full flex items-center" data-testid={`nav-group-${item.id}`}>
       <button
         onClick={() => (open ? doClose(true) : doOpen())}
         data-testid={`nav-group-trigger-${item.id}`}
