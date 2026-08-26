@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, Mic, MicOff, PhoneOff, Phone, Users, Volume2, VolumeX, RotateCcw, Radar, Signal } from "lucide-react";
+import { Radio, Mic, MicOff, PhoneOff, Phone, Users, Volume2, VolumeX, Signal } from "lucide-react";
 import { useSound } from "@/context/SoundContext";
 import { useProximitySim, useMicLevel } from "@/lib/proximitySim";
 
@@ -77,64 +77,6 @@ function Dial({ label, value, min, max, step, display, onChange, accent = "#A3C9
 }
 
 // The proximity radar: concentric range rings, a rotating sweep, the highlighted
-// hearing ring (scales with the Alcance dial) and a blip for each nearby player.
-function ProximityRadar({ players, hearing, serverRadius }) {
-  const SIZE = 320, C = SIZE / 2, MAX_R = 138;
-  const scale = MAX_R / serverRadius;
-  const hearingR = hearing * scale;
-  return (
-    <div className="relative mx-auto" style={{ width: SIZE, height: SIZE }} data-testid="voice-radar">
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="absolute inset-0">
-        <defs>
-          <radialGradient id="radarBg" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#0e1a0a" />
-            <stop offset="100%" stopColor="#080b06" />
-          </radialGradient>
-        </defs>
-        <circle cx={C} cy={C} r={MAX_R} fill="url(#radarBg)" stroke="rgba(124,168,66,.25)" strokeWidth="1.5" />
-        {[0.25, 0.5, 0.75].map((f) => (
-          <circle key={f} cx={C} cy={C} r={MAX_R * f} fill="none" stroke="rgba(124,168,66,.14)" strokeWidth="1" />
-        ))}
-        <line x1={C} y1={C - MAX_R} x2={C} y2={C + MAX_R} stroke="rgba(124,168,66,.12)" strokeWidth="1" />
-        <line x1={C - MAX_R} y1={C} x2={C + MAX_R} y2={C} stroke="rgba(124,168,66,.12)" strokeWidth="1" />
-        {/* hearing radius — the range that actually decides who you hear */}
-        <circle cx={C} cy={C} r={hearingR} fill="rgba(240,180,41,.06)" stroke="#F0B429" strokeWidth="1.5" strokeDasharray="4 4" style={{ transition: "r .25s ease" }} />
-      </svg>
-
-      {/* rotating sweep */}
-      <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none" style={{ padding: (SIZE - MAX_R * 2) / 2 }}>
-        <div className="w-full h-full rounded-full radar-sweep" style={{ background: "conic-gradient(from 0deg, rgba(124,168,66,.35), rgba(124,168,66,0) 60deg, transparent 320deg)" }} />
-      </div>
-
-      {/* you (center) */}
-      <div className="absolute" style={{ left: C, top: C, transform: "translate(-50%,-50%)" }}>
-        <span className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-gold opacity-60 animate-ping" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-gold" style={{ boxShadow: "0 0 10px rgba(240,180,41,.8)" }} />
-        </span>
-      </div>
-
-      {/* player blips */}
-      {players.map((p) => {
-        const d = Math.min(p.dist, serverRadius);
-        const x = C + Math.cos(p.angle) * d * scale;
-        const y = C + Math.sin(p.angle) * d * scale;
-        const inRange = p.dist <= hearing;
-        const color = inRange ? (p.speaking ? "#3FB960" : "#A3C96B") : "#5b6350";
-        return (
-          <div key={p.id} className="absolute -translate-x-1/2 -translate-y-1/2 group" style={{ left: x, top: y, transition: "left .25s linear, top .25s linear" }} data-testid={`radar-blip-${p.id}`} data-inrange={inRange}>
-            {p.speaking && inRange && <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 rounded-full animate-ping" style={{ background: "rgba(63,185,96,.5)" }} />}
-            <span className="relative block rounded-full" style={{ width: inRange ? 9 : 7, height: inRange ? 9 : 7, background: color, boxShadow: inRange ? `0 0 8px ${color}` : "none", opacity: inRange ? 1 : 0.55 }} />
-            <span className="absolute left-1/2 -translate-x-1/2 top-3 whitespace-nowrap text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/70 border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color }}>
-              {p.name} · {Math.round(p.dist)}m
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function ProximityVoice() {
   const { play } = useSound();
   const sim = useProximitySim();
@@ -265,29 +207,8 @@ export default function ProximityVoice() {
           </p>
         </div>
 
-        {/* ------- radar + channels ------- */}
+        {/* ------- channels ------- */}
         <div className="space-y-6">
-          <div className="glass rounded-2xl p-5" data-testid="voice-radar-card">
-            <div className="flex items-center justify-between mb-4">
-              <p className="label-overline text-[10px] text-muted-foreground inline-flex items-center gap-1.5"><Radar size={12} className="text-gold" /> Radar de proximidad</p>
-              <div className="flex items-center gap-3 text-[10px] font-semibold">
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground"><span className="h-2 w-2 rounded-full bg-gold" /> Tú</span>
-                <span className="inline-flex items-center gap-1.5 text-emerald-400"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Hablando</span>
-                <span className="inline-flex items-center gap-1.5" style={{ color: "#5b6350" }}><span className="h-2 w-2 rounded-full" style={{ background: "#5b6350" }} /> Fuera</span>
-              </div>
-            </div>
-            {connected ? (
-              <ProximityRadar players={sim.players} hearing={sim.hearing} serverRadius={sim.serverRadius} />
-            ) : (
-              <div className="h-[320px] grid place-items-center text-center">
-                <div>
-                  <Radar size={40} className="mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="text-sm text-muted-foreground">Enciende la radio para escanear a los jugadores cercanos.</p>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="glass rounded-2xl overflow-hidden" data-testid="voice-participants-list">
             <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-white/10">
               <p className="label-overline text-[10px] text-muted-foreground inline-flex items-center gap-1.5"><Users size={12} /> Canales cerca de ti</p>
