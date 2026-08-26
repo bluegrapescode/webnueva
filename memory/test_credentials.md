@@ -8,7 +8,7 @@
   - To authenticate in a browser/Playwright: go to site root, run
     `localStorage.setItem('primal_token', '<token>')`, then navigate.
 
-Base preview URL: https://28e26773-8490-4339-abcb-f6bdf68c193d.preview.emergentagent.com
+Base preview URL: https://synced-animations.preview.emergentagent.com
 
 ## Notes
 - Real login is Steam OAuth (needs the live game server / not available in preview).

@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { MEDIA } from "@/lib/media";
 import { LoginGift } from "@/components/common/LoginGift";
+import { usePayoutTimer } from "@/hooks/usePayoutTimer";
 
 const fmt = (n) => Number(n || 0).toLocaleString();
 
@@ -14,6 +15,9 @@ export function BalanceHUD() {
   const [span, setSpan] = useState(240);
   const [inGame, setInGame] = useState(false);
   const pollRef = useRef(null);
+  const fillRef = useRef(null);
+  const timeRef = useRef(null);
+  const lastSec = useRef(-1);
 
   useEffect(() => {
     if (!user) return;
@@ -37,14 +41,27 @@ export function BalanceHUD() {
     // eslint-disable-next-line
   }, [user?.id]);
 
+  // Continuous rAF fill + mm:ss counter, kept in sync with the payout panel.
+  usePayoutTimer({
+    secondsRemaining: remaining,
+    intervalSeconds: span,
+    active: inGame,
+    onTick: (rem, progress) => {
+      if (fillRef.current) fillRef.current.style.width = `${Math.max(progress * 100, 4)}%`;
+      const s = Math.ceil(rem);
+      if (s !== lastSec.current && timeRef.current) {
+        lastSec.current = s;
+        timeRef.current.textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+      }
+    },
+  });
+
+  // Reset the bar to empty the moment the player leaves the server.
   useEffect(() => {
-    if (!inGame) return;
-    const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
-    return () => clearInterval(id);
+    if (!inGame && fillRef.current) fillRef.current.style.width = "0%";
   }, [inGame]);
 
   if (!user) return null;
-  const fill = inGame ? Math.min(100, ((span - remaining) / span) * 100) : 0;
   const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
   const ss = String(remaining % 60).padStart(2, "0");
 
@@ -59,11 +76,11 @@ export function BalanceHUD() {
           <span className="text-sm font-semibold tabular-nums text-emerald-400 leading-none">{fmt(user.coins)}</span>
         </div>
         <div className="mt-1 h-[4px] w-full bg-white/10 overflow-hidden" style={{ borderRadius: 2 }} data-testid="passive-bar">
-          <div className="h-full ease-linear" style={{ width: `${Math.max(fill, inGame ? 4 : 0)}%`, background: "#FACC15", transition: "width 1s linear", boxShadow: inGame ? "0 0 7px #FACC15" : "none" }} />
+          <div ref={fillRef} className="h-full" style={{ width: inGame ? "4%" : "0%", background: "#FACC15", boxShadow: inGame ? "0 0 7px #FACC15" : "none" }} />
         </div>
         <div className="absolute top-full right-0 mt-2 w-max max-w-[220px] px-3 py-2 border border-emerald-500/30 text-[11px] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-[60]" style={{ background: "#080d0b", borderRadius: 2 }} data-testid="passive-tooltip">
           {inGame
-            ? <>Próximo PrimeMeat en <span className="text-emerald-400 font-bold tabular-nums">{mm}:{ss}</span></>
+            ? <>Próximo PrimeMeat en <span ref={timeRef} className="text-emerald-400 font-bold tabular-nums">{mm}:{ss}</span></>
             : <span className="text-muted-foreground">Únete al servidor para ganar PrimeMeat</span>}
           <p className="text-muted-foreground text-[10px] mt-0.5">+300 cada 4 min mientras estás en el servidor</p>
         </div>

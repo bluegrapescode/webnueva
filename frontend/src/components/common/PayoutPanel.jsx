@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Zap, TrendingUp, Wallet, Radio } from "lucide-react";
 import { MEDIA } from "@/lib/media";
 import { api } from "@/lib/api";
+import { usePayoutTimer } from "@/hooks/usePayoutTimer";
 
 const GOLD = "#EAB308";
 const TEAL = "#2DD4BF";
@@ -36,6 +37,9 @@ export default function PayoutPanel({ active }) {
   const [sess, setSess] = useState(null);
   const [pat, setPat] = useState(null);
   const [amberRem, setAmberRem] = useState(null);
+  const barRef = useRef(null);
+  const remTextRef = useRef(null);
+  const lastSec = useRef(-1);
 
   useEffect(() => {
     if (!active) return undefined;
@@ -49,14 +53,29 @@ export default function PayoutPanel({ active }) {
     return () => { alive = false; clearInterval(t); };
   }, [active]);
 
+  // Only the session clock ticks per-second here; the payout bar + countdown are
+  // driven continuously by usePayoutTimer so they stay smooth and in sync.
   useEffect(() => {
     if (!st?.in_game) return undefined;
     const t = setInterval(() => {
-      setRem((s) => (s > 0 ? s - 1 : st.interval_seconds));
       setSess((s) => (s == null ? s : s + 1));
     }, 1000);
     return () => clearInterval(t);
-  }, [st?.in_game, st?.interval_seconds]);
+  }, [st?.in_game]);
+
+  usePayoutTimer({
+    secondsRemaining: rem,
+    intervalSeconds: st?.interval_seconds,
+    active: !!st?.in_game,
+    onTick: (r, progress) => {
+      if (barRef.current) barRef.current.style.width = `${progress * 100}%`;
+      const s = Math.ceil(r);
+      if (s !== lastSec.current && remTextRef.current) {
+        lastSec.current = s;
+        remTextRef.current.textContent = fmtDur(s);
+      }
+    },
+  });
 
   useEffect(() => {
     if (!active) return undefined;
@@ -79,7 +98,6 @@ export default function PayoutPanel({ active }) {
 
   const playing = st.in_game;
   const accent = playing ? GREEN : RED;
-  const pct = st.interval_seconds ? Math.max(0, Math.min(100, ((st.interval_seconds - (rem ?? 0)) / st.interval_seconds) * 100)) : 0;
   const boostLabel = st.multiplier > 1 ? `${st.multiplier}x` : "1x";
 
   const Row = ({ icon: Icon, label, value, valueColor }) => (
@@ -149,9 +167,9 @@ export default function PayoutPanel({ active }) {
             {playing && (
               <>
                 <div className="mt-3 h-[6px] w-full overflow-hidden" style={{ borderRadius: 3, background: "rgba(255,255,255,0.08)" }}>
-                  <div className="h-full transition-all" style={{ width: `${pct}%`, background: GOLD }} />
+                  <div ref={barRef} className="h-full" style={{ width: "0%", background: GOLD, boxShadow: `0 0 8px ${GOLD}88` }} />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">Próximo pago de <b style={{ color: GOLD }}>{(st.reward_per_tick || 0).toLocaleString()}</b> en {fmtDur(rem)}</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5">Próximo pago de <b style={{ color: GOLD }}>{(st.reward_per_tick || 0).toLocaleString()}</b> en <span ref={remTextRef} className="tabular-nums">{fmtDur(rem)}</span></p>
               </>
             )}
           </div>
