@@ -1,0 +1,175 @@
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500&f[]=clash-display@700,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'Manrope', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+    :root {
+        --background: 240 9% 4%;
+        --foreground: 220 14% 96%;
+        --card: 240 7% 9%;
+        --card-foreground: 220 14% 96%;
+        --popover: 240 8% 7%;
+        --popover-foreground: 220 14% 96%;
+        --primary: 86 44% 46%;
+        --primary-foreground: 240 9% 4%;
+        --secondary: 240 5% 14%;
+        --secondary-foreground: 220 14% 96%;
+        --muted: 240 5% 14%;
+        --muted-foreground: 220 9% 60%;
+        --accent: 240 6% 16%;
+        --accent-foreground: 220 14% 96%;
+        --destructive: 0 72% 58%;
+        --destructive-foreground: 220 14% 96%;
+        --border: 240 5% 16%;
+        --input: 240 5% 16%;
+        --ring: 86 44% 46%;
+        --chart-1: 86 44% 46%;
+        --chart-2: 158 64% 52%;
+        --chart-3: 0 72% 58%;
+        --chart-4: 200 70% 55%;
+        --chart-5: 280 60% 60%;
+        --radius: 0.75rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        @apply bg-background text-foreground;
+        background-image:
+            radial-gradient(900px circle at 0% 0%, rgba(124,168,66,0.08), transparent 45%),
+            radial-gradient(900px circle at 100% 0%, rgba(181,176,168,0.05), transparent 45%);
+        background-attachment: fixed;
+    }
+    ::selection {
+        background: rgba(124, 168, 66, 0.32);
+        color: #fff;
+    }
+}
+
+@layer utilities {
+    .font-display { font-family: 'Cabinet Grotesk', 'Clash Display', sans-serif; }
+    .label-overline {
+        font-family: 'Manrope', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+    }
+    .glass {
+        background: rgba(18, 18, 22, 0.6);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-strong {
+        background: rgba(12, 12, 15, 0.85);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* ===== Server status — RCON terminal readout (Dashboard) ===== */
+    .font-code { font-family: 'JetBrains Mono', ui-monospace, Consolas, 'Courier New', monospace; }
+    .term-card {
+        background: #05070a;
+        border: 1px solid rgba(124, 168, 66, 0.16);
+    }
+    .term-head { border-bottom: 1px solid #16261a; }
+    .term-bright { color: #eaffef; }
+    .term-dim { color: #4d7a58; }
+    .term-key { color: #3f6b4c; }
+    .term-track { color: #2f7f4b; }
+    .term-fill { color: #7dff9e; }
+
+    .text-gradient-gold {
+        background: linear-gradient(135deg, #B8DA7E 0%, #7CA842 50%, #557A2A 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .gold-glow { box-shadow: 0 0 30px rgba(124, 168, 66, 0.28); }
+    .crimson-glow { box-shadow: 0 0 30px rgba(226, 74, 74, 0.25); }
+    .grain::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 1;
+    }
+}
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #0a0a0c; }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(#3a3a40, #222228);
+    border-radius: 6px;
+    border: 2px solid #0a0a0c;
+}
+::-webkit-scrollbar-thumb:hover { background: #7CA842; }
+
+.skeleton {
+    background: linear-gradient(90deg, #18181b 25%, #232328 50%, #18181b 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ===== Chat cosmetics (Decorations) ===== */
+.deco-name { display: inline-block; }
+.deco-color-grad {
+    background: var(--deco-grad);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; background-size: 200% auto;
+}
+.deco-color-anim { animation: decoShift 4s linear infinite; }
+
+/* name effects (read --fx / --fx-grad) */
+.fx-glow { text-shadow: 0 0 6px var(--fx), 0 0 12px var(--fx); }
+.fx-neon { color: var(--fx) !important; text-shadow: 0 0 4px var(--fx), 0 0 9px var(--fx), 0 0 18px var(--fx); }
+.fx-pulse { text-shadow: 0 0 8px var(--fx); animation: fxPulse 1.5s ease-in-out infinite; }
+.fx-shimmer {
+    background: linear-gradient(90deg, currentColor 0%, var(--fx) 50%, currentColor 100%);
+    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+    color: transparent; animation: decoShift 3s linear infinite;
+}
+.fx-fire {
+    background: linear-gradient(0deg, #f59e0b, #ef4444, #fde047);
+    background-size: 100% 220%; -webkit-background-clip: text; background-clip: text;
+    color: transparent; animation: fxFire 2.4s ease-in-out infinite;
+}
+.fx-gradient {
+    background: var(--fx-grad); background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: decoShift 4s linear infinite;
+}
+.fx-rainbow {
+    background: linear-gradient(90deg, #ff3b3b, #f59e0b, #fde047, #22c55e, #38bdf8, #a855f7, #ff3b3b);
+    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+    color: transparent; animation: decoShift 3s linear infinite;
+}
+/* animated avatar ring / chat bg */
+.deco-ring-anim { animation: decoHue 5s linear infinite; }
+.deco-bg-anim { background-size: 220% 100% !important; animation: decoShift 6s linear infinite; }
+
+@keyframes fxPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes fxFire { 0%,100% { background-position: 50% 0%; } 50% { background-position: 50% 100%; } }
+@keyframes decoShift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes decoHue { to { filter: hue-rotate(360deg); } }

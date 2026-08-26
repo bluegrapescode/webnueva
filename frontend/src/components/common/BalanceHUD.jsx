@@ -1,0 +1,78 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
+import { MEDIA } from "@/lib/media";
+import { LoginGift } from "@/components/common/LoginGift";
+
+const fmt = (n) => Number(n || 0).toLocaleString();
+
+// Top-right currency balances. Each currency is its own bordered pill so large
+// numbers (millions) never collide. PrimeMeat carries a passive-earn progress bar.
+export function BalanceHUD() {
+  const { user, refresh, applyBalance } = useAuth();
+  const [remaining, setRemaining] = useState(240);
+  const [span, setSpan] = useState(240);
+  const [inGame, setInGame] = useState(false);
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    const tick = async () => {
+      try {
+        const { data } = await api.passiveTick();
+        if (!mounted) return;
+        setInGame(data.in_game);
+        setSpan(data.interval_seconds || 240);
+        setRemaining(data.seconds_remaining ?? 240);
+        // Reflect passive earnings on the PrimeMeat bar INSTANTLY from the tick's own
+        // authoritative balance; fall back to a full re-sync if it omits coins.
+        if (typeof data.coins === "number") applyBalance({ coins: data.coins });
+        else if (data.awarded > 0) refresh?.();
+      } catch { /* ignore transient poll errors */ }
+    };
+    tick();
+    pollRef.current = setInterval(tick, 20000);
+    return () => { mounted = false; clearInterval(pollRef.current); };
+    // eslint-disable-next-line
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!inGame) return;
+    const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+    return () => clearInterval(id);
+  }, [inGame]);
+
+  if (!user) return null;
+  const fill = inGame ? Math.min(100, ((span - remaining) / span) * 100) : 0;
+  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+  const ss = String(remaining % 60).padStart(2, "0");
+
+  return (
+    <div className="hidden md:flex items-center gap-2.5">
+      {/* Login gift — to the LEFT of PrimeMeat */}
+      <LoginGift />
+      {/* PrimeMeat */}
+      <div className="group relative flex flex-col justify-center px-2.5 py-1 border border-white/10 bg-white/[0.03] min-w-[100px]" style={{ borderRadius: 2 }} data-testid="balance-primemeat">
+        <div className="flex items-center gap-1.5">
+          <img src={MEDIA.coinNormal} alt="PrimeMeat" className="w-4 h-4 object-contain shrink-0" />
+          <span className="text-sm font-semibold tabular-nums text-emerald-400 leading-none">{fmt(user.coins)}</span>
+        </div>
+        <div className="mt-1 h-[4px] w-full bg-white/10 overflow-hidden" style={{ borderRadius: 2 }} data-testid="passive-bar">
+          <div className="h-full ease-linear" style={{ width: `${Math.max(fill, inGame ? 4 : 0)}%`, background: "#FACC15", transition: "width 1s linear", boxShadow: inGame ? "0 0 7px #FACC15" : "none" }} />
+        </div>
+        <div className="absolute top-full right-0 mt-2 w-max max-w-[220px] px-3 py-2 border border-emerald-500/30 text-[11px] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-[60]" style={{ background: "#080d0b", borderRadius: 2 }} data-testid="passive-tooltip">
+          {inGame
+            ? <>Próximo PrimeMeat en <span className="text-emerald-400 font-bold tabular-nums">{mm}:{ss}</span></>
+            : <span className="text-muted-foreground">Únete al servidor para ganar PrimeMeat</span>}
+          <p className="text-muted-foreground text-[10px] mt-0.5">+300 cada 4 min mientras estás en el servidor</p>
+        </div>
+      </div>
+      {/* Amberium */}
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border border-gold/20 bg-gold/[0.04] min-w-[88px]" style={{ borderRadius: 2 }} data-testid="balance-amberium">
+        <img src={MEDIA.coinVip} alt="Amberium" className="w-4 h-4 object-contain shrink-0" />
+        <span className="text-sm font-semibold tabular-nums text-gold leading-none">{fmt(user.vip_coins)}</span>
+      </div>
+    </div>
+  );
+}
