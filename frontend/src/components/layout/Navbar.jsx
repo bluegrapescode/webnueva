@@ -5,7 +5,12 @@ import {
   Volume2, VolumeX, ShoppingCart, Menu, X, LogOut, User as UserIcon,
   ChevronDown, Ticket, Home, LayoutDashboard, Bone, Store, Tag, ArrowLeftRight,
   Gamepad2, Swords, Target, BarChart3, Radio, Video, Palette, ShieldCheck,
+  Spade, Dices, Gift, Package,
 } from "lucide-react";
+
+// True when the given "to" (which may carry a ?query) matches current location.
+const linkMatches = (to, pathname, search) =>
+  to.includes("?") ? `${pathname}${search}` === to : pathname === to;
 import { MEDIA } from "@/lib/media";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
@@ -31,7 +36,10 @@ function buildNav(user) {
     {
       type: "group", id: "minijuegos", label: "Mini Juegos", icon: Gamepad2,
       children: [
-        ...(user ? [{ to: "/mini-juegos", id: "mini-juegos", label: "Mini Juegos", icon: Gamepad2, desc: "Ruleta, Crash, Dados y más" }] : []),
+        { to: "/mini-juegos?tab=wheel", id: "game-wheel", label: "Ruleta Diaria", icon: Gift, desc: "Giro gratis cada día" },
+        { to: "/mini-juegos?tab=blackjack", id: "game-blackjack", label: "Blackjack", icon: Spade, desc: "Vence a la casa en el 21" },
+        { to: "/mini-juegos?tab=roll", id: "game-roll", label: "Roll", icon: Dices, desc: "Apuesta y multiplica tu tirada" },
+        { to: "/mini-juegos?tab=crates", id: "game-crates", label: "Cajas", icon: Package, desc: "Abre cofres con premios" },
         { to: "/battle-pass", id: "battlepass", label: "Pase de Batalla", icon: Swords, desc: "Sube de nivel y reclama premios" },
       ],
     },
@@ -51,10 +59,10 @@ function buildNav(user) {
 
 // Desktop dropdown group — opens on hover with a small close delay so the
 // cursor can travel from the trigger into the panel without it collapsing.
-function NavGroup({ item, activePath, play }) {
+function NavGroup({ item, activePath, activeSearch, play }) {
   const [open, setOpen] = useState(false);
   const timer = useRef(null);
-  const anyActive = item.children.some((c) => activePath === c.to);
+  const anyActive = item.children.some((c) => linkMatches(c.to, activePath, activeSearch));
 
   const enter = () => { clearTimeout(timer.current); setOpen(true); };
   const leave = () => { timer.current = setTimeout(() => setOpen(false), 120); };
@@ -83,7 +91,7 @@ function NavGroup({ item, activePath, play }) {
             <div className="glass-strong rounded-2xl p-2 shadow-2xl border border-white/10 ring-1 ring-gold/5">
               {item.children.map((c) => {
                 const Icon = c.icon;
-                const active = activePath === c.to;
+                const active = linkMatches(c.to, activePath, activeSearch);
                 return (
                   <Link
                     key={c.to}
@@ -133,6 +141,7 @@ export function Navbar() {
   const steamLogin = () => { play("click"); startSteamLogin(); };
   const nav = buildNav(user);
   const activePath = location.pathname;
+  const activeSearch = location.search;
 
   return (
     <motion.header
@@ -150,7 +159,7 @@ export function Navbar() {
         <div className="hidden xl:flex items-center gap-0.5">
           {nav.map((item) =>
             item.type === "group" ? (
-              <NavGroup key={item.id} item={item} activePath={activePath} play={play} />
+              <NavGroup key={item.id} item={item} activePath={activePath} activeSearch={activeSearch} play={play} />
             ) : (
               <Link
                 key={item.to}
