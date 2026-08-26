@@ -8,8 +8,10 @@ import { AuthProvider } from "@/context/AuthContext";
 import { SoundProvider } from "@/context/SoundContext";
 import { CartProvider } from "@/context/CartContext";
 import { VoiceProvider } from "@/context/VoiceContext";
+import { LiveSimProvider } from "@/context/LiveSimContext";
 import { Layout } from "@/components/layout/Layout";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { LiveTicker } from "@/components/live/LiveTicker";
 
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -121,6 +123,7 @@ function App() {
         {/* Voice lives at app level so the session survives navigating the site. */}
         <VoiceProvider>
         <CartProvider>
+          <LiveSimProvider>
           <BrowserRouter>
             <ScrollToTop />
             <Layout>
@@ -130,6 +133,7 @@ function App() {
                 a referral/rank/skin event surfaces no matter which page is open. */}
             <CreatorNotifier />
             <CelebrationOverlay />
+            <LiveTicker />
             <Toaster
               position="bottom-right"
               theme="dark"
@@ -144,6 +148,7 @@ function App() {
               }}
             />
           </BrowserRouter>
+          </LiveSimProvider>
         </CartProvider>
         </VoiceProvider>
       </AuthProvider>

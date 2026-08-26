@@ -14,12 +14,14 @@ import { LiveProgramCounter } from "@/components/creator/LiveProgramCounter";
 import { useSound } from "@/context/SoundContext";
 import { useAuth } from "@/context/AuthContext";
 import { api, startSteamLogin } from "@/lib/api";
+import { useLiveSim } from "@/context/LiveSimContext";
 
 const DIET_LABEL = { Carnivore: "Carnívoro", Herbivore: "Herbívoro", Omnivore: "Omnívoro" };
 
 export default function Landing() {
   const { play } = useSound();
   const { user } = useAuth();
+  const { players: livePlayers, maxPlayers: liveMax } = useLiveSim();
   const [status, setStatus] = useState(null);
   const [dinos, setDinos] = useState([]);
   const [active, setActive] = useState(0);
@@ -55,7 +57,7 @@ export default function Landing() {
               className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6"
             >
               <StatusDot online={status?.online !== false} label={status?.online === false ? "Servidor desconectado" : "Servidor en linea"} />
-              {status && <span className="text-xs text-muted-foreground">· {status.players}/{status.max_players} supervivientes</span>}
+              <span className="text-xs text-muted-foreground">· <span className="tabular-nums text-emerald font-semibold">{livePlayers}</span>/{liveMax} supervivientes</span>
             </motion.div>
 
             <motion.h1
@@ -138,10 +140,10 @@ export default function Landing() {
         <Reveal>
           <div className="glass-strong rounded-2xl grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5">
             {[
-              { icon: Users, label: "Jugadores en linea", value: status?.players ?? 0, color: "text-emerald" },
+              { icon: Users, label: "Jugadores en linea", value: livePlayers, color: "text-emerald" },
               { icon: Clock, label: "Actividad (hrs)", value: status?.uptime_hours ?? 0, color: "text-gold" },
               { icon: Server, label: "Rendimiento", value: status?.tickrate ?? 30, color: "text-sky-400" },
-              { icon: Zap, label: "Plazas max.", value: status?.max_players ?? 120, color: "text-crimson" },
+              { icon: Zap, label: "Plazas max.", value: liveMax, color: "text-crimson" },
             ].map((s, i) => (
               <div key={i} className="p-6 text-center">
                 <s.icon className={`mx-auto mb-2 ${s.color}`} size={22} />
