@@ -146,6 +146,24 @@ export function InventoryPanel() {
   // (owner ask 2026-07-14 — no separate Recompensas tab).
   const showGlitchSkins = (invCat === "all" || invCat === "Skins") && rewardSkins.length > 0;
 
+  // ── Stacking: identical items collapse into a single card with an xN badge so
+  // the vault never carries duplicate rows of the same thing (owner ask). Dinos
+  // and Skins stay unique — each is its own instance (mutations / uses / equip
+  // state) — everything else (vials, huevos, cajas, fichas, consumibles) stacks
+  // by type. Actions run on one member id; the list re-groups after a reload.
+  const isStackable = (it) => it.category !== "Dinosaurs" && it.category !== "Skins";
+  const stackKey = (it) => (isStackable(it)
+    ? ["s", it.category, it.item_id || it.name, it.tier || "", it.token || "", it.token_tier || "", it.rarity || ""].join("|")
+    : `u|${it.id}`);
+  const stacks = [];
+  const stackIdx = {};
+  displayedInv.forEach((it) => {
+    const k = stackKey(it);
+    const add = Number(it.quantity) > 0 ? Number(it.quantity) : 1;
+    if (stackIdx[k] == null) { stackIdx[k] = stacks.length; stacks.push({ key: k, rep: it, qty: add, ids: [it.id] }); }
+    else { const s = stacks[stackIdx[k]]; s.qty += add; s.ids.push(it.id); }
+  });
+
   const onDragEnter = (i) => {
     setDragOver(i);
     const from = dragIndex.current;
@@ -182,7 +200,7 @@ export function InventoryPanel() {
                 </button>
               ))}
             </div>
-            {invCat === "all" && <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5"><GripVertical size={13} /> Drag to reorder</p>}
+            {invCat === "all" && <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5"><Sparkles size={13} className="text-gold" /> Objetos idénticos se apilan automáticamente</p>}
           </div>
           {displayedInv.length === 0 && !showGlitchSkins ? (
             <p className="text-muted-foreground py-12 text-center">No hay objetos en esta categoría.</p>
@@ -190,21 +208,16 @@ export function InventoryPanel() {
           <>
           {displayedInv.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4" data-testid="inventory-grid">
-            {displayedInv.map((it) => {
-              const i = inv.indexOf(it);
-              const canDrag = invCat === "all";
+            {stacks.map((st) => {
+              const it = st.rep;
               return (
               <motion.div
-                key={it.id}
+                key={st.key}
                 layout
-                draggable={canDrag}
-                onDragStart={canDrag ? () => { dragIndex.current = i; play("click"); } : undefined}
-                onDragEnter={canDrag ? () => onDragEnter(i) : undefined}
-                onDragOver={canDrag ? (e) => e.preventDefault() : undefined}
-                onDragEnd={canDrag ? persistOrder : undefined}
                 initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}
-                className={`group relative glass rounded-xl overflow-hidden hover:border-gold/40 transition-all ${canDrag ? "cursor-grab active:cursor-grabbing" : ""} ${dragOver === i ? "ring-2 ring-gold scale-[1.03]" : ""}`}
+                className="group relative glass rounded-xl overflow-hidden hover:border-gold/40 transition-all"
                 data-testid={`inv-item-${it.id}`}
+                data-stack-qty={st.qty}
               >
                 <div className="aspect-square overflow-hidden">
                   {it.category === "Skins" || !itemArt(it)
@@ -213,6 +226,11 @@ export function InventoryPanel() {
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
                 </div>
                 <div className="absolute top-2 right-2"><RarityBadge rarity={it.rarity} className="text-[8px] px-1.5 py-0" /></div>
+                {st.qty > 1 && (
+                  <span className="absolute top-2 left-2 z-10 text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-gold text-background border border-gold/60 shadow-lg tabular-nums" data-testid={`inv-stack-qty-${it.id}`}>
+                    x{st.qty}
+                  </span>
+                )}
                 {it.category === "Dinosaurs" && (it.prime || it.tier === "prime") && (
                   <span className="absolute top-2 left-2 text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-gold/20 text-gold border border-gold/40 inline-flex items-center gap-0.5" data-testid={`inv-prime-${it.id}`}><Crown size={9} /> PRIME</span>
                 )}
@@ -221,7 +239,7 @@ export function InventoryPanel() {
                   <p className="text-xs font-bold leading-tight line-clamp-2">{it.custom_name || it.name}</p>
                   {it.category === "Skins"
                     ? <span className="text-[10px] text-gold font-semibold">{it.uses ?? 0} uses</span>
-                    : (it.quantity > 1 && <span className="text-[10px] text-gold">x{it.quantity}</span>)}
+                    : (st.qty > 1 && <span className="text-[10px] text-gold font-bold">x{st.qty} en la bóveda</span>)}
                   {it.category === "Dinosaurs" && it.recovery_id && (
                     <span className="block text-[9px] text-muted-foreground font-mono mt-0.5">ID {it.recovery_id}</span>
                   )}
@@ -250,7 +268,7 @@ export function InventoryPanel() {
                     </button>
                   )}
                   {it.category === "Eggs" && (
-                    <button onClick={(e) => { e.stopPropagation(); play("open"); setEggOpen({ tier: it.tier, name: it.name, rarity: it.rarity, image: it.image, color: EGG_RARITY_COLOR[it.rarity] || "#7CA842", owned: it.quantity || 1 }); }} data-testid={`open-inv-egg-${it.id}`}
+                    <button onClick={(e) => { e.stopPropagation(); play("open"); setEggOpen({ tier: it.tier, name: it.name, rarity: it.rarity, image: it.image, color: EGG_RARITY_COLOR[it.rarity] || "#7CA842", owned: st.qty }); }} data-testid={`open-inv-egg-${it.id}`}
                       className="mt-2 w-full inline-flex items-center justify-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded-lg text-background hover:brightness-110 transition-all" style={{ background: EGG_RARITY_COLOR[it.rarity] || "#7CA842" }}>
                       <Gift size={11} /> Abrir huevo
                     </button>
