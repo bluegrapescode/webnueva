@@ -173,3 +173,7 @@ body {
 @keyframes fxFire { 0%,100% { background-position: 50% 0%; } 50% { background-position: 50% 100%; } }
 @keyframes decoShift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
 @keyframes decoHue { to { filter: hue-rotate(360deg); } }
+
+/* Proximity radar sweep */
+@keyframes radarSweep { to { transform: rotate(360deg); } }
+.radar-sweep { animation: radarSweep 3.4s linear infinite; transform-origin: 50% 50%; }
