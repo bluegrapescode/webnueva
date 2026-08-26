@@ -1,0 +1,28 @@
+{
+  "summary": "Tested new NEWS 'Leer más' modal + Event photo support (admin image URL, event card image, event detail modal). Backend EventInput now accepts and persists optional 'image'. Frontend DetailModal opens for both news read-more and event card clicks with title/category/date/body and photo. Admin Eventos tab has a working image URL input.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_events_image.py",
+    "/app/test_reports/pytest/iteration_2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Dashboard.jsx DetailModal is fine but Admin.jsx EventsTab silently swallows any create error (catch {} shows generic 'Failed' toast) — losing backend detail; consider surfacing err?.response?.data?.detail like CodesTab.",
+    "server.py is very large (18k+ lines). Not caused by this change, but worth splitting; the new EventInput.image change itself is clean."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_events_image.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "POST /api/auth/demo → admin token (ALLOW_DEMO_LOGIN=1 in backend/.env). Persist to localStorage as 'primal_token'.",
+  "seed_data_creation": "During test: created TEST_ prefixed event with image=/dinos/carno.png, verified round-trip, then deleted. Also submitted TEST_UI_Evento via Admin UI (image=/dinos/rex.png) and cleaned up.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Verified: (1) POST /api/admin/events with image persists and round-trips via GET /api/events; (2) Dashboard event-card-N is clickable and opens data-testid=detail-modal with title/type badge/date_label/description and photo when available; (3) Events without image render a type icon banner in the modal (no broken img); (4) news-readmore-N opens the same modal with news title/category/timeAgo/body and image; (5) Close button (detail-modal-close) works; (6) Admin Eventos tab has data-testid=event-image input and adminCreateEvent submits with image. 5 events visible; first was 'Duelo Ápice' (no image → icon banner). News modal 'Mantenimiento del servidor completado' had 1 image and 153-char body. No console errors on dashboard/admin. Note: backdrop-click close finished slightly slower than the 700ms wait (AnimatePresence exit), but the close button reliably dismisses the modal; consider a shorter exit or explicit unmount if flaky.",
+  "rca of the issue": "N/A — feature works as specified."
+}

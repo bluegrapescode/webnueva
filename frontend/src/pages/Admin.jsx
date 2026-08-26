@@ -398,10 +398,10 @@ function NewsTab() {
 function EventsTab() {
   const { play } = useSound();
   const [items, setItems] = useState([]);
-  const [form, setForm] = useState({ title: "", description: "", date_label: "", type: "Community" });
+  const [form, setForm] = useState({ title: "", description: "", date_label: "", type: "Community", image: "" });
   const load = () => api.events().then((r) => setItems(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
-  const create = async (e) => { e.preventDefault(); if (!form.title) return; try { await api.adminCreateEvent(form); play("success"); toast.success("Event created"); setForm({ title: "", description: "", date_label: "", type: "Community" }); load(); } catch { play("error"); toast.error("Failed"); } };
+  const create = async (e) => { e.preventDefault(); if (!form.title) return; try { await api.adminCreateEvent(form); play("success"); toast.success("Event created"); setForm({ title: "", description: "", date_label: "", type: "Community", image: "" }); load(); } catch { play("error"); toast.error("Failed"); } };
   const del = async (id) => { await api.adminDeleteEvent(id); play("close"); load(); };
   return (
     <div className="space-y-6">
@@ -411,6 +411,7 @@ function EventsTab() {
         <Field label="Tipo"><input className={inputCls} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} /></Field>
         <Field label="Etiqueta de fecha"><input className={inputCls} value={form.date_label} onChange={(e) => setForm({ ...form, date_label: e.target.value })} placeholder="Sat 21:00 UTC" /></Field>
         <Field label="Descripción"><input className={inputCls} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+        <div className="sm:col-span-2"><Field label="URL de imagen (opcional)"><input className={inputCls} value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} data-testid="event-image" placeholder="https://… o /dinos/carno.png" /></Field></div>
         <div className="sm:col-span-2"><button type="submit" className={btnPrimary} data-testid="event-submit"><Plus size={16} /> Create</button></div>
       </form>
       <div className="space-y-2">

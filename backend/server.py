@@ -833,6 +833,7 @@ class EventInput(BaseModel):
     description: str
     date_label: str
     type: str = "Community"
+    image: Optional[str] = None
 
 
 class StoreItemInput(BaseModel):

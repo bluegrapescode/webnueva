@@ -1,0 +1,15 @@
+# Test Credentials — La Isla Nublar LATAM
+
+## Demo / Admin account (preview)
+- The backend runs with `ALLOW_DEMO_LOGIN=1` in `/app/backend/.env`.
+- Get a token: `POST /api/auth/demo` → `{ "token": "<jwt>" }`
+- The demo user has **role = admin** (full access, including `/admin`).
+- Frontend stores the JWT in `localStorage` under key **`primal_token`**.
+  - To authenticate in a browser/Playwright: go to site root, run
+    `localStorage.setItem('primal_token', '<token>')`, then navigate.
+
+Base preview URL: https://28e26773-8490-4339-abcb-f6bdf68c193d.preview.emergentagent.com
+
+## Notes
+- Real login is Steam OAuth (needs the live game server / not available in preview).
+- No standard email/password accounts exist; use the demo login above.

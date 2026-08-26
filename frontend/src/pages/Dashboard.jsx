@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Calendar, Megaphone, Newspaper, Clock, Swords, Users, Skull, Tag, Bell, Sparkles, ArrowUpRight, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Calendar, Megaphone, Newspaper, Clock, Swords, Users, Skull, Tag, Bell, Sparkles, ArrowUpRight, Zap, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 import { StatusDot } from "@/components/common/Hud";
@@ -57,11 +57,68 @@ function timeAgo(iso) {
   return m >= 1 ? `hace ${m} min` : "recién";
 }
 
+// Full-screen detail popup for a news article or an event, with its photo.
+function DetailModal({ modal, onClose }) {
+  if (!modal) return null;
+  const isNews = modal.kind === "news";
+  const d = modal.data;
+  const st = isNews ? (NEWS_STYLE[d.category] || NEWS_STYLE.default) : (EVENT_STYLE[d.type] || EVENT_STYLE.default);
+  const Icon = st.icon;
+  const badge = isNews ? d.category : (st.label || d.type);
+  const meta = isNews ? timeAgo(d.created_at) : d.date_label;
+  const text = isNews ? d.body : d.description;
+  return (
+    <motion.div
+      className="fixed inset-0 z-[95] flex items-center justify-center p-4 sm:p-6"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose} data-testid="detail-modal"
+    >
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.97 }}
+        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl bg-[#0c0d0a] border border-white/10 shadow-2xl flex flex-col"
+      >
+        <button onClick={onClose} data-testid="detail-modal-close" aria-label="Cerrar"
+          className="absolute top-3 right-3 z-10 grid place-items-center w-9 h-9 rounded-md bg-black/50 backdrop-blur border border-white/10 text-white hover:bg-black/70 transition-colors">
+          <X size={18} />
+        </button>
+
+        {/* photo (or type banner when an event has none) */}
+        <div className="relative shrink-0 aspect-video w-full overflow-hidden" style={{ background: "radial-gradient(120% 120% at 50% 0%, #16210f 0%, #0b0d08 70%)" }}>
+          {d.image ? (
+            <img src={d.image} alt="" className="absolute inset-0 w-full h-full object-contain p-6" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center"><Icon size={72} style={{ color: st.color, opacity: 0.85 }} /></div>
+          )}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, transparent 45%, rgba(9,11,7,0.85) 100%)" }} />
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md" style={{ color: st.color, background: `${st.color}22`, border: `1px solid ${st.color}55` }}>
+            <Icon size={13} /> {badge}
+          </span>
+        </div>
+
+        {/* body */}
+        <div className="p-6 sm:p-7 overflow-y-auto">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+            <Clock size={13} /> <span className="font-semibold" style={{ color: st.color }}>{meta}</span>
+          </div>
+          <h2 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight leading-tight mb-4" data-testid="detail-modal-title">{d.title}</h2>
+          <p className="text-[15px] text-foreground/85 leading-relaxed whitespace-pre-line">{text}</p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
   const { play } = useSound();
   const [status, setStatus] = useState(null);
   const [news, setNews] = useState([]);
   const [events, setEvents] = useState([]);
+  const [modal, setModal] = useState(null); // { kind: 'news'|'event', data }
+  const openModal = (kind, data) => { play("open"); setModal({ kind, data }); };
+  const closeModal = () => { play("close"); setModal(null); };
 
   useEffect(() => {
     api.serverStatus().then((r) => setStatus(r.data)).catch(() => {});
@@ -193,7 +250,9 @@ export default function Dashboard() {
           const Icon = st.icon;
           return (
           <Reveal key={e.id || i} delay={i * 0.08}>
-            <div className="group relative glass rounded-2xl p-6 h-full overflow-hidden hover:-translate-y-1 transition-all duration-300"
+            <div onClick={() => openModal("event", e)} role="button" tabIndex={0}
+              onKeyDown={(ev) => { if (ev.key === "Enter") openModal("event", e); }}
+              className="group relative glass rounded-2xl p-6 h-full overflow-hidden hover:-translate-y-1 transition-all duration-300 cursor-pointer"
               style={{ borderColor: "rgba(255,255,255,0.08)" }} data-testid={`event-card-${i}`}>
               {/* top accent + ambient glow in the type colour */}
               <span className="absolute inset-x-0 top-0 h-1" style={{ background: st.color }} />
@@ -204,10 +263,16 @@ export default function Dashboard() {
                 </span>
                 <span className="grid place-items-center w-10 h-10 rounded-lg shrink-0" style={{ background: `${st.color}1a`, color: st.color }}><Icon size={20} /></span>
               </div>
+              {e.image && (
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-4" style={{ background: "radial-gradient(120% 120% at 50% 0%, #16210f 0%, #0b0d08 70%)" }}>
+                  <img src={e.image} alt="" loading="lazy" onError={(ev) => { ev.currentTarget.style.display = "none"; }} className="absolute inset-0 w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-700" />
+                </div>
+              )}
               <h3 className="font-display font-bold text-xl mb-2 leading-tight">{e.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-5">{e.description}</p>
-              <div className="flex items-center gap-2 pt-4 border-t border-white/10 text-sm font-semibold" style={{ color: st.color }}>
-                <Clock size={15} /> <span className="tabular-nums">{e.date_label}</span>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5 line-clamp-2">{e.description}</p>
+              <div className="flex items-center justify-between gap-2 pt-4 border-t border-white/10">
+                <span className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: st.color }}><Clock size={15} /> <span className="tabular-nums">{e.date_label}</span></span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-gold transition-colors">Ver <ArrowUpRight size={13} /></span>
               </div>
             </div>
           </Reveal>
@@ -255,7 +320,7 @@ export default function Dashboard() {
                 </div>
                 <h3 className={`font-display font-bold leading-tight mb-2 ${featured ? "text-2xl" : "text-lg"}`}>{n.title}</h3>
                 <p className={`text-sm text-muted-foreground leading-relaxed ${featured ? "line-clamp-4 md:max-w-2xl" : "line-clamp-3"}`}>{n.body}</p>
-                <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold hover:gap-2.5 transition-all w-fit" data-testid={`news-readmore-${i}`}>
+                <button onClick={() => openModal("news", n)} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold hover:gap-2.5 transition-all w-fit" data-testid={`news-readmore-${i}`}>
                   Leer más <ArrowUpRight size={14} />
                 </button>
               </div>
@@ -265,6 +330,10 @@ export default function Dashboard() {
         })}
       </div>
       )}
+
+      <AnimatePresence>
+        {modal && <DetailModal modal={modal} onClose={closeModal} />}
+      </AnimatePresence>
     </div>
   );
 }
