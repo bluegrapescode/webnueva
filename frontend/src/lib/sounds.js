@@ -235,6 +235,17 @@ export const SOUNDS = {
   open: () => { voice({ freq: 320, type: "sine", dur: 0.14, gain: 0.045, slideTo: 620, filterType: "lowpass", filterFreq: 5000 }); },
   close: () => { voice({ freq: 560, type: "sine", dur: 0.13, gain: 0.04, slideTo: 240, filterType: "lowpass", filterFreq: 4000 }); },
 
+  // ── Navigation dropdowns — a soft, "lindo" descending arpeggio that reads as
+  // options gently dropping down. Warm bells + a light glide underneath. ──
+  menu: () => {
+    voice({ freq: 300, type: "sine", dur: 0.16, gain: 0.03, slideTo: 520, attack: 0.006, filterType: "lowpass", filterFreq: 5200 });
+    [784, 988, 1318].forEach((f, i) => bell({ freq: f, dur: 0.34, gain: 0.03, delay: i * 0.045, ratio: 2, index: 90 }));
+  },
+  menuClose: () => {
+    voice({ freq: 520, type: "sine", dur: 0.13, gain: 0.028, slideTo: 300, attack: 0.005, filterType: "lowpass", filterFreq: 4200 });
+    [988, 660].forEach((f, i) => bell({ freq: f, dur: 0.22, gain: 0.026, delay: i * 0.04, ratio: 2, index: 80 }));
+  },
+
   // ── Notifications (premium bell-based) ──
   success: () => { bell({ freq: 660, dur: 0.4, gain: 0.06, ratio: 3, index: 120 }); bell({ freq: 990, dur: 0.55, gain: 0.055, delay: 0.1, ratio: 2, index: 90 }); },
   error: () => { voice({ freq: 300, type: "sine", dur: 0.16, gain: 0.06, slideTo: 180, filterType: "lowpass", filterFreq: 1600 }); voice({ freq: 150, type: "triangle", dur: 0.22, gain: 0.05, slideTo: 110, delay: 0.02 }); },
