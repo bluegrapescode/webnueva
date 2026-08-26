@@ -1,0 +1,16 @@
+fastapi==0.110.1
+starlette==0.37.2
+uvicorn==0.25.0
+websockets==12.0
+motor==3.3.1
+pymongo==4.6.3
+pydantic==2.13.4
+PyJWT==2.13.0
+python-dotenv==1.2.2
+httpx==0.28.1
+paramiko==5.0.0
+# Pase de Batalla checkout only. OPTIONAL AT RUNTIME: battle_pass.py imports it
+# guarded and reads the key from env, so a box without it (or without
+# STRIPE_SECRET_KEY) answers 503 on the two checkout endpoints and runs the whole
+# rest of the pass normally. backend/tests_local pass with it absent.
+stripe==15.4.0
