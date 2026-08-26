@@ -1,0 +1,63 @@
+laislanublar.net {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "geolocation=(), microphone=(self), camera=()"
+	}
+
+	request_body {
+		max_size 10MB
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8010
+	}
+
+	handle /dino-assets/* {
+		reverse_proxy 127.0.0.1:8010
+	}
+
+	handle_path /voice-ws* {
+		reverse_proxy 127.0.0.1:7880
+	}
+
+	handle /positions {
+		reverse_proxy 127.0.0.1:8781
+	}
+
+	handle /persona {
+		reverse_proxy 127.0.0.1:8781
+	}
+
+	handle {
+		root * C:\LaIslaNublar\web\frontend
+		# hashed CRA bundles are content-addressed -> cache forever;
+		# everything else (index.html + SPA routes + root assets) must revalidate
+		# every load, or deploys stay invisible to returning browsers.
+		@hashed {
+			path /static/*
+			file
+		}
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		header ?Cache-Control "no-cache"
+		# SPA fallback ONLY for paths that are not real files and not /static/*.
+		# A missing /static/* bundle must 404, never be rewritten to index.html --
+		# the old unconditional try_files served HTML under a .js URL WITH the
+		# year-long immutable header, freezing broken shells into browsers.
+		@spa {
+			not path /static/*
+			not file
+		}
+		rewrite @spa /index.html
+		file_server
+	}
+
+	log {
+		output file C:\LaIslaNublar\logs\caddy_access.log {
+			roll_size 25MiB
+			roll_keep 10
+		}
+	}
+}
