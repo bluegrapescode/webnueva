@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Calendar, Megaphone } from "lucide-react";
+import { Calendar, Megaphone, Newspaper, Clock, Swords, Users, Skull, Tag, Bell, Sparkles, ArrowUpRight, Zap } from "lucide-react";
 import { api } from "@/lib/api";
 import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 import { StatusDot } from "@/components/common/Hud";
@@ -28,6 +28,33 @@ function Countdown({ iso }) {
     return () => clearInterval(t);
   }, [iso]);
   return <span className="tabular-nums">{left}</span>;
+}
+
+// Per-type visual identity for events and news so each card reads at a glance.
+const EVENT_STYLE = {
+  PvP:       { icon: Swords, color: "#E2574A", label: "PvP" },
+  PvE:       { icon: Skull,  color: "#E9C83D", label: "PvE" },
+  Community: { icon: Users,  color: "#3FB960", label: "Comunidad" },
+  default:   { icon: Calendar, color: "#7CA842", label: "Evento" },
+};
+const NEWS_STYLE = {
+  "Aviso":         { icon: Bell,      color: "#4D9FE8" },
+  "Tienda":        { icon: Tag,       color: "#E9C83D" },
+  "Evento":        { icon: Calendar,  color: "#3FB960" },
+  "Actualización": { icon: Sparkles,  color: "#A855F7" },
+  default:         { icon: Newspaper, color: "#7CA842" },
+};
+
+function timeAgo(iso) {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "";
+  const diff = Math.max(0, Date.now() - then);
+  const d = Math.floor(diff / 86400000);
+  if (d >= 1) return d === 1 ? "hace 1 día" : `hace ${d} días`;
+  const h = Math.floor(diff / 3600000);
+  if (h >= 1) return `hace ${h} h`;
+  const m = Math.floor(diff / 60000);
+  return m >= 1 ? `hace ${m} min` : "recién";
 }
 
 export default function Dashboard() {
@@ -144,45 +171,100 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Events */}
-      <Reveal className="mt-12 mb-6">
-        <h2 className="font-display font-extrabold text-2xl tracking-tight inline-flex items-center gap-2"><Calendar size={20} className="text-gold" /> Próximos Eventos</h2>
+      {/* ---------------------------- EVENTS ---------------------------- */}
+      <Reveal className="mt-14 mb-6">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="grid place-items-center w-11 h-11 rounded-lg bg-gold/15 border border-gold/30 text-gold shrink-0"><Calendar size={20} /></span>
+            <div>
+              <p className="label-overline text-[11px] text-gold">Agenda del servidor</p>
+              <h2 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">Próximos Eventos</h2>
+            </div>
+          </div>
+          {events.length > 0 && <span className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-md glass border border-white/10 text-muted-foreground">{events.length} programados</span>}
+        </div>
       </Reveal>
-      <div className="grid md:grid-cols-3 gap-6">
-        {events.map((e, i) => (
-          <Reveal key={i} delay={i * 0.08}>
-            <div className="glass rounded-2xl p-6 hover:border-gold/30 hover:-translate-y-1 transition-all duration-300 h-full" data-testid={`event-card-${i}`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="label-overline text-[10px] text-gold">{e.type}</span>
-                <span className="text-xs text-muted-foreground">{e.date_label}</span>
+      {events.length === 0 ? (
+        <div className="glass rounded-2xl p-10 text-center text-muted-foreground">No hay eventos programados por ahora.</div>
+      ) : (
+      <div className="grid md:grid-cols-3 gap-5">
+        {events.map((e, i) => {
+          const st = EVENT_STYLE[e.type] || EVENT_STYLE.default;
+          const Icon = st.icon;
+          return (
+          <Reveal key={e.id || i} delay={i * 0.08}>
+            <div className="group relative glass rounded-2xl p-6 h-full overflow-hidden hover:-translate-y-1 transition-all duration-300"
+              style={{ borderColor: "rgba(255,255,255,0.08)" }} data-testid={`event-card-${i}`}>
+              {/* top accent + ambient glow in the type colour */}
+              <span className="absolute inset-x-0 top-0 h-1" style={{ background: st.color }} />
+              <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${st.color}33, transparent 70%)` }} />
+              <div className="flex items-center justify-between mb-4">
+                <span className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md" style={{ color: st.color, background: `${st.color}1f`, border: `1px solid ${st.color}44` }}>
+                  <Icon size={13} /> {st.label}
+                </span>
+                <span className="grid place-items-center w-10 h-10 rounded-lg shrink-0" style={{ background: `${st.color}1a`, color: st.color }}><Icon size={20} /></span>
               </div>
-              <h3 className="font-display font-bold text-lg mb-2">{e.title}</h3>
-              <p className="text-sm text-muted-foreground">{e.description}</p>
+              <h3 className="font-display font-bold text-xl mb-2 leading-tight">{e.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">{e.description}</p>
+              <div className="flex items-center gap-2 pt-4 border-t border-white/10 text-sm font-semibold" style={{ color: st.color }}>
+                <Clock size={15} /> <span className="tabular-nums">{e.date_label}</span>
+              </div>
             </div>
           </Reveal>
-        ))}
+          );
+        })}
       </div>
+      )}
 
-      {/* News */}
-      <Reveal className="mt-12 mb-6">
-        <h2 className="font-display font-extrabold text-2xl tracking-tight inline-flex items-center gap-2"><Megaphone size={20} className="text-gold" /> Últimas Noticias</h2>
+      {/* ---------------------------- NEWS ---------------------------- */}
+      <Reveal className="mt-16 mb-6">
+        <div className="flex items-center gap-3">
+          <span className="grid place-items-center w-11 h-11 rounded-lg bg-gold/15 border border-gold/30 text-gold shrink-0"><Megaphone size={20} /></span>
+          <div>
+            <p className="label-overline text-[11px] text-gold">Lo último de la isla</p>
+            <h2 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">Últimas Noticias</h2>
+          </div>
+        </div>
       </Reveal>
-      <div className="grid md:grid-cols-2 gap-6">
-        {news.map((n, i) => (
-          <Reveal key={n.id || i} delay={i * 0.06}>
-            <div className="group glass rounded-2xl overflow-hidden flex hover:border-gold/30 transition-all duration-300" data-testid={`news-card-${i}`}>
-              <div className="w-32 shrink-0 overflow-hidden">
-                <img src={n.image} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+      {news.length === 0 ? (
+        <div className="glass rounded-2xl p-10 text-center text-muted-foreground">No hay noticias todavía.</div>
+      ) : (
+      <div className="grid lg:grid-cols-3 gap-5">
+        {news.map((n, i) => {
+          const st = NEWS_STYLE[n.category] || NEWS_STYLE.default;
+          const Icon = st.icon;
+          const featured = i === 0;
+          return (
+          <Reveal key={n.id || i} delay={i * 0.06} className={featured ? "lg:col-span-3" : ""}>
+            <article className={`group glass rounded-2xl overflow-hidden hover:border-gold/40 transition-all duration-300 h-full flex ${featured ? "flex-col md:flex-row" : "flex-col"}`} data-testid={`news-card-${i}`}>
+              {/* image — full, never cut: fixed aspect + contain over a themed backdrop */}
+              <div className={`relative shrink-0 overflow-hidden ${featured ? "md:w-[46%] aspect-video md:aspect-auto md:min-h-[260px]" : "aspect-video"}`}
+                style={{ background: "radial-gradient(120% 120% at 50% 0%, #16210f 0%, #0b0d08 70%)" }}>
+                <img src={n.image} alt="" loading="lazy"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  className="absolute inset-0 w-full h-full object-contain p-5 group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, transparent 40%, rgba(9,11,7,0.55) 100%)" }} />
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md backdrop-blur-sm" style={{ color: st.color, background: `${st.color}22`, border: `1px solid ${st.color}55` }}>
+                  <Icon size={12} /> {n.category}
+                </span>
               </div>
-              <div className="p-5">
-                <span className="label-overline text-[10px] text-gold">{n.category}</span>
-                <h3 className="font-display font-bold text-lg mt-1 mb-1">{n.title}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2">{n.body}</p>
+              {/* body */}
+              <div className={`p-6 flex flex-col ${featured ? "md:justify-center flex-1" : ""}`}>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
+                  <Clock size={12} /> <span>{timeAgo(n.created_at)}</span>
+                </div>
+                <h3 className={`font-display font-bold leading-tight mb-2 ${featured ? "text-2xl" : "text-lg"}`}>{n.title}</h3>
+                <p className={`text-sm text-muted-foreground leading-relaxed ${featured ? "line-clamp-4 md:max-w-2xl" : "line-clamp-3"}`}>{n.body}</p>
+                <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold hover:gap-2.5 transition-all w-fit" data-testid={`news-readmore-${i}`}>
+                  Leer más <ArrowUpRight size={14} />
+                </button>
               </div>
-            </div>
+            </article>
           </Reveal>
-        ))}
+          );
+        })}
       </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,24 @@
+{
+  "summary": "Verified the Dashboard redesign for the Events ('Próximos Eventos') and News ('Últimas Noticias') sections at /dashboard using demo-token auth. Both sections render correctly, and the reported bug (news images cut in half) is FIXED. Images are fully visible thanks to fixed aspect-video containers with object-contain; no clipping observed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/events_section.png", "/app/test_reports/news_featured.png", "/app/test_reports/news_grid.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Dashboard.jsx is well-structured; EVENT_STYLE/NEWS_STYLE maps and timeAgo() helper are cleanly module-scoped.",
+    "Nice defensive fallback (n.image onError hides broken images) and lazy loading on <img>.",
+    "Minor: 'created_at' is not returned by GET /api/news per the request contract; timeAgo() will render 'recién' when the field is missing. Not a bug for this fix but worth aligning backend to return created_at, or adjust the UI to hide the time chip when absent. Screenshots show 'hace 2 h' though, so backend appears to be returning it."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "POST /api/auth/demo (ALLOW_DEMO_LOGIN=1) -> token stored in localStorage['primal_token']",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Dashboard events/news visual redesign verified: event-card-0..2 render with type badge (PvP/PvE/Comunidad), icon, title, description and clock+date; news-card-0 spans full width (featured, side-by-side image+body) and news-card-1..3 render as 3-col grid. All news <img> elements measured: containerH matches imgH (260 for featured, 222 for others) with objectFit=contain, so no sliver/clipping. No console errors, no page errors, no React crash. Demo auth flow (POST /api/auth/demo -> localStorage 'primal_token') works from the preview URL.",
+  "rca of the issue": "Previous bug ('news images cut in half') was resolved by giving the image wrapper a fixed aspect ratio (aspect-video, plus md:min-h-[260px] for the featured card) and using object-contain over a themed radial-gradient backdrop instead of object-cover on an unconstrained height. Measured img dimensions now exactly fill their containers without cropping."
+}
