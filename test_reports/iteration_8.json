@@ -1,0 +1,35 @@
+{
+  "summary": "End-to-end verification of the Cementerio (Cemetery & Resurrection / Fósil) feature. Backend: 16/16 pytest cases pass (config, feed + filters/sort/search/status, drowning-in-combat rule for Deinosuchus vs other species, record-by-id/404, hall-of-fame, fossils view, claim-free idempotency per calendar month, buy insufficient amber, admin CRUD + fossil adjust + config update + tx log, and full resurrect flow with fossil deduction, cooldown set, my-resurrections, second-attempt block, NO_REVIVIBLE block, cooldown block on subsequent record). Frontend: /cementerio page loads, stats header (13/11/1/1), 12+ cards render with images/badges/rarity, search, species filter, sort, status tabs all filter the grid. CRITICAL profile modal (data-testid=cemetery-profile-modal) DOES open on card click and shows open-resurrect-btn for ELEGIBLE owned dinos. NO_REVIVIBLE cards open modal WITHOUT resurrect button and show the reason text. Fossil panel shows balance / amber / cooldown; buy-fossil-modal opens, +/- work, insufficient-amber banner shown. Admin tab /admin -> admin-tab-cemetery works: price save, fossil edit, add-death with Ahogamiento + in_combat + non-deino species surfaces the NO REVIVIBLE warning; row list + status select + delete row + transactions list all functional. Resurrect flow already exercised via curl by main agent (cooldown active during test).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cementerio - Buy modal", "issues": ["Cancel button in buy-fossil-modal has no data-testid (only buy-confirm-btn exposed) — low priority"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cemetery.py",
+    "/app/test_reports/pytest/cemetery_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is very large (~19k lines). Cemetery block is well-scoped but the file should be modularized into routers in a follow-up (>700-line rule).",
+    "The eligibility rule uses strict slug equality species_slug == 'deino'. If any admin adds a record with species_slug='deinosuchus' (long form) the Deinosuchus exception is bypassed and it becomes NO_REVIVIBLE. Consider normalizing the slug (startswith('deino') or an alias set) to be resilient to admin/mod feed slug variants.",
+    "Cancel button in buy-fossil-modal lacks data-testid; add for testability.",
+    "Resurrect flow depends on user last_resurrection_at being cleared for retesting — there is no admin endpoint to reset a user's cooldown, only mongo. Consider an admin cooldown-reset endpoint for QA."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cemetery.py"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% of tested flows"},
+  "test_credentials": "POST /api/auth/demo -> JWT; localStorage.setItem('primal_token', <jwt>). Demo user = admin/owner, steam_id=demo_0000000001, owns all seeded records.",
+  "seed_data_creation": "During tests: transient admin records created and cleaned; demo user fossils topped up via /api/cemetery/admin/fossils; one leftover stale seed doc with species_slug='deinosuchus' from an earlier test run was deleted from mongo before final green run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest at /app/backend/tests/test_cemetery.py — clears demo user's last_resurrection_at via direct mongo before the resurrect test to survive stale cooldown state. If rerunning, the free-fossil monthly claim will already be consumed for the demo user — test expects 400 on both calls if already claimed this month, which it handles. WebSocket real-time broadcast was not exercised in this run but backend broadcasts cemetery_death/cemetery_resurrection/cemetery_update/cemetery_delete via CemeteryHub — visually observable by adding a death from admin while /cementerio is open.",
+  "rca of the issue": "N/A — no bugs found. One transient pytest failure on first run traced to my own earlier test creating a record with species_slug='deinosuchus' (long form) which the eligibility rule flagged NO_REVIVIBLE. Cleaned the stale doc from mongo; recommend hardening _cem_eligibility to treat 'deinosuchus' as an alias of 'deino'."
+}

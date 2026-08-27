@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { MEDIA } from "@/lib/media";
@@ -90,6 +91,17 @@ export function BalanceHUD() {
         <img src={MEDIA.coinVip} alt="Amberium" className="w-4 h-4 object-contain shrink-0" />
         <span className="text-sm font-semibold tabular-nums text-gold leading-none">{fmt(user.vip_coins)}</span>
       </div>
+      {/* Fósil — reemplaza al carrito, junto a las monedas. Va al Cementerio. */}
+      <Link
+        to="/cementerio"
+        data-testid="balance-fossil"
+        title="Fósiles — Cementerio"
+        className="group/fossil flex items-center gap-1.5 px-2.5 py-1.5 border border-[#7CA842]/25 bg-[#7CA842]/[0.05] hover:bg-[#7CA842]/[0.12] hover:border-[#7CA842]/45 transition-all min-w-[64px]"
+        style={{ borderRadius: 2 }}
+      >
+        <img src="/fossil.png" alt="Fósil" className="w-5 h-5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(124,168,66,0.45)] transition-transform group-hover/fossil:scale-110" />
+        <span className="text-sm font-semibold tabular-nums text-[#A3C96B] leading-none">{fmt(user.fossils)}</span>
+      </Link>
     </div>
   );
 }

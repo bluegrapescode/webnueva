@@ -432,6 +432,23 @@ export const api = {
   // client as a blob instead, same technique Economy.jsx's client-built CSV uses to
   // trigger the save (Blob + object URL + a synthetic <a>.click()).
   cpAdminPayoutsCsv: () => client.get("/creator/admin/payouts.csv", { responseType: "blob" }),
+  // ── Cementerio & Fósiles ──
+  cemConfig:        () => client.get("/cemetery/config"),
+  cemFeed:          (params) => client.get("/cemetery/feed", { params }),
+  cemRecord:        (id) => client.get(`/cemetery/record/${id}`),
+  cemHallOfFame:    () => client.get("/cemetery/hall-of-fame"),
+  cemFossils:       () => client.get("/cemetery/fossils"),
+  cemBuyFossils:    (quantity) => client.post("/cemetery/fossils/buy", { quantity }),
+  cemClaimFree:     () => client.post("/cemetery/fossils/claim-free"),
+  cemTransactions:  () => client.get("/cemetery/transactions"),
+  cemMyResurrections: () => client.get("/cemetery/my-resurrections"),
+  cemResurrect:     (record_id) => client.post("/cemetery/resurrect", { record_id }),
+  cemAdminAddRecord: (body) => client.post("/cemetery/admin/record", body),
+  cemAdminUpdateRecord: (id, body) => client.put(`/cemetery/admin/record/${id}`, body),
+  cemAdminDeleteRecord: (id) => client.delete(`/cemetery/admin/record/${id}`),
+  cemAdminFossils:  (body) => client.post("/cemetery/admin/fossils", body),
+  cemAdminConfig:   (fossil_price) => client.put("/cemetery/admin/config", { fossil_price }),
+  cemAdminTransactions: () => client.get("/cemetery/admin/transactions"),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 
 
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, Ticket, Users, Megaphone, Calendar, ShoppingBag, Bone, ScrollText, Plus, Trash2, Coins, Shield, LifeBuoy, Search, Settings, MessageSquare, Zap, Dice5, Crown, Gift, Server, Radio, Save, RefreshCw, Truck, CheckCircle2, Clock, Gauge, Lock, Unlock, Gavel, ShieldAlert, ShieldCheck, Ban, X, Trophy, Sparkles } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, Megaphone, Calendar, ShoppingBag, Bone, ScrollText, Plus, Trash2, Coins, Shield, LifeBuoy, Search, Settings, MessageSquare, Zap, Dice5, Crown, Gift, Server, Radio, Save, RefreshCw, Truck, CheckCircle2, Clock, Gauge, Lock, Unlock, Gavel, ShieldAlert, ShieldCheck, Ban, X, Trophy, Sparkles, Skull, Gem } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { AnimatedCounter } from "@/components/common/AnimatedCounter";
@@ -17,6 +17,7 @@ import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { BansTab } from "@/components/admin/BansTab";
 import { CreatorsTab } from "@/components/admin/CreatorsTab";
 import { WheelAdminTab } from "@/components/admin/WheelAdminTab";
+import { fmtDate as cemFmtDate, statusMeta as cemStatusMeta } from "@/lib/cemeteryMeta";
 
 // Owner-only tabs are drawn beside their neighbour, never as a separate list:
 // "Baneos" (website bans, 2026-08-17) sits right after "Sanciones" for owners
@@ -38,6 +39,7 @@ const TABS = [
   { k: "dinos", label: "Dinosaurios", icon: Bone },
   { k: "population_control", label: "Control de Población", icon: Gauge },
   { k: "recovery", label: "Recuperación", icon: LifeBuoy },
+  { k: "cemetery", label: "Cementerio", icon: Skull },
   { k: "multipliers", label: "Multiplicadores", icon: Zap },
   { k: "battlepass", label: "Pase de Batalla", icon: Trophy },
   { k: "creators", label: "Creators", icon: Radio },
@@ -107,6 +109,7 @@ export default function Admin() {
               {tab === "dinos" && <DinosTab />}
               {tab === "population_control" && <PopulationControlTab />}
               {tab === "recovery" && <RecoveryTab />}
+              {tab === "cemetery" && <CementerioTab />}
               {tab === "multipliers" && <MultiplierEventsTab />}
               {tab === "battlepass" && <BattlePassTab />}
               {tab === "wheel" && user.is_owner && <WheelAdminTab />}
@@ -1171,6 +1174,165 @@ function LogsTab() {
     </div>
   );
 }
+
+const CEM_SPECIES = [
+  ["trex", "Tyrannosaurus Rex"], ["trike", "Triceratops"], ["carno", "Carnotaurus"],
+  ["allo", "Allosaurus"], ["raptor", "Omniraptor"], ["deino", "Deinosuchus"],
+  ["cerato", "Ceratosaurus"], ["stego", "Stegosaurus"], ["dilo", "Dilophosaurus"],
+  ["ptera", "Pteranodon"], ["troodon", "Troodon"], ["diablo", "Diabloceratops"],
+  ["austro", "Austroraptor"], ["herrera", "Herrerasaurus"], ["kentro", "Kentrosaurus"],
+  ["pachy", "Pachycephalosaurus"], ["maia", "Maiasaura"], ["tenonto", "Tenontosaurus"],
+];
+const CEM_CAUSE_OPTS = ["Combate", "Ahogamiento", "Caída", "Inanición", "Enfermedad", "Emboscada", "Deshidratación", "Otro"];
+
+function CementerioTab() {
+  const { play } = useSound();
+  const [price, setPrice] = useState("");
+  const [records, setRecords] = useState([]);
+  const [txs, setTxs] = useState([]);
+  const [busy, setBusy] = useState(false);
+  // fossil editor
+  const [fu, setFu] = useState({ steam_id: "", delta: "", set_to: "" });
+  // add death
+  const [nd, setNd] = useState({ species_slug: "trex", cause: "Combate", in_combat: false, owner_name: "", owner_steam_id: "", growth: 100, kills: 0, playtime_minutes: 0, location: "", killer_name: "", prime: false });
+
+  const load = useCallback(() => {
+    api.cemFeed({ limit: 100 }).then((r) => setRecords(r.data.items)).catch(() => {});
+    api.cemConfig().then((r) => setPrice(String(r.data.fossil_price))).catch(() => {});
+    api.cemAdminTransactions().then((r) => setTxs(r.data.items)).catch(() => {});
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const savePrice = () => {
+    const p = parseInt(price, 10);
+    if (!p || p < 1) return toast.error("Precio inválido");
+    api.cemAdminConfig(p).then(() => { play("success"); toast.success("Precio actualizado"); }).catch((e) => toast.error(e?.response?.data?.detail || "Error"));
+  };
+
+  const editFossils = () => {
+    if (!fu.steam_id) return toast.error("Indica el Steam ID");
+    const body = { steam_id: fu.steam_id };
+    if (fu.set_to !== "") body.set_to = parseInt(fu.set_to, 10);
+    else if (fu.delta !== "") body.delta = parseInt(fu.delta, 10);
+    else return toast.error("Indica delta o set_to");
+    api.cemAdminFossils(body).then((r) => { play("success"); toast.success(`${r.data.persona_name}: ${r.data.fossils} fósiles`); setFu({ steam_id: "", delta: "", set_to: "" }); load(); }).catch((e) => toast.error(e?.response?.data?.detail || "Error"));
+  };
+
+  const addDeath = () => {
+    setBusy(true);
+    api.cemAdminAddRecord({ ...nd, growth: Number(nd.growth), kills: Number(nd.kills), playtime_minutes: Number(nd.playtime_minutes) })
+      .then(() => { play("success"); toast.success("Muerte registrada"); load(); })
+      .catch((e) => toast.error(e?.response?.data?.detail || "Error"))
+      .finally(() => setBusy(false));
+  };
+
+  const setStatus = (rec, status) => {
+    api.cemAdminUpdateRecord(rec.id, { status }).then((r) => { setRecords((prev) => prev.map((x) => x.id === rec.id ? r.data.record : x)); }).catch((e) => toast.error(e?.response?.data?.detail || "Error"));
+  };
+  const del = (rec) => {
+    if (!window.confirm(`¿Eliminar el registro de ${rec.dino?.species_name}?`)) return;
+    api.cemAdminDeleteRecord(rec.id).then(() => { setRecords((prev) => prev.filter((x) => x.id !== rec.id)); toast.success("Eliminado"); }).catch((e) => toast.error(e?.response?.data?.detail || "Error"));
+  };
+
+  return (
+    <div className="space-y-5" data-testid="admin-cemetery">
+      <div className="grid md:grid-cols-2 gap-5">
+        {/* Price */}
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3 text-foreground"><Gem size={16} className="text-gold" /><span className="font-bold text-sm">Precio del Fósil</span></div>
+          <Field label="Amberiums por 1 Fósil">
+            <input data-testid="cem-price-input" className={inputCls} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))} />
+          </Field>
+          <button data-testid="cem-save-price-btn" className={`${btnPrimary} mt-3`} onClick={savePrice}><Save size={15} /> Guardar precio</button>
+        </div>
+
+        {/* Fossil editor */}
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3 text-foreground"><Coins size={16} className="text-gold" /><span className="font-bold text-sm">Editar saldo de Fósiles</span></div>
+          <Field label="Steam ID del jugador">
+            <input data-testid="cem-fossil-steamid" className={inputCls} value={fu.steam_id} onChange={(e) => setFu((f) => ({ ...f, steam_id: e.target.value }))} placeholder="demo_0000000001" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <Field label="Sumar / restar (delta)"><input data-testid="cem-fossil-delta" className={inputCls} value={fu.delta} onChange={(e) => setFu((f) => ({ ...f, delta: e.target.value, set_to: "" }))} placeholder="+1 / -1" /></Field>
+            <Field label="Fijar a (set)"><input data-testid="cem-fossil-set" className={inputCls} value={fu.set_to} onChange={(e) => setFu((f) => ({ ...f, set_to: e.target.value, delta: "" }))} placeholder="5" /></Field>
+          </div>
+          <button data-testid="cem-fossil-save-btn" className={`${btnPrimary} mt-3`} onClick={editFossils}><Save size={15} /> Aplicar</button>
+        </div>
+      </div>
+
+      {/* Add death */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4 text-foreground"><Plus size={16} className="text-gold" /><span className="font-bold text-sm">Registrar muerte manual (hook del mod)</span></div>
+        <div className="grid md:grid-cols-3 gap-3">
+          <Field label="Especie"><select data-testid="cem-nd-species" className={inputCls} value={nd.species_slug} onChange={(e) => setNd((n) => ({ ...n, species_slug: e.target.value }))}>{CEM_SPECIES.map(([s, n]) => <option key={s} value={s}>{n}</option>)}</select></Field>
+          <Field label="Causa"><select data-testid="cem-nd-cause" className={inputCls} value={nd.cause} onChange={(e) => setNd((n) => ({ ...n, cause: e.target.value }))}>{CEM_CAUSE_OPTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+          <Field label="Ubicación"><input className={inputCls} value={nd.location} onChange={(e) => setNd((n) => ({ ...n, location: e.target.value }))} placeholder="(aleatoria)" /></Field>
+          <Field label="Dueño (nombre)"><input className={inputCls} value={nd.owner_name} onChange={(e) => setNd((n) => ({ ...n, owner_name: e.target.value }))} /></Field>
+          <Field label="Dueño (Steam ID)"><input data-testid="cem-nd-owner-steam" className={inputCls} value={nd.owner_steam_id} onChange={(e) => setNd((n) => ({ ...n, owner_steam_id: e.target.value }))} /></Field>
+          <Field label="Asesino"><input className={inputCls} value={nd.killer_name} onChange={(e) => setNd((n) => ({ ...n, killer_name: e.target.value }))} /></Field>
+          <Field label="Tamaño %"><input className={inputCls} value={nd.growth} onChange={(e) => setNd((n) => ({ ...n, growth: e.target.value.replace(/[^0-9.]/g, "") }))} /></Field>
+          <Field label="Kills"><input className={inputCls} value={nd.kills} onChange={(e) => setNd((n) => ({ ...n, kills: e.target.value.replace(/[^0-9]/g, "") }))} /></Field>
+          <Field label="Minutos jugados"><input className={inputCls} value={nd.playtime_minutes} onChange={(e) => setNd((n) => ({ ...n, playtime_minutes: e.target.value.replace(/[^0-9]/g, "") }))} /></Field>
+        </div>
+        <div className="flex items-center gap-5 mt-4">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer"><input type="checkbox" data-testid="cem-nd-combat" checked={nd.in_combat} onChange={(e) => setNd((n) => ({ ...n, in_combat: e.target.checked }))} /> En combate</label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer"><input type="checkbox" checked={nd.prime} onChange={(e) => setNd((n) => ({ ...n, prime: e.target.checked }))} /> Prime</label>
+          <button data-testid="cem-add-death-btn" className={btnPrimary} disabled={busy} onClick={addDeath}><Plus size={15} /> Registrar muerte</button>
+        </div>
+        {nd.cause === "Ahogamiento" && nd.in_combat && nd.species_slug !== "deino" && (
+          <p className="mt-3 text-xs text-crimson">⚠ Este registro quedará como NO REVIVIBLE (ahogamiento en combate).</p>
+        )}
+      </div>
+
+      {/* Records */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-bold text-sm text-foreground">Registros del cementerio ({records.length})</span>
+          <button onClick={load} className="text-muted-foreground hover:text-foreground"><RefreshCw size={15} /></button>
+        </div>
+        <div className="space-y-1.5 max-h-[420px] overflow-y-auto">
+          {records.map((r) => {
+            const m = cemStatusMeta(r.status);
+            return (
+              <div key={r.id} data-testid={`cem-admin-row-${r.id}`} className="flex items-center gap-3 glass rounded-lg p-2.5 text-sm">
+                {r.dino?.image ? <img src={r.dino.image} alt="" className="w-8 h-8 object-contain shrink-0" /> : <Bone size={16} className="text-muted-foreground shrink-0" />}
+                <div className="min-w-0 flex-1">
+                  <div className="text-foreground truncate">{r.dino?.species_name} <span className="text-muted-foreground text-xs">· {r.owner?.persona_name || "—"}</span></div>
+                  <div className="text-[11px] text-muted-foreground truncate">{r.cause}{r.in_combat ? " (combate)" : ""} · {cemFmtDate(r.died_at)}</div>
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ color: m.color, backgroundColor: m.bg, border: `1px solid ${m.border}` }}>{m.label}</span>
+                <select data-testid={`cem-admin-status-${r.id}`} value={r.status} onChange={(e) => setStatus(r, e.target.value)} disabled={r.status === "RESUCITADO"} className="bg-transparent glass rounded-lg px-2 py-1 text-xs shrink-0">
+                  <option value="ELEGIBLE">Elegible</option>
+                  <option value="NO_REVIVIBLE">No revivible</option>
+                  <option value="RESUCITADO" disabled>Resucitado</option>
+                </select>
+                <button data-testid={`cem-admin-del-${r.id}`} onClick={() => del(r)} className="text-crimson hover:brightness-125 shrink-0"><Trash2 size={15} /></button>
+              </div>
+            );
+          })}
+          {records.length === 0 && <p className="text-muted-foreground py-6 text-center text-sm">Sin registros.</p>}
+        </div>
+      </div>
+
+      {/* Transactions */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3 text-foreground"><ScrollText size={16} className="text-gold" /><span className="font-bold text-sm">Transacciones de Fósiles</span></div>
+        <div className="space-y-1.5 max-h-[300px] overflow-y-auto" data-testid="cem-admin-txs">
+          {txs.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 text-sm glass rounded-lg p-2.5">
+              <span className="label-overline text-[10px] text-gold w-24 shrink-0 truncate">{t.kind}</span>
+              <span className="flex-1 truncate text-muted-foreground">{t.meta?.species || t.meta?.month || t.meta?.by || t.user_id}</span>
+              <span className={`text-sm font-bold shrink-0 ${t.amount >= 0 ? "text-emerald" : "text-crimson"}`}>{t.amount >= 0 ? "+" : ""}{t.amount}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{cemFmtDate(t.created_at)}</span>
+            </div>
+          ))}
+          {txs.length === 0 && <p className="text-muted-foreground py-6 text-center text-sm">Sin transacciones.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function PopSwitch({ on, onClick, testid }) {
   return (

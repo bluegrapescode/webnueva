@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Volume2, VolumeX, ShoppingCart, Menu, X, LogOut, User as UserIcon,
+  Volume2, VolumeX, Menu, X, LogOut, User as UserIcon,
   ChevronDown, Ticket, Home, LayoutDashboard, Bone, Store, Tag, ArrowLeftRight,
   Gamepad2, Swords, Target, BarChart3, Radio, Video, Palette, ShieldCheck,
-  Spade, Dices, Gift, Package, Activity, MapPin, Dna,
+  Spade, Dices, Gift, Package, Activity, MapPin, Dna, Skull,
 } from "lucide-react";
 
 // True when the given "to" (which may carry a ?query) matches current location.
@@ -14,7 +14,6 @@ const linkMatches = (to, pathname, search) =>
 import { MEDIA } from "@/lib/media";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
-import { useCart } from "@/context/CartContext";
 import { BalanceHUD } from "@/components/common/BalanceHUD";
 import { startSteamLogin } from "@/lib/api";
 
@@ -31,6 +30,7 @@ function buildNav(user) {
         { to: "/my-dino?tab=equipo", id: "dino-equipo", label: "Equipo", icon: Package, desc: "Bóveda e inventario" },
         { to: "/my-dino?tab=map", id: "dino-map", label: "Mapa", icon: MapPin, desc: "Ubicación en tiempo real" },
         { to: "/my-dino?tab=gen0", id: "dino-gen0", label: "GEN-Ø", icon: Dna, desc: "Estado de infección GEN-Ø" },
+        { to: "/cementerio", id: "cementerio", label: "Cementerio", icon: Skull, desc: "Dinos caídos y resurrección con Fósiles" },
       ],
     },
     {
@@ -164,8 +164,6 @@ function NavGroup({ item, activePath, activeSearch, play }) {
 export function Navbar() {
   const { user, logout } = useAuth();
   const { enabled, toggle, play } = useSound();
-  const { count } = useCart();
-  const { setOpen } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
@@ -228,11 +226,6 @@ export function Navbar() {
             className="p-2 rounded-md text-muted-foreground hover:text-gold hover:bg-white/5 transition-colors"
           >
             {enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-
-          <button onClick={() => { setOpen(true); play("click"); }} data-testid="nav-cart" className="relative p-2 rounded-md text-muted-foreground hover:text-gold hover:bg-white/5 transition-colors">
-            <ShoppingCart size={18} />
-            {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-crimson text-white text-[10px] font-bold rounded-sm w-4 h-4 flex items-center justify-center">{count}</span>}
           </button>
 
           {user ? (

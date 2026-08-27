@@ -45,3 +45,25 @@ mini-games/casino, quests, leaderboard, proximity voice, creator program, admin)
 - Testing agent (iteration_6) confirmed BOTH editors functional end-to-end: designer + glitch lab controls, color pickers, presets, apply, tab/species switching — no crashes.
 - FIX: missing /dino-assets textures in the Linux preview box were popping a CRA full-screen runtime-error overlay (React18 dev forwards boundary errors to window.reportError). Disabled the dev-server RUNTIME error overlay in craco.config.js (client.overlay.runtimeErrors=false; compile-error overlay kept). Also added useRequiredTexture in FleetDinoModel so the loader promise resolves (no unhandled rejection); Skin3DBoundary still shows "Vista 3D no disponible".
 - Reminder: 3D canvas only renders where /dino-assets is served (owner's Windows game server). In preview both viewers show the fallback placeholder by design; controls + color-apply logic work regardless.
+
+
+## 2026-06 — Sistema de Cementerio & Resurrección (FÓSIL)  [iteration_8: 100% BE 16/16 + FE flows]
+Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums = `vip_coins`) + fósil gratis mensual + cooldown de resurrección de 24h + regla de ahogamiento en combate (excepción Deinosuchus) + WebSocket en tiempo real.
+
+### Backend (todo en `server.py`, sección "CEMENTERIO & RESURRECCIÓN")
+- Colecciones nuevas: `cemetery_records`, `fossil_transactions`, `resurrected_dinos`. Campos nuevos en `users`: `fossils`, `last_free_fossil_month` (YYYY-MM), `last_resurrection_at`. Config de precio en `settings` `_id="cemetery"` (`fossil_price`, default 1500).
+- Rutas (api_router `/api`): `GET /cemetery/config`, `GET /cemetery/feed` (filtros: search/species/status/rarity/cause/sort/limit/skip + stats), `GET /cemetery/record/{id}`, `GET /cemetery/hall-of-fame`, `GET /cemetery/fossils` (auth), `POST /cemetery/fossils/buy` (auth), `POST /cemetery/fossils/claim-free` (auth, idempotente por mes calendario), `POST /cemetery/resurrect` (auth, solo dueño), `GET /cemetery/transactions`, `GET /cemetery/my-resurrections`. Admin: `POST/PUT/DELETE /cemetery/admin/record`, `POST /cemetery/admin/fossils`, `PUT /cemetery/admin/config`, `GET /cemetery/admin/transactions`.
+- WebSocket `@app.websocket("/api/cemetery/ws")` (hub `cemetery_hub`): difunde `cemetery_death`/`cemetery_resurrection`/`cemetery_update`/`cemetery_delete`/`cemetery_config` y empuja `fossil_balance` al dueño.
+- Elegibilidad `_cem_eligibility`: Ahogamiento + en combate = NO_REVIVIBLE, salvo especie que empiece por "deino" (Deinosuchus, tolerante a variantes del mod).
+- Resurrección: cobra 1 fósil (atómico), fija cooldown 24h, marca record RESUCITADO, intenta escribir a la bóveda SQLite real (falla con gracia en preview → vault_written=false) y SIEMPRE guarda el dino restaurado en `resurrected_dinos` (inventario web) con todos los stats/mutaciones/prime/skin.
+- Semilla demo `_cem_seed_demo` (12 registros, dueño = demo). `public_user` ahora incluye `fossils`.
+
+### Frontend
+- Página `pages/Cementerio.jsx` (ruta `/cementerio`, en nav bajo "Dino en Vivo"): hero con stats + **fósil levitando con pulso de fondo** (framer-motion), filtros (buscador/especie/orden/tabs de estado), grid de tarjetas, `ProfileModal` (perfil completo), `ConfirmResurrect`, `BuyModal`, `TxModal`, `HallOfFame`. Real-time vía `hooks/useCemeterySocket.js`. Meta puro en `lib/cemeteryMeta.js`.
+- `Admin.jsx`: pestaña "Cementerio" (`CementerioTab`): cambiar precio, editar saldos de fósiles, alta manual de muerte (con aviso NO REVIVIBLE), lista de registros con cambio de estado/eliminar, log de transacciones.
+- **Navbar**: se quitó el carrito (era código muerto — nada lo poblaba salvo el propio botón) y en su lugar se muestra un pill de **Fósil** (`/fossil.png`, junto a las monedas en `BalanceHUD`, enlaza a `/cementerio`). Asset `public/fossil.png` (transparente, ~225KB).
+
+### Notas
+- Amberiums = `vip_coins`. 1 Fósil = 1500 Amberiums (configurable). Solo el dueño resucita. Fósil gratis: 1 por mes calendario.
+- La escritura a la bóveda del juego real solo funciona con el servidor Windows online; en preview el dino restaurado vive en `resurrected_dinos` (correcto).
+- Backlog sugerido por QA: endpoint admin para resetear cooldown (solo QA); modularizar `server.py`.
