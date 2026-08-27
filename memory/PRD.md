@@ -96,3 +96,7 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - Telarañas fijas en las 4 esquinas del cementerio (`CornerWeb` en Vines.jsx, SVG radiales + anillos, pointer-events-none).
 - Murciélagos/polillas ocasionales (`FlyingCritters.jsx`): 1 cada 40-95s (primero ~14s), vuelo ONDULADO (distinto a la araña), alas aleteando (keyframes batFlap/mothFlap en index.css). data-testid=cemetery-critter, z-[59], solo cementerio.
 - Interruptor "Modo Halloween" (`halloween-toggle`) en el header del cementerio: enciende/apaga TODO (arañas, dosel + enredaderas laterales + de tarjetas, telarañas, neblina, bichos). Persiste en localStorage `cem_halloween` (default ON). Tarjetas siguen clicables en ambos estados.
+
+## 2026-06 — Fix telarañas de esquina [iteration_17: 100% FE]
+- Bug: había 4 telarañas en z-0; las de arriba quedaban ocultas tras la tarjeta hero y las de abajo solo asomaban en huecos = se veían "bugueadas".
+- Fix: `CornerWeb` reconstruida como telaraña poligonal limpia (radios + anillos rectos). Ahora solo 2, en esquina superior IZQUIERDA y DERECHA, a z-30 opacity-45 (visibles sobre el hero), pointer-events-none. Responden al Modo Halloween.
