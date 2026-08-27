@@ -6,8 +6,8 @@ import { motion, useAnimationControls } from "framer-motion";
 // globally. Always pointer-events-none so it never blocks clicks.
 const INTERVAL_MS = 2 * 60 * 1000; // cada 2 minutos
 const FIRST_RUN_MS = 6000;         // primera oleada a los 6s
-const MIN_SPIDERS = 5;
-const MAX_SPIDERS = 8;
+const MIN_SPIDERS = 2;
+const MAX_SPIDERS = 3;
 
 // Route builders -> {sx, sy, ex, ey} just off the viewport edges.
 function buildRoutes(w, h) {
