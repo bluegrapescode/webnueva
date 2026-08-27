@@ -31,3 +31,12 @@ mini-games/casino, quests, leaderboard, proximity voice, creator program, admin)
 - P2: Real object-storage image upload for events/news (currently URL paste).
 - P2: Surface backend error detail in Admin EventsTab (currently generic toast).
 - Deferred (needs live game infra): LiveKit voice, RCON, vault, Steam login.
+
+## 2026-06 — Skin systems: dual previews + Glitch Lab color selector
+- Extracted reusable `frontend/src/components/skin3d/SkinPreview3D.jsx` (the proven designer R3F canvas + Capturer).
+- Skin Designer uses it (unchanged behavior); Glitch Lab now has its OWN 3D preview (`data-testid=glitch-3d-viewer`) fed clamped-to-gamut colors.
+- Glitch Lab gained a per-slot color selector (`data-testid=glitch-colorpicker-<slot>`) that writes sRGB 0-1 values into the R/G/B raw inputs; verified by testing agent.
+- NOTE: 3D canvas only renders where `/dino-assets/*` is served (DINO_ASSETS_ROOT points to the Windows game server `C:\LaIslaNublar\web\assets\dinos`). In this Linux preview box assets 404, so BOTH previews (designer + glitch) show the "Vista 3D no disponible" boundary fallback — pre-existing/environmental, not a code bug.
+
+## 2026-06 — PrimeMeat payout bars smooth+synced
+- Added `frontend/src/hooks/usePayoutTimer.js` (rAF countdown); wired BalanceHUD + PayoutPanel so bars and counters are smooth and in sync.

@@ -1,8 +1,6 @@
-import React, { useEffect, useRef, useState, Suspense } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Bounds, Center, Html, Environment, Lightformer } from "@react-three/drei";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Lock, Loader2, Save, Palette, BarChart3, Move3d, PaintBucket, Zap, Timer, Users, RotateCw, Crown, Unlock, Flame, Check, X, HelpCircle, RefreshCw, Link2, Copy, ClipboardPaste, Trash2, Camera, Dices, Sparkles } from "lucide-react";
+import { Lock, Loader2, Save, Palette, BarChart3, PaintBucket, Zap, Timer, Users, RotateCw, Crown, Unlock, Flame, Check, X, HelpCircle, RefreshCw, Link2, Copy, ClipboardPaste, Trash2, Camera, Dices, Sparkles } from "lucide-react";
 import { HudCorners, HudGrid, SegBar } from "@/components/common/Hud";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { toast } from "sonner";
@@ -10,7 +8,8 @@ import { api, API, externalRedirect } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
 import { SignInPrompt } from "@/components/common/SignInPrompt";
-import { FleetDinoModel, Skin3DBoundary, FLEET_SLOTS, DEFAULT_FLEET_COLORS, getSpeciesDefaultColors } from "@/components/skin3d/FleetDinoModel";
+import { FLEET_SLOTS, DEFAULT_FLEET_COLORS, getSpeciesDefaultColors } from "@/components/skin3d/FleetDinoModel";
+import { SkinPreview3D } from "@/components/skin3d/SkinPreview3D";
 import { snapshotToEditorSkin, bareClass, extractRawSnapshot, rawIsLossy } from "@/lib/copyLiveSkin";
 import { SkinContractV2Panel, probeSkinContractV2 } from "@/components/skin3d/SkinContractV2Panel";
 import { clampPattern, maxPatternIndex } from "@/lib/skinPatternCatalog";
@@ -112,22 +111,6 @@ async function copyTextToClipboard(text) {
       return ok;
     } catch (e2) { return false; }
   }
-}
-
-function Capturer({ captureRef }) {
-  const { gl, scene, camera } = useThree();
-  useEffect(() => {
-    captureRef.current = () => {
-      gl.render(scene, camera);
-      const src = gl.domElement;
-      const W = 480, H = Math.round((W * src.height) / src.width) || 400;
-      const off = document.createElement("canvas");
-      off.width = W; off.height = H;
-      off.getContext("2d").drawImage(src, 0, 0, W, H);
-      return off.toDataURL("image/jpeg", 0.72);
-    };
-  }, [gl, scene, camera]);
-  return null;
 }
 
 export default function SkinEditor() {
@@ -627,40 +610,9 @@ export default function SkinEditor() {
             </div>
 
             {/* CENTER: 3D Viewer */}
-            <div className="relative rounded-2xl overflow-hidden" style={{ height: 560, background: "radial-gradient(120% 90% at 50% 35%, #0e120f, #050605 78%)" }} data-testid="skinlab-3d-viewer">
-              {!selKey ? (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Elige una especie para previsualizar.</div>
-              ) : (
-                // The boundary must wrap the WHOLE Canvas: its fallback is DOM (<div>), which
-                // R3F cannot reconcile inside <Canvas> — a failed glb there crashed the entire
-                // page root instead of degrading. R3F forwards child errors across the bridge.
-                <Skin3DBoundary resetKey={selKey}>
-                  <Canvas shadows dpr={[1, 2]} gl={{ preserveDrawingBuffer: true, antialias: true }} camera={{ position: [4.5, 1.1, 5], fov: 38 }}>
-                    <Capturer captureRef={captureRef} />
-                    <ambientLight intensity={0.5} />
-                    <hemisphereLight args={["#cfe8d0", "#0c1409", 0.5]} />
-                    <directionalLight position={[5, 9, 6]} intensity={1.4} castShadow shadow-mapSize={[1024, 1024]} />
-                    <directionalLight position={[-6, 4, -4]} intensity={0.5} color="#9fe6b0" />
-                    <Suspense fallback={<Html center><div className="flex items-center gap-2 text-emerald text-sm"><Loader2 className="animate-spin" size={16} /> Cargando modelo…</div></Html>}>
-                      <Bounds fit clip observe margin={1.05}>
-                        <Center key={selKey}><FleetDinoModel species={selKey} colors={fleetColors} pattern={pattern}
-                          advancedColors={v2AdvancedForSpecies?.colors || null} advancedMapping={v2AdvancedForSpecies?.mapping || null} /></Center>
-                      </Bounds>
-                      <Environment resolution={256} frames={1}>
-                        <Lightformer intensity={2.2} position={[0, 4, -6]} scale={[12, 7, 1]} color="#ffffff" />
-                        <Lightformer intensity={1.1} position={[-5, 1, 2]} scale={[3, 7, 1]} color="#aad9b6" />
-                        <Lightformer intensity={1.1} position={[5, 1, 2]} scale={[3, 7, 1]} color="#e9e0c4" />
-                      </Environment>
-                    </Suspense>
-                    <ContactShadows position={[0, -1.5, 0]} opacity={0.5} scale={14} blur={2.6} far={4} />
-                    <OrbitControls makeDefault enablePan enableDamping minDistance={2} maxDistance={14} />
-                  </Canvas>
-                </Skin3DBoundary>
-              )}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full glass border border-white/10 text-muted-foreground pointer-events-none">
-                <Move3d size={12} /> ARRASTRA PARA ROTAR
-              </div>
-            </div>
+            <SkinPreview3D species={selKey} colors={fleetColors} pattern={pattern}
+              advancedColors={v2AdvancedForSpecies?.colors || null} advancedMapping={v2AdvancedForSpecies?.mapping || null}
+              captureRef={captureRef} testid="skinlab-3d-viewer" />
 
             {/* RIGHT: apply + presets */}
             <div className="space-y-6">
@@ -1237,6 +1189,40 @@ function GlitchLabPanel({ verdict, onVerdict, fields, setFields, name, setName, 
   const [rechecking, setRechecking] = useState(false);
   const selKey = selected ? (selected.slug || selected.id || selected.name) : "";
 
+  // ---- Live preview + colour selector plumbing -------------------------------
+  // Glitch numbers are raw engine floats (can be huge/negative). For the 3D
+  // specimen we clamp each channel into the display gamut so the design is
+  // visible; the real in-game look still comes from the raw bytes on apply.
+  const clampUnit = (v) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+  const chanToHex = (v) => Math.round(clampUnit(v) * 255).toString(16).padStart(2, "0");
+  const slotHex = (k) => {
+    const [r, g, b] = fields.slots[k].map((s) => Number(String(s).trim()));
+    return `#${chanToHex(r)}${chanToHex(g)}${chanToHex(b)}`;
+  };
+  // The colour picker writes sRGB 0-1 values into R/G/B (alpha untouched) so a
+  // player can design visually and still fine-tune the raw numbers by hand.
+  const setSlotColorFromHex = (k, hex) => {
+    const n = parseInt(String(hex).slice(1), 16);
+    const to01 = (v) => Math.round((v / 255) * 1000) / 1000;
+    const r = to01((n >> 16) & 255), g = to01((n >> 8) & 255), b = to01(n & 255);
+    setFields((p) => ({ ...p, slots: { ...p.slots, [k]: [String(r), String(g), String(b), p.slots[k][3]] } }));
+    play("click");
+  };
+  const previewColors = useMemo(() => {
+    const out = {};
+    GLITCH_SLOTS.forEach((k) => {
+      const [r, g, b, a] = fields.slots[k].map((s) => Number(String(s).trim()));
+      // Only honour an explicit 0..1 alpha; glitch rails stay opaque so the
+      // colour is actually visible in the preview.
+      const aa = (Number.isFinite(a) && a >= 0 && a <= 1) ? a : 1;
+      out[k] = { c: `#${chanToHex(r)}${chanToHex(g)}${chanToHex(b)}`, a: aa };
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields]);
+  const previewPattern = clampPattern(parseInt(fields.pattern, 10) || 0, null, selKey);
+
+
   const recheck = async () => {
     setRechecking(true);
     try { const r = await api.glitchAccess(); onVerdict(r.data); if (r.data?.allowed) play("success"); }
@@ -1352,7 +1338,7 @@ function GlitchLabPanel({ verdict, onVerdict, fields, setFields, name, setName, 
   }
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-5" data-testid="glitch-lab">
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] gap-5" data-testid="glitch-lab">
       {/* ------------------------------------------------ the numbers ------ */}
       <div className="glass rounded-2xl p-5 relative overflow-hidden">
         <div aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, ${GLITCH_ACCENT}, ${GLITCH_ACCENT2})` }} />
@@ -1365,14 +1351,20 @@ function GlitchLabPanel({ verdict, onVerdict, fields, setFields, name, setName, 
         </div>
 
         <div className="mt-4 space-y-1.5">
-          <div className="grid grid-cols-[92px_repeat(4,minmax(0,1fr))_30px] gap-1.5 px-0.5">
+          <div className="grid grid-cols-[84px_28px_repeat(4,minmax(0,1fr))_30px] gap-1.5 px-0.5">
+            <span />
             <span />
             {["R", "G", "B", "A"].map((h) => <span key={h} className="text-[10px] font-extrabold text-muted-foreground text-center uppercase">{h}</span>)}
             <span />
           </div>
           {GLITCH_SLOTS.map((k) => (
-            <div key={k} className="grid grid-cols-[92px_repeat(4,minmax(0,1fr))_30px] gap-1.5 items-center" data-testid={`glitch-row-${k}`}>
+            <div key={k} className="grid grid-cols-[84px_28px_repeat(4,minmax(0,1fr))_30px] gap-1.5 items-center" data-testid={`glitch-row-${k}`}>
               <span className="text-[11px] font-semibold text-muted-foreground truncate">{GLITCH_SLOT_LABELS[k] || k}</span>
+              <label className="relative block h-7 w-7 shrink-0" title="Elegir color">
+                <span className="block h-full w-full rounded-md border border-white/20 cursor-pointer" style={{ background: slotHex(k) }} />
+                <input type="color" value={slotHex(k)} onChange={(e) => setSlotColorFromHex(k, e.target.value)} data-testid={`glitch-colorpicker-${k}`}
+                  className="absolute inset-0 opacity-0 cursor-pointer" />
+              </label>
               {fields.slots[k].map((v, i) => (
                 <GlitchChannelInput key={i} value={v} onChange={(nv) => setChan(k, i, nv)} testid={`glitch-slot-${k}-${i}`} />
               ))}
@@ -1426,8 +1418,15 @@ function GlitchLabPanel({ verdict, onVerdict, fields, setFields, name, setName, 
         )}
       </div>
 
-      {/* --------------------------------------------- identity + actions -- */}
+      {/* --------------------------------------------- preview + identity + actions -- */}
       <div className="space-y-4">
+        <div data-testid="glitch-preview-wrap">
+          <SkinPreview3D species={selKey} colors={previewColors} pattern={previewPattern} height={340}
+            testid="glitch-3d-viewer" emptyLabel="Elige una especie para previsualizar el glitch." />
+          <p className="text-[10px] text-muted-foreground mt-1.5 px-0.5">
+            Vista previa aproximada — los colores se recortan al rango visible. El aspecto exacto (raíles, campos profundos) solo se ve dentro del juego.
+          </p>
+        </div>
         <div className="glass rounded-2xl p-4">
           <p className="label-overline text-[10px] mb-2" style={{ color: GLITCH_ACCENT2 }}>Identidad</p>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="Nombre del glitch…" data-testid="glitch-name" spellCheck={false}

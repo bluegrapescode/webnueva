@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only verification of the redesigned Skin Editor (SKIN DESIGNER + GLITCH LAB 3D previews and new Glitch Lab color picker). All new UI wiring is in place and functionally correct at the DOM/state level: both viewer containers exist, all 7 glitch color pickers exist and correctly drive the R,G,B numeric slot inputs to 0-1 sRGB values (verified #ff0000/#00ff00/#0000ff/#ffff00). Species change and tab switching do not crash the page. HOWEVER, neither viewer actually renders a <canvas> in this preview environment: the /dino-assets/<species>/diffuse.webp asset returns 404 from the backend (DINO_ASSETS_ROOT empty on this box) and via ingress falls back to the SPA index.html, causing THREE TextureLoader to throw an unhandled 'Could not load ... : undefined' error. The per-viewer error boundary catches it and shows the 'Vista 3D no disponible para esta especie todavía' fallback in BOTH previews. This is a pre-existing asset/infra issue, not caused by this frontend change, but it means the end-user cannot see the redesigned 3D previews in the preview environment.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/dino-assets/{species}/{filename}", "issue": "Returns 404 'asset not found' for all species (e.g. Tyrannosaurus/diffuse.webp?sv=2). DINO_ASSETS_ROOT contains no .webp/.glb files in this deployment. Consequence: BOTH the SKIN DESIGNER and the new GLITCH LAB 3D previews fall back to the empty-state placeholder — no canvas is ever mounted. Ingress also routes non-/api requests to the frontend, so even from the public URL these requests return SPA HTML instead of the file (client sees 'Could not load ... : undefined' from THREE loaders).", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "3D preview rendering (both tabs)", "issue": "TextureLoader rejects (uncaught) when /dino-assets is unreachable; CRA dev error overlay covers the whole editor until dismissed. The rejection should be caught inside the loader/Suspense fallback so it never surfaces as an unhandled promise rejection.", "affected_selectors": ["[data-testid=skinlab-3d-viewer]", "[data-testid=glitch-3d-viewer]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Populate DINO_ASSETS_ROOT with the species diffuse.webp / .glb (or point it at a working asset host) so the 3D previews actually render. Without this the whole feature is invisible to users.",
+    "Ensure ingress exposes /dino-assets/* to the backend (currently non-/api paths hit the frontend SPA fallback, so even a fixed backend won't help via the public URL).",
+    "Wrap TextureLoader/useLoader calls in SpeciesViewer3D / SkinPreview3D with a proper onError handler + Suspense fallback so a failed texture becomes the friendly 'Vista 3D no disponible' state (which already exists) instead of an unhandled promise rejection that trips React's dev error overlay."
+  ],
+  "critical_code_review_comments": [
+    "SkinEditor.jsx GlitchLabPanel color-picker → RGB sync (setSlotColorFromHex) works correctly and is a clean addition; hex→sRGB0-1 mapping matches expectations at #ff/00/00 boundaries.",
+    "The 3D preview code paths (SkinPreview3D reused by both tabs) throw on missing textures. Consider a defensive fetch(HEAD) or catch(onError) so a missing /dino-assets/* file degrades gracefully to the placeholder without spraying uncaught rejections.",
+    "server.py is 18k+ lines (noted in prior iterations); this feature does not touch the backend."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only test)", "frontend": "80% (all new DOM wiring + color-picker/RGB sync verified; 3D canvas rendering blocked by missing assets)"},
+  "test_credentials": "Used demo login via UI button data-testid='prompt-demo-login' (ALLOW_DEMO_LOGIN=1). Token in localStorage 'primal_token'.",
+  "seed_data_creation": "None.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Verified via DOM/state on https://synced-animations.preview.emergentagent.com/skin-editor after clicking [data-testid=prompt-demo-login]: (1) SKIN DESIGNER tab default; species-grid loads with species-card-<Name> children; clicking species-card-Tyrannosaurus keeps skinlab-3d-viewer mounted but the viewer shows the empty-state fallback (no <canvas>). (2) GLITCH LAB tab: glitch-lab, glitch-3d-viewer, glitch-species (native <select>) all render. All 7 slot color pickers (glitch-colorpicker-body, -markings, -flank, -underbelly, -detail1, -eyes, -male_display) exist and correctly write to glitch-slot-<slot>-0/1/2 as 0-1 sRGB (tested 4 combinations). Species change to Allosaurus keeps viewer mounted, no crash. Switching back to designer works. Only 3D canvas is missing — root cause is /dino-assets/Tyrannosaurus/diffuse.webp returning 404 from backend and HTML from the ingress. Aggressive suppression of the CRA error overlay was required to click the Glitch tab (a stock user hitting Reload would see the red overlay covering the app in dev builds). If assets are added or the loader is made resilient, retest by asserting: await page.query_selector('[data-testid=\"skinlab-3d-viewer\"] canvas') is not None AND ... same for glitch-3d-viewer.",
+  "rca of the issue": "3D previews fail to mount because THREE.TextureLoader cannot fetch /dino-assets/<Species>/diffuse.webp?sv=2. Backend route (@app.get('/dino-assets/{species}/{filename}')) exists but the on-disk DINO_ASSETS_ROOT is empty → 404. Additionally the k8s ingress only proxies /api/* to backend, so non-/api paths from the public URL return the frontend SPA (index.html), which THREE decodes as an image and fails with 'undefined'. Both the DESIGNER and the new GLITCH previews reuse SkinPreview3D → SpeciesViewer3D, so both are affected. Mitigation: (a) ship the .webp/.glb into DINO_ASSETS_ROOT; (b) add an ingress rule for /dino-assets/*; (c) add a catch on the texture loader so the existing 'Vista 3D no disponible' placeholder is shown instead of an uncaught rejection."
+}
