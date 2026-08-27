@@ -106,3 +106,13 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - `HangingSpider.jsx`: arañita que cuelga de un hilo en la esquina superior derecha y sube/baja despacio (hilo animado 120<->195px). Gated por Modo Halloween (fx).
 - `CryptAmbience.jsx`: ambiente procedural (viento + drone grave) con Web Audio API (sin asset), reanuda en el primer gesto. Botón `ambience-toggle` en header ("Sonido: ON/OFF"), persiste en localStorage `cem_sound` (default ON), independiente del Modo Halloween.
 - `ResurrectionFX.jsx`: overlay full-screen (z-200) al resucitar — el fósil se disuelve, el dino se materializa con 26 partículas verdes + onda expansiva + texto "Resucitado" + especie; se autocierra ~3s. Disparado en doResurrect success.
+
+## 2026-06 — Rediseño del sonido ambiental de cementerio (Halloween) [smoke-tested FE]
+- Problema: el usuario reportó que el ambiente sonaba como "viento de ventilador" (ruido constante band-limited), no a Halloween.
+- Fix (`CryptAmbience.jsx`): reescrito el generador Web Audio para un ambiente de cripta/camposanto:
+  - Drone grave y tenebroso: sines a 55/55.35/82.4/41.2 Hz (batido lento + quinta hueca + suboctava), con LFO 0.05Hz moviendo un lowpass (shimmer).
+  - Pad de tensión disonante (2ª menor 233/246.9 Hz) muy tenue.
+  - Ráfagas de viento INTERMITENTES (ruido por bandpass con LFO de gust 0.07Hz + barrido 0.04Hz) — ya no es constante.
+  - Campana lejana de cementerio: parciales inarmónicos con ataque rápido/decay 5.5s, cada 16-42s aleatorio.
+  - Master bajo con fade-in 4s; cleanup limpia timers y osciladores.
+- Verificado con smoke test: monta/alterna/limpia sin errores (solo warning estándar de autoplay hasta el primer gesto). La calidad "suena a Halloween" queda a validación auditiva del usuario.
