@@ -509,9 +509,9 @@ export default function Cementerio() {
       {fx && <FlyingCritters />}
       {fx && (
         <>
-          {/* Telarañas fijas en las esquinas superiores izquierda y derecha */}
-          <CornerWeb corner="tl" size={150} className="absolute top-16 left-0 z-30 opacity-60" />
-          <CornerWeb corner="tr" size={150} className="absolute top-16 right-0 z-30 opacity-60" />
+          {/* Telarañas fijas en las esquinas inferiores izquierda y derecha */}
+          <CornerWeb corner="bl" size={150} className="absolute bottom-6 left-0 z-30 opacity-60" />
+          <CornerWeb corner="br" size={150} className="absolute bottom-6 right-0 z-30 opacity-60" />
           {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
           <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen h-72 z-0"
             style={{ background: "radial-gradient(120% 100% at 50% -10%, rgba(84,120,44,0.16) 0%, rgba(20,26,16,0.10) 35%, transparent 70%)" }} />
@@ -638,7 +638,7 @@ export default function Cementerio() {
           <div className="rounded-2xl border border-white/[0.06] bg-[#141418] p-5">
             <div className="flex items-center gap-2 text-white/70 mb-3"><Droplet size={15} className="text-[#38BDF8]" /><span className="text-sm font-semibold">Reglas del más allá</span></div>
             <ul className="space-y-2 text-xs text-white/45">
-              <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> 1 Fósil = 1 resurrección. Solo el dueño puede resucitar.</li>
+              <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> 1 Fósil = 1 resurrección</li>
               <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> Cooldown de 24h tras cada resurrección.</li>
               <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> 1 Fósil gratis cada mes calendario.</li>
               <li className="flex gap-2"><Clock size={13} className="text-[#38BDF8] mt-0.5 shrink-0" /> El dino resucitado no se puede redimir por 2h (anti revenge-kill).</li>

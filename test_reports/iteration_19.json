@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only verification of the reposition of CornerWeb spiderwebs from top to bottom corners on /cementerio. Logged in via 'Probar cuenta demo', confirmed Modo Halloween ON by default, scrolled to the bottom of [data-testid='cementerio-page'] and verified exactly TWO CornerWeb SVGs anchored to bottom-left and bottom-right with the correct CSS mirroring. Verified no console errors, no horizontal scrollbar, cards still open the profile modal, toggle removes/restores webs, and the state persists across reload. Vine canopy + side vines regression pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/webs_bottom.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Cementerio.jsx is ~660 lines and mixes many concerns (cards, modals, panels, sockets). Consider splitting into smaller components (ProfileModal, FossilPanel, HallOfFame, modals) into their own files for maintainability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "Demo account via 'Probar cuenta demo' button on /cementerio.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Two CornerWeb SVGs render as direct children of [data-testid='cementerio-page'] with classes 'absolute bottom-6 left-0 z-30 opacity-60' (bl, scaleY(-1)) and 'absolute bottom-6 right-0 z-30 opacity-60' (br, scale(-1,-1)). To validate presence, scroll to bottom of page then evaluate querySelectorAll on direct-child SVGs. Halloween state is persisted in localStorage key 'cem_halloween' ('1' or '0').",
+  "test_evidence": {
+    "bl_web": "class='absolute bottom-6 left-0 z-30 opacity-60' transform='scaleY(-1)' bbox=(80,316)-(230,466) visible",
+    "br_web": "class='absolute bottom-6 right-0 z-30 opacity-60' transform='scale(-1,-1)' bbox=(1210,316)-(1360,466) visible",
+    "no_top_corner_webs": true,
+    "horizontal_scrollbar": false,
+    "card_click_opens_profile_modal": true,
+    "toggle_off_removes_webs": true,
+    "persistence_off_after_reload": true,
+    "persistence_on_after_reload": true,
+    "vine_canopy_visible": true,
+    "console_errors": "none captured"
+  }
+}
