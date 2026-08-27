@@ -1022,8 +1022,10 @@ async def demo_login():
     demo_steam = "demo_0000000001"
     existing = await db.users.find_one({"steam_id": demo_steam})
     if existing:
-        await db.users.update_one({"id": existing["id"]}, {"$set": {"last_login": now_iso(), "staff_rank": "owner"}})
+        await db.users.update_one({"id": existing["id"]}, {"$set": {"last_login": now_iso(), "role": "admin", "staff_rank": "owner"}})
         uid = existing["id"]
+        if not existing.get("active_dino"):
+            await _seed_demo_live_dino(uid)
     else:
         uid = new_id()
         await db.users.insert_one({
@@ -1034,7 +1036,28 @@ async def demo_login():
         })
         await add_transaction(uid, "normal", 8400, "reward", "Demo account funding")
         await add_transaction(uid, "vip", 120, "reward", "Demo VIP funding")
+        await _seed_demo_live_dino(uid)
     return {"token": make_token(uid)}
+
+
+async def _seed_demo_live_dino(uid):
+    """Put the demo account in the simulation AS THE OWNER PLAYING: without RCON,
+    `_is_user_in_game` reads `active_dino`, so seeding a live dino makes the demo
+    appear connected in-game. That unlocks the payout counters, the live-dino card,
+    apply-skin-to-live and population respawn in the preview simulation. Seeds a
+    fully grown, prime Apex Tyrannosaurus. Non-destructive: only ever called when
+    the account has no active dino."""
+    d = await db.dinosaurs.find_one({"slug": "trex"}, {"_id": 0}) or await db.dinosaurs.find_one({}, {"_id": 0})
+    if not d:
+        return
+    ad = {
+        "slug": d.get("slug"), "name": d.get("name"), "image": d.get("image"),
+        "type": d.get("type"), "diet": d.get("diet"), "rarity": d.get("rarity"),
+        "set_at": now_iso(), "fed_at": now_iso(),
+        "base_growth": 100, "base_stats": d.get("stats", {}),
+        "recovery_id": new_id(), "mutations": [], "prime": True,
+    }
+    await db.users.update_one({"id": uid}, {"$set": {"active_dino": ad}})
 
 
 @api_router.get("/auth/me")

@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only verification of owner-in-simulation demo state. Demo login via [data-testid=prompt-demo-login] succeeds; JWT stored in localStorage.primal_token. Payout panel (/profile?tab=payout) now correctly renders IN-GAME state: payout-status='Jugando ahora' (green), payout-per-hour='5,250', session timer increments (00m 11s -> 00m 15s), and 'Próximo pago de 350' countdown animates (03m 48s -> 03m 45s). HUD balance-primemeat (8,400) is visible with passive-bar element rendered; hover shows tooltip 'Próximo PrimeMeat en 03:48 — +300 cada 4 min mientras estás en el servidor' (owner tier is 1x/300). /api/active-dino returns in_game=true active Apex prime Tyrannosaurus Rex with live stats (health 76, growth 100%). apply-to-live-dino button on /skin-editor is present and responds to click without any crash or runtime error overlay (expected 409 lane). No error overlay observed anywhere.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Live-dino card discovery", "issues": ["Could not find a dedicated 'Mi Dino'/Dashboard route rendering the live active dino card (tested /dashboard, /mi-dino, /dinos → none contained 'Tyrannosaurus'). Only the home page hero carousel shows the Apex Tyrannosaurus Rex card. If a dedicated live-dino panel/page is intended for owner-in-sim, it may not be wired up in the SPA routes."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/payout.png", "/app/test_reports/livedino.png"],
+  "action_items": [
+    "(Optional) Expose the /api/active-dino live-dino card in a dedicated Dashboard/'Mi Dino' route so owners-in-sim can see health/hunger/thirst/growth beyond the hero carousel.",
+    "(Cosmetic) Passive-bar container renders (class mt-1 h-[4px] w-full bg-white/10) but no inline width style was observable on the container element itself; inner fill likely uses child element/animation — verify the yellow fill is actually visible to end-users (screenshot shows the HUD row but the 4px bar is thin/subtle)."
+  ],
+  "critical_code_review_comments": [
+    "Owner-in-sim wiring is clean: PayoutPanel binds to /api/payout/status and correctly flips to 'Jugando ahora' when in_game=true; BalanceHUD tooltip picks up next-tick seconds from /api/passive-tick.",
+    "3D preview logs expected texture 404s for /dino-assets/Tyrannosaurus/diffuse.webp (assets on real game server) — already handled by Skin3DBoundary error boundary; no crash. Confirmed acceptable per review request."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100% (all acceptance criteria satisfied)"},
+  "test_credentials": "Demo login via UI button data-testid=prompt-demo-login (ALLOW_DEMO_LOGIN=1). No manual credentials used.",
+  "seed_data_creation": "None; backend _seed_demo_live_dino auto-seeds on /api/auth/demo call.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Payout panel lives at /profile?tab=payout (Profile.jsx line 151). Home hero carousel already reflects the seeded Apex Trex. If main agent adds a dedicated live-dino dashboard page, retest by navigating there after prompt-demo-login and verifying live stats fields (health/hunger/thirst/growth) render from /api/active-dino .active.live.*",
+  "rca of the issue": "N/A — feature verification, no bug."
+}

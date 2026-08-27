@@ -13,3 +13,9 @@ Base preview URL: https://synced-animations.preview.emergentagent.com
 ## Notes
 - Real login is Steam OAuth (needs the live game server / not available in preview).
 - No standard email/password accounts exist; use the demo login above.
+
+## Owner-in-simulation (2026-06)
+- The demo account (`POST /api/auth/demo`) is now the OWNER playing in the sim:
+  - `role = admin`, `staff_rank = owner` (full access, owner + glitch lab).
+  - Seeds a simulated live in-game dino (prime Apex Tyrannosaurus Rex, 100% growth) so `_is_user_in_game` is true in preview (no RCON). This lights up payout counters, the HUD passive bar, live-dino status and population respawn.
+- NOTE: skin apply-to-live (`/api/apply`, `/api/glitch/apply`) still needs the REAL game server (`game_ipc.find_active_dino`) and returns 409 in preview — cannot be simulated.
