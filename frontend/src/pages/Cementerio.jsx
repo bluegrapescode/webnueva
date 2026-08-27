@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Skull, Sparkles, Crown, ShieldOff, Search, Coins, Gift, Clock,
   Trophy, Swords, MapPin, Users, Timer, X, Flame, Droplet, Bone,
-  RotateCcw, ChevronRight, Dna, Gem,
+  RotateCcw, ChevronRight, Dna, Gem, Ghost,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -12,8 +12,9 @@ import { useSound } from "@/context/SoundContext";
 import { PageLoader } from "@/components/common/PageLoader";
 import { SignInPrompt } from "@/components/common/SignInPrompt";
 import { useCemeterySocket } from "@/hooks/useCemeterySocket";
-import { VineStrip, VineSide, VineCorner } from "@/components/cemetery/Vines";
+import { VineStrip, VineSide, VineCorner, CornerWeb } from "@/components/cemetery/Vines";
 import SpiderRunner from "@/components/cemetery/SpiderRunner";
+import FlyingCritters from "@/components/cemetery/FlyingCritters";
 import {
   statusMeta, rarityColor, fmtPlaytime, fmtDate, fmtCountdown,
   CEM_CAUSES, CEM_SORTS,
@@ -63,7 +64,7 @@ const StatusBadge = ({ status, size = "sm" }) => {
 };
 
 /* ── Dino card ── */
-const DinoCard = ({ rec, onOpen }) => {
+const DinoCard = ({ rec, onOpen, fx = true }) => {
   const d = rec.dino || {};
   const rc = rarityColor(d.rarity);
   return (
@@ -78,7 +79,7 @@ const DinoCard = ({ rec, onOpen }) => {
       className="group text-left relative overflow-hidden rounded-2xl bg-[#141418] border border-white/[0.06] hover:border-white/[0.14] transition-colors"
     >
       <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${rc}, transparent)` }} />
-      <VineCorner className="absolute -top-1 left-1 z-10 opacity-50" />
+      {fx && <VineCorner className="absolute -top-1 left-1 z-10 opacity-50" />}
       <div className="relative h-40 flex items-center justify-center bg-gradient-to-b from-white/[0.02] to-black/40 overflow-hidden">
         <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "radial-gradient(circle at 30% 20%, #fff 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         {d.image ? (
@@ -416,6 +417,8 @@ export default function Cementerio() {
   const [showTx, setShowTx] = useState(false);
   const [txItems, setTxItems] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [fx, setFx] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("cem_halloween") !== "0" : true));
+  const toggleFx = () => setFx((v) => { const nv = !v; try { localStorage.setItem("cem_halloween", nv ? "1" : "0"); } catch (e) {} return nv; });
 
   const loadFeed = useCallback(() => {
     if (!user) return;
@@ -502,16 +505,26 @@ export default function Cementerio() {
 
   return (
     <div className="relative max-w-7xl mx-auto px-6 py-12" data-testid="cementerio-page">
-      <SpiderRunner />
-      {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
-      <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen h-72 z-0"
-        style={{ background: "radial-gradient(120% 100% at 50% -10%, rgba(84,120,44,0.16) 0%, rgba(20,26,16,0.10) 35%, transparent 70%)" }} />
-      {/* Dosel de enredaderas cubriendo TODO el cementerio (estilo panteón) */}
-      <div aria-hidden data-testid="cemetery-vine-canopy" className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen z-20">
-        <VineStrip height={280} className="opacity-95" />
-      </div>
-      <VineSide side="left" className="absolute left-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
-      <VineSide side="right" className="absolute right-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
+      {fx && <SpiderRunner />}
+      {fx && <FlyingCritters />}
+      {fx && (
+        <>
+          {/* Telarañas fijas en las esquinas del cementerio */}
+          <CornerWeb corner="tl" size={150} className="absolute top-0 left-0 z-0 opacity-30" />
+          <CornerWeb corner="tr" size={150} className="absolute top-0 right-0 z-0 opacity-30" />
+          <CornerWeb corner="bl" size={130} className="absolute bottom-0 left-0 z-0 opacity-25" />
+          <CornerWeb corner="br" size={130} className="absolute bottom-0 right-0 z-0 opacity-25" />
+          {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
+          <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen h-72 z-0"
+            style={{ background: "radial-gradient(120% 100% at 50% -10%, rgba(84,120,44,0.16) 0%, rgba(20,26,16,0.10) 35%, transparent 70%)" }} />
+          {/* Dosel de enredaderas cubriendo TODO el cementerio (estilo panteón) */}
+          <div aria-hidden data-testid="cemetery-vine-canopy" className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen z-20">
+            <VineStrip height={280} className="opacity-95" />
+          </div>
+          <VineSide side="left" className="absolute left-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
+          <VineSide side="right" className="absolute right-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
+        </>
+      )}
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative z-10 overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-[#141418] to-[#0e0e11] p-8 mb-8 mt-6">
         {/* Fósil levitando con pulso de fondo */}
@@ -534,8 +547,18 @@ export default function Cementerio() {
           />
         </div>
         <div className="relative">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.05] border border-white/10 px-3 py-1 text-[11px] uppercase tracking-widest text-white/50">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" /> Registro en tiempo real
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.05] border border-white/10 px-3 py-1 text-[11px] uppercase tracking-widest text-white/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" /> Registro en tiempo real
+            </div>
+            <button
+              onClick={toggleFx}
+              data-testid="halloween-toggle"
+              title="Activar o desactivar los efectos de terror (arañas, enredaderas, bichos)"
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors ${fx ? "border-[#7CA842]/40 bg-[#7CA842]/10 text-[#A3C96B]" : "border-white/10 bg-white/[0.03] text-white/45 hover:text-white/70"}`}
+            >
+              <Ghost size={13} /> Modo Halloween: {fx ? "ON" : "OFF"}
+            </button>
           </div>
           <h1 className="mt-4 text-4xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3"><Skull className="text-[#7CA842]" size={40} /> Cementerio</h1>
           <p className="mt-2 text-white/45 max-w-2xl">Cada dino caído queda inmortalizado aquí. Usa <b className="text-[#A3C96B]">Fósiles</b> para resucitar a los tuyos y devolverlos a la bóveda con todos sus stats, mutaciones y skin.</p>
@@ -596,7 +619,7 @@ export default function Cementerio() {
             </div>          ) : (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnimatePresence>
-                {feed.map((rec) => <DinoCard key={rec.id} rec={rec} onOpen={setSelected} />)}
+                {feed.map((rec) => <DinoCard key={rec.id} rec={rec} onOpen={setSelected} fx={fx} />)}
               </AnimatePresence>
             </motion.div>
           )}

@@ -157,3 +157,47 @@ export function VineCorner({ className = "" }) {
     </svg>
   );
 }
+
+
+// Fixed, subtle spiderweb anchored in a page corner. `corner`: tl | tr | bl | br.
+export function CornerWeb({ corner = "tl", size = 150, className = "" }) {
+  const flip = { tl: "none", tr: "scaleX(-1)", bl: "scaleY(-1)", br: "scale(-1,-1)" }[corner];
+  const anchors = [0, 20, 42, 66, 90]; // degrees from the corner
+  const rad = (d) => (d * Math.PI) / 180;
+  const radials = anchors.map((a) => {
+    const x = 2 + size * Math.cos(rad(a));
+    const y = 2 + size * Math.sin(rad(a));
+    return `M2 2 L${x.toFixed(1)} ${y.toFixed(1)}`;
+  });
+  // sagging threads between adjacent radials at a few radii
+  const rings = [0.34, 0.58, 0.82].map((f) => {
+    const r = size * f;
+    let d = "";
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const a0 = rad(anchors[i]), a1 = rad(anchors[i + 1]);
+      const x0 = 2 + r * Math.cos(a0), y0 = 2 + r * Math.sin(a0);
+      const x1 = 2 + r * Math.cos(a1), y1 = 2 + r * Math.sin(a1);
+      const am = rad((anchors[i] + anchors[i + 1]) / 2);
+      const cx = 2 + r * 0.82 * Math.cos(am), cy = 2 + r * 0.82 * Math.sin(am); // sag toward corner
+      d += `M${x0.toFixed(1)} ${y0.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)} `;
+    }
+    return d;
+  });
+  return (
+    <svg
+      className={`pointer-events-none select-none ${className}`}
+      style={{ transform: flip }}
+      width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden
+    >
+      <g stroke="#6b7a58" strokeWidth="0.8" fill="none" opacity="0.7">
+        {radials.map((d, i) => <path key={`r${i}`} d={d} />)}
+        {rings.map((d, i) => <path key={`c${i}`} d={d} opacity={0.85 - i * 0.12} />)}
+      </g>
+      {/* a couple of broken/dangling silk threads */}
+      <g stroke="#6b7a58" strokeWidth="0.7" fill="none" opacity="0.4">
+        <path d={`M${(size * 0.5).toFixed(0)} 2 q6 ${(size * 0.2).toFixed(0)} -2 ${(size * 0.34).toFixed(0)}`} />
+        <path d={`M2 ${(size * 0.5).toFixed(0)} q${(size * 0.2).toFixed(0)} 6 ${(size * 0.32).toFixed(0)} -2`} />
+      </g>
+    </svg>
+  );
+}

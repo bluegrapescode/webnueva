@@ -184,3 +184,9 @@ body {
 /* Cemetery spider scuttle */
 @keyframes spiderScuttleA { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
 @keyframes spiderScuttleB { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(-7deg); } }
+
+/* Bats & moths wing flap */
+@keyframes batFlapL { 0%, 100% { transform: rotate(-6deg) scaleY(1); } 50% { transform: rotate(20deg) scaleY(0.6); } }
+@keyframes batFlapR { 0%, 100% { transform: rotate(6deg) scaleY(1); } 50% { transform: rotate(-20deg) scaleY(0.6); } }
+@keyframes mothFlapL { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(16deg); } }
+@keyframes mothFlapR { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(-16deg); } }

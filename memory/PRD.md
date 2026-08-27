@@ -91,3 +91,8 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 ## 2026-06 — Arañas: solo en cementerio + menos cantidad [iteration_15: 100% FE]
 - Se quitó el montaje global (App.js). `SpiderRunner` vuelve a estar SOLO en `Cementerio.jsx` (exclusivo de esa sección).
 - Cantidad reducida: MIN_SPIDERS=2, MAX_SPIDERS=3 (antes 5-8). Sigue cada 2 min, primera oleada a los ~6s. 0 arañas en home/tienda; se desmonta al salir del cementerio.
+
+## 2026-06 — Halloween cementerio: telarañas + bichos + interruptor [iteration_16: 100% FE]
+- Telarañas fijas en las 4 esquinas del cementerio (`CornerWeb` en Vines.jsx, SVG radiales + anillos, pointer-events-none).
+- Murciélagos/polillas ocasionales (`FlyingCritters.jsx`): 1 cada 40-95s (primero ~14s), vuelo ONDULADO (distinto a la araña), alas aleteando (keyframes batFlap/mothFlap en index.css). data-testid=cemetery-critter, z-[59], solo cementerio.
+- Interruptor "Modo Halloween" (`halloween-toggle`) en el header del cementerio: enciende/apaga TODO (arañas, dosel + enredaderas laterales + de tarjetas, telarañas, neblina, bichos). Persiste en localStorage `cem_halloween` (default ON). Tarjetas siguen clicables en ambos estados.
