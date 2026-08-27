@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Skull, Sparkles, Crown, ShieldOff, Search, Coins, Gift, Clock,
   Trophy, Swords, MapPin, Users, Timer, X, Flame, Droplet, Bone,
-  RotateCcw, ChevronRight, Dna, Gem, Ghost, Volume2, VolumeX,
+  RotateCcw, ChevronRight, Dna, Gem, Ghost,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -16,7 +16,6 @@ import { VineStrip, VineSide, VineCorner } from "@/components/cemetery/Vines";
 import SpiderRunner from "@/components/cemetery/SpiderRunner";
 import FlyingCritters from "@/components/cemetery/FlyingCritters";
 import HangingSpider from "@/components/cemetery/HangingSpider";
-import CryptAmbience from "@/components/cemetery/CryptAmbience";
 import ResurrectionFX from "@/components/cemetery/ResurrectionFX";
 import {
   statusMeta, rarityColor, fmtPlaytime, fmtDate, fmtCountdown,
@@ -422,8 +421,7 @@ export default function Cementerio() {
   const [busy, setBusy] = useState(false);
   const [fx, setFx] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("cem_halloween") !== "0" : true));
   const toggleFx = () => setFx((v) => { const nv = !v; try { localStorage.setItem("cem_halloween", nv ? "1" : "0"); } catch (e) {} return nv; });
-  const [soundOn, setSoundOn] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("cem_sound") !== "0" : true));
-  const toggleSound = () => setSoundOn((v) => { const nv = !v; try { localStorage.setItem("cem_sound", nv ? "1" : "0"); } catch (e) {} return nv; });
+
   const [resurrectFx, setResurrectFx] = useState(null);
 
   const loadFeed = useCallback(() => {
@@ -515,7 +513,6 @@ export default function Cementerio() {
       {fx && <SpiderRunner />}
       {fx && <FlyingCritters />}
       {fx && <HangingSpider side="right" offset={70} />}
-      <CryptAmbience enabled={soundOn} />
       {fx && (
         <>
           {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
@@ -562,14 +559,6 @@ export default function Cementerio() {
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors ${fx ? "border-[#7CA842]/40 bg-[#7CA842]/10 text-[#A3C96B]" : "border-white/10 bg-white/[0.03] text-white/45 hover:text-white/70"}`}
             >
               <Ghost size={13} /> Modo Halloween: {fx ? "ON" : "OFF"}
-            </button>
-            <button
-              onClick={toggleSound}
-              data-testid="ambience-toggle"
-              title="Sonido ambiental de cripta"
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors ${soundOn ? "border-[#38BDF8]/40 bg-[#38BDF8]/10 text-[#8fd0e8]" : "border-white/10 bg-white/[0.03] text-white/45 hover:text-white/70"}`}
-            >
-              {soundOn ? <Volume2 size={13} /> : <VolumeX size={13} />} Sonido: {soundOn ? "ON" : "OFF"}
             </button>
           </div>
           <h1 className="mt-4 text-4xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3"><Skull className="text-[#7CA842]" size={40} /> Cementerio</h1>

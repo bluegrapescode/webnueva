@@ -116,3 +116,9 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
   - Campana lejana de cementerio: parciales inarmónicos con ataque rápido/decay 5.5s, cada 16-42s aleatorio.
   - Master bajo con fade-in 4s; cleanup limpia timers y osciladores.
 - Verificado con smoke test: monta/alterna/limpia sin errores (solo warning estándar de autoplay hasta el primer gesto). La calidad "suena a Halloween" queda a validación auditiva del usuario.
+
+## 2026-06 — Sonido ambiental ELIMINADO del cementerio [smoke-tested FE]
+- A petición del usuario se quitó por completo el ambiente sonoro y su botón.
+- Cambios en `Cementerio.jsx`: eliminado import de CryptAmbience, estado soundOn/toggleSound, el <CryptAmbience>, el botón `ambience-toggle` y los iconos Volume2/VolumeX.
+- Archivo `components/cemetery/CryptAmbience.jsx` borrado.
+- Header ahora solo tiene el botón "Modo Halloween". Verificado: compila sin errores y el botón de sonido ya no está.
