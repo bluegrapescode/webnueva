@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only verification of the global spider SWARM on the home page. Confirmed the swarm mounts globally, first burst appears ~5.5-6s after load, spawns 6 simultaneous spiders (>=4 required), each with a distinct route/direction, they move edge-to-edge and clear back to 0 after ~3s. Verified position:fixed, z-index:60, pointer-events:none, no horizontal scrollbar, no console errors, and that clicking nav (INICIO) still works. Screenshot captured mid-burst.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/spider_burst.png", "/app/test_reports/spider_burst_final.png"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Global SpiderRunner works on /. Burst timing FIRST_RUN_MS=6000 confirmed. Detected 6 simultaneous spiders with data-testid='cemetery-spider', position:fixed, z-index:60, pointer-events:none. Bounding-rect samples 1s apart show distinct trajectories (different dx/dy). No horizontal scrollbar introduced. Do not wait 2min for second burst — first burst is sufficient.",
+  "verification_details": {
+    "max_simultaneous_spiders": 6,
+    "burst_start_seconds": 5.5,
+    "burst_cleared_by_seconds": 9.0,
+    "computed_styles": {"pointer-events": "none", "position": "fixed", "z-index": "60"},
+    "horizontal_scroll_introduced": false,
+    "console_errors": [],
+    "nav_click_after_burst": "SUCCESS (INICIO clickable, pointer-events not blocked)",
+    "distinct_directions_confirmed": true
+  }
+}

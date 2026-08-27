@@ -34,6 +34,7 @@ import CreatorPublic from "@/pages/CreatorPublic";
 import RefRedirect from "@/pages/RefRedirect";
 import Cementerio from "@/pages/Cementerio";
 import CreatorNotifier from "@/components/creator/CreatorNotifier";
+import SpiderRunner from "@/components/cemetery/SpiderRunner";
 import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
 
 function ScrollToTop() {
@@ -136,6 +137,7 @@ function App() {
             <CreatorNotifier />
             <CelebrationOverlay />
             <LiveTicker />
+            <SpiderRunner />
             <Toaster
               position="bottom-right"
               theme="dark"
