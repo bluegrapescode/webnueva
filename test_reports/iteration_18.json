@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only regression on /cementerio confirming corner spiderweb repositioning (iteration_18). Logged in via 'Probar cuenta demo'. Verified both webs render at TOP-LEFT and TOP-RIGHT corners of the cemetery hero panel with top:132px, opacity 0.6, z-index 30, pointer-events:none. Toggle OFF/ON works and persists via localStorage. Cards open the profile modal. No console errors, no horizontal scroll. Vine canopy full-width (1920px on 1920 viewport).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Cementerio corner webs confirmed: 2 CornerWeb elements at .absolute.top-16 left-0/right-0, opacity-60, z-30, pointer-events-none. Halloween toggle data-testid=halloween-toggle persists via localStorage key 'cem_halloween' (0=OFF). Cards data-testid=cemetery-card-<id> open cemetery-profile-modal. Demo login flow: on /cementerio click 'Probar cuenta demo'.",
+  "verified_checks": {
+    "two_webs_top_corners": "PASS - top:132px, left:320 / right:320, w=h=150, opacity 0.6, z-index 30",
+    "pointer_events_none": "PASS - webs computed pointerEvents:none; card click opened cemetery-profile-modal",
+    "toggle_off_removes_webs": "PASS - count went 2 -> 0; localStorage cem_halloween=0",
+    "persistence_across_reload": "PASS - after reload toggle stayed OFF, webs=0",
+    "toggle_on_restores": "PASS - webs back to 2",
+    "no_console_errors": "PASS",
+    "no_horizontal_scroll": "PASS",
+    "vine_canopy_full_width": "PASS - 1920/1920"
+  }
+}

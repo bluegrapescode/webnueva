@@ -510,8 +510,8 @@ export default function Cementerio() {
       {fx && (
         <>
           {/* Telarañas fijas en las esquinas superiores izquierda y derecha */}
-          <CornerWeb corner="tl" size={140} className="absolute top-0 left-0 z-30 opacity-45" />
-          <CornerWeb corner="tr" size={140} className="absolute top-0 right-0 z-30 opacity-45" />
+          <CornerWeb corner="tl" size={150} className="absolute top-16 left-0 z-30 opacity-60" />
+          <CornerWeb corner="tr" size={150} className="absolute top-16 right-0 z-30 opacity-60" />
           {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
           <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen h-72 z-0"
             style={{ background: "radial-gradient(120% 100% at 50% -10%, rgba(84,120,44,0.16) 0%, rgba(20,26,16,0.10) 35%, transparent 70%)" }} />
