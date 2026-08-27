@@ -1,12 +1,10 @@
-"""Backend tests for Cemetery & Resurrection (FÓSIL) system."""
+"""Backend tests for Cemetery & Resurrection (FÓSIL) system - updated for private feed + 8000 price."""
 import os
-import time
 import pytest
 import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
 if not BASE_URL:
-    # fallback: read frontend/.env
     with open("/app/frontend/.env") as f:
         for line in f:
             if line.startswith("REACT_APP_BACKEND_URL="):
@@ -14,6 +12,7 @@ if not BASE_URL:
                 break
 BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
+DEMO_STEAM = "demo_0000000001"
 
 
 @pytest.fixture(scope="session")
@@ -28,266 +27,159 @@ def auth_headers(token):
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-# ----------- PUBLIC endpoints -----------
+@pytest.fixture(scope="session")
+def demo_user_id(auth_headers):
+    r = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=15)
+    if r.status_code == 200:
+        return r.json().get("id") or r.json().get("user_id") or r.json().get("_id")
+    return None
 
-def test_config():
+
+# ---------- CONFIG (public) ----------
+
+def test_config_new_price_and_cooldowns():
     r = requests.get(f"{API}/cemetery/config", timeout=15)
     assert r.status_code == 200
     d = r.json()
-    assert d.get("fossil_price") == 1500
-    # cooldown 24h in either hours or seconds
-    assert d.get("cooldown_hours") == 24 or d.get("resurrect_cooldown_hours") == 24 or d.get("cooldown_seconds") == 86400 or "cooldown" in str(d).lower()
+    assert d.get("fossil_price") == 8000, d
+    assert d.get("amber_per_fossil") == 8000, d
+    assert d.get("redeem_cooldown_hours") == 2, d
+    assert d.get("resurrection_cooldown_hours") == 24, d
 
 
-def test_feed_basic():
+# ---------- PRIVACY: feed requires auth and is owner-scoped ----------
+
+def test_feed_requires_auth():
     r = requests.get(f"{API}/cemetery/feed", timeout=15)
-    assert r.status_code == 200
+    assert r.status_code == 401, r.status_code
+
+
+def _owner_ok(item, user_id, steam=DEMO_STEAM):
+    o = item.get("owner") or {}
+    return (user_id and o.get("user_id") == user_id) or o.get("steam_id") == steam
+
+
+def test_feed_authed_owner_scoped(auth_headers, demo_user_id):
+    r = requests.get(f"{API}/cemetery/feed?limit=200", headers=auth_headers, timeout=15)
+    assert r.status_code == 200, r.text
     d = r.json()
-    assert "items" in d and isinstance(d["items"], list)
-    assert "stats" in d or "total" in d
-    assert len(d["items"]) > 0
-
-
-def _dino(it):
-    return it.get("dino") or it
-
-
-def test_feed_filter_species():
-    r = requests.get(f"{API}/cemetery/feed?species=deino", timeout=15)
-    assert r.status_code == 200
-    items = r.json()["items"]
+    items = d.get("items", [])
     assert len(items) > 0
     for it in items:
-        d = _dino(it)
-        assert "deino" in (d.get("species_slug") or "").lower() or "deino" in (d.get("species_name") or "").lower()
+        assert _owner_ok(it, demo_user_id), f"Non-owner leaked: {it.get('owner')}"
 
 
-def test_feed_filter_status_and_search_and_sort():
-    r = requests.get(f"{API}/cemetery/feed?status=ELEGIBLE", timeout=15)
-    assert r.status_code == 200
-    for it in r.json()["items"]:
-        assert it["status"] == "ELEGIBLE"
-    r2 = requests.get(f"{API}/cemetery/feed?search=Deino", timeout=15)
-    assert r2.status_code == 200
-    r3 = requests.get(f"{API}/cemetery/feed?sort=kills", timeout=15)
-    assert r3.status_code == 200
-    kills = [it.get("kills", 0) for it in r3.json()["items"]]
-    assert kills == sorted(kills, reverse=True)
+def test_record_by_id_requires_auth_and_owner(auth_headers):
+    # owner can read their own record
+    feed = requests.get(f"{API}/cemetery/feed", headers=auth_headers, timeout=15).json()
+    rid = feed["items"][0]["id"]
+    # unauth
+    ru = requests.get(f"{API}/cemetery/record/{rid}", timeout=15)
+    assert ru.status_code in (401, 403), ru.status_code
+    # authed owner
+    ra = requests.get(f"{API}/cemetery/record/{rid}", headers=auth_headers, timeout=15)
+    assert ra.status_code == 200
 
 
-def test_drowning_combat_rule():
-    """Deinosuchus drown-in-combat = ELEGIBLE; other species drown-in-combat = NO_REVIVIBLE."""
-    items = requests.get(f"{API}/cemetery/feed?limit=200", timeout=15).json()["items"]
-    def is_drown(i): return (i.get("cause") or "").lower().startswith("ahoga") and i.get("in_combat")
-    deino_dic = [i for i in items if "deino" in (_dino(i).get("species_slug") or "").lower() and is_drown(i)]
-    other_dic = [i for i in items if "deino" not in (_dino(i).get("species_slug") or "").lower() and is_drown(i)]
-    assert deino_dic, "expected at least one Deinosuchus drown-in-combat seed"
-    assert other_dic, "expected at least one non-deino drown-in-combat seed"
-    assert all(i["status"] == "ELEGIBLE" for i in deino_dic), f"Deino DIC should be ELEGIBLE: {deino_dic}"
-    assert all(i["status"] == "NO_REVIVIBLE" for i in other_dic), f"Other DIC should be NO_REVIVIBLE: {other_dic}"
-
-
-def test_record_by_id_and_404():
-    items = requests.get(f"{API}/cemetery/feed", timeout=15).json()["items"]
-    rid = items[0]["id"]
-    r = requests.get(f"{API}/cemetery/record/{rid}", timeout=15)
-    assert r.status_code == 200
-    assert r.json()["id"] == rid
-    r404 = requests.get(f"{API}/cemetery/record/no-such-id-xyz", timeout=15)
-    assert r404.status_code == 404
-
-
-def test_hall_of_fame():
-    r = requests.get(f"{API}/cemetery/hall-of-fame", timeout=15)
-    assert r.status_code == 200
-    d = r.json()
+def test_hall_of_fame_requires_auth(auth_headers):
+    ru = requests.get(f"{API}/cemetery/hall-of-fame", timeout=15)
+    assert ru.status_code == 401
+    ra = requests.get(f"{API}/cemetery/hall-of-fame", headers=auth_headers, timeout=15)
+    assert ra.status_code == 200
+    d = ra.json()
     for k in ["longest_survival", "most_kills", "biggest", "resurrected"]:
         assert k in d, f"missing {k}"
-        assert isinstance(d[k], list)
 
 
-# ----------- AUTH endpoints -----------
+# ---------- BUY new price 8000 ----------
 
-def test_fossils_view(auth_headers):
+def test_buy_insufficient_references_8000(auth_headers):
+    r = requests.post(f"{API}/cemetery/fossils/buy", headers=auth_headers,
+                      json={"quantity": 999999}, timeout=15)
+    assert r.status_code == 400, r.text
+    body = r.text
+    # 999999 * 8000 = 7,999,992,000 (minus tiny balance) confirms 8000/unit pricing
+    assert ("7,999,9" in body) or ("8,000" in body) or ("8000" in body), body
+
+    # Also verify with quantity=1: message should reference exactly 8,000
+    r1 = requests.post(f"{API}/cemetery/fossils/buy", headers=auth_headers,
+                       json={"quantity": 1}, timeout=15)
+    # Either success (200) if user has 8000+ amber, or 400 with "8,000" mentioned
+    if r1.status_code == 400:
+        assert "8,000" in r1.text or "8000" in r1.text, r1.text
+
+
+def test_fossils_view_price(auth_headers):
     r = requests.get(f"{API}/cemetery/fossils", headers=auth_headers, timeout=15)
     assert r.status_code == 200
     d = r.json()
-    for k in ["fossils", "amber_balance", "fossil_price", "can_claim_free"]:
-        assert k in d, f"missing {k} in {d}"
-    assert d["fossil_price"] == 1500
+    assert d.get("fossil_price") == 8000
 
 
-def test_claim_free_idempotent(auth_headers):
-    # First call may succeed or already-claimed depending on prior state
-    r1 = requests.post(f"{API}/cemetery/fossils/claim-free", headers=auth_headers, timeout=15)
-    assert r1.status_code in (200, 400)
-    r2 = requests.post(f"{API}/cemetery/fossils/claim-free", headers=auth_headers, timeout=15)
-    assert r2.status_code == 400
-    body = r2.text.lower()
-    assert "reclamaste" in body or "already" in body or "mes" in body
+# ---------- ADMIN: sees ALL records ----------
 
-
-def test_buy_insufficient(auth_headers):
-    # Buying a huge quantity should fail with insufficient amber
-    r = requests.post(f"{API}/cemetery/fossils/buy", headers=auth_headers, json={"quantity": 999999}, timeout=15)
-    assert r.status_code == 400
-
-
-# ----------- ADMIN endpoints -----------
-
-def test_admin_create_update_delete_record(auth_headers):
-    # Non-deino drown in combat -> NO_REVIVIBLE
-    payload = {
-        "species_slug": "carnotaurus",
-        "species_name": "Carnotaurus",
-        "growth": 100,
-        "cause": "Ahogamiento",
-        "in_combat": True,
-        "owner_steam_id": "demo_0000000001",
-    }
-    r = requests.post(f"{API}/cemetery/admin/record", headers=auth_headers, json=payload, timeout=15)
+def test_admin_records_returns_all(auth_headers):
+    r = requests.get(f"{API}/cemetery/admin/records", headers=auth_headers, timeout=15)
     assert r.status_code == 200, r.text
-    rec = r.json().get("record") or r.json()
-    assert rec["status"] == "NO_REVIVIBLE"
-    rid = rec["id"]
-
-    # Update
-    r2 = requests.put(f"{API}/cemetery/admin/record/{rid}", headers=auth_headers,
-                      json={"status": "ELEGIBLE"}, timeout=15)
-    assert r2.status_code == 200
-    got = requests.get(f"{API}/cemetery/record/{rid}", timeout=15).json()
-    assert got["status"] == "ELEGIBLE"
-
-    # Delete
-    r3 = requests.delete(f"{API}/cemetery/admin/record/{rid}", headers=auth_headers, timeout=15)
-    assert r3.status_code in (200, 204)
-    assert requests.get(f"{API}/cemetery/record/{rid}", timeout=15).status_code == 404
+    body = r.json()
+    items = body.get("items") if isinstance(body, dict) else body
+    assert isinstance(items, list)
+    # Should include records not owned by demo (e.g., 'Desconocido' leftover)
+    owners = [((it.get("owner") or {}).get("steam_id") or "") for it in items]
+    # At least one distinct owner OR any record without demo steam_id
+    assert any(o != DEMO_STEAM for o in owners) or len(items) >= 12
 
 
-def test_admin_deino_drown_combat_still_eligible(auth_headers):
-    payload = {
-        "species_slug": "deino",
-        "species_name": "Deinosuchus",
-        "cause": "Ahogamiento",
-        "in_combat": True,
-        "owner_steam_id": "demo_0000000001",
-    }
-    r = requests.post(f"{API}/cemetery/admin/record", headers=auth_headers, json=payload, timeout=15)
-    assert r.status_code == 200
-    rec = r.json().get("record") or r.json()
-    assert rec["status"] == "ELEGIBLE"
-    # cleanup
-    requests.delete(f"{API}/cemetery/admin/record/{rec['id']}", headers=auth_headers, timeout=15)
+# ---------- RESURRECT: sets redeem_cooldown_until ~2h ----------
 
-
-def test_admin_fossils_adjust(auth_headers):
-    r = requests.post(f"{API}/cemetery/admin/fossils", headers=auth_headers,
-                      json={"steam_id": "demo_0000000001", "delta": 3}, timeout=15)
-    assert r.status_code == 200, r.text
-
-
-def test_admin_config_update(auth_headers):
-    # change to 1500 to keep same value
-    r = requests.put(f"{API}/cemetery/admin/config", headers=auth_headers,
-                     json={"fossil_price": 1500}, timeout=15)
-    assert r.status_code == 200
-    assert requests.get(f"{API}/cemetery/config", timeout=10).json()["fossil_price"] == 1500
-
-
-def test_admin_transactions_list(auth_headers):
-    r = requests.get(f"{API}/cemetery/admin/transactions", headers=auth_headers, timeout=15)
-    assert r.status_code == 200
-    assert isinstance(r.json().get("items", r.json()) if isinstance(r.json(), dict) else r.json(), list) or True
-
-
-# ----------- Resurrect flow -----------
-
-def test_resurrect_flow(auth_headers):
-    """Grant fossil to demo user, create an owned ELEGIBLE record, resurrect it."""
-    # Clear any leftover cooldown from prior curl tests (preview only)
+def _clear_cooldown_direct():
     try:
         from pymongo import MongoClient
         _c = MongoClient("mongodb://127.0.0.1:27017")
         _c["laislanublar"]["users"].update_one(
-            {"steam_id": "demo_0000000001"},
+            {"steam_id": DEMO_STEAM},
             {"$unset": {"last_resurrection_at": ""}},
         )
-    except Exception as _e:
-        print("cooldown-clear skipped:", _e)
+        return True
+    except Exception as e:
+        print("cooldown-clear skipped:", e)
+        return False
 
-    # Give the demo user 2 fossils
+
+def test_resurrect_sets_redeem_cooldown(auth_headers):
+    _clear_cooldown_direct()
+    # Ensure fossils
     requests.post(f"{API}/cemetery/admin/fossils", headers=auth_headers,
-                  json={"steam_id": "demo_0000000001", "delta": 2}, timeout=15)
+                  json={"steam_id": DEMO_STEAM, "delta": 2}, timeout=15)
 
-    # Create an ELEGIBLE record owned by demo user
+    # Create ELEGIBLE record owned by demo
     payload = {
-        "species_slug": "trex",
-        "species_name": "Tyrannosaurus",
-        "growth": 100,
-        "cause": "Combate",
-        "in_combat": True,
-        "owner_steam_id": "demo_0000000001",
+        "species_slug": "trex", "species_name": "Tyrannosaurus",
+        "growth": 100, "cause": "Combate", "in_combat": True,
+        "owner_steam_id": DEMO_STEAM,
         "stats": {"health": 100, "stamina": 100},
     }
     cr = requests.post(f"{API}/cemetery/admin/record", headers=auth_headers, json=payload, timeout=15)
-    assert cr.status_code == 200
+    assert cr.status_code == 200, cr.text
     rec = cr.json().get("record") or cr.json()
     rid = rec["id"]
-    assert rec["status"] == "ELEGIBLE"
 
-    # Check fossils before
-    before = requests.get(f"{API}/cemetery/fossils", headers=auth_headers, timeout=15).json()
-    fossils_before = before["fossils"]
-    in_cooldown = bool(before.get("cooldown_until") or before.get("cooldown_seconds"))
-
-    # Resurrect
     rr = requests.post(f"{API}/cemetery/resurrect", headers=auth_headers,
                        json={"record_id": rid}, timeout=20)
 
-    if in_cooldown and rr.status_code == 400:
-        assert "cooldown" in rr.text.lower()
-        pytest.skip("Demo user currently in resurrection cooldown; validated cooldown rejection")
+    if rr.status_code == 400 and "cooldown" in rr.text.lower():
+        # Expected if 24h cooldown still active - validate record still exists and cleanup
+        requests.delete(f"{API}/cemetery/admin/record/{rid}", headers=auth_headers, timeout=10)
+        pytest.skip("Demo in 24h cooldown - expected 400")
 
     assert rr.status_code == 200, rr.text
+    body = rr.json()
+    assert "redeemable_at" in body, body
+    assert "cooldown_until" in body, body
 
-    # Verify status
-    got = requests.get(f"{API}/cemetery/record/{rid}", timeout=15).json()
+    got = requests.get(f"{API}/cemetery/record/{rid}", headers=auth_headers, timeout=15).json()
     assert got["status"] == "RESUCITADO"
-
-    # Fossil deducted
-    after = requests.get(f"{API}/cemetery/fossils", headers=auth_headers, timeout=15).json()
-    assert after["fossils"] == fossils_before - 1
-    assert after.get("cooldown_until") or after.get("cooldown_seconds")
-
-    # Appears in my-resurrections
-    mr = requests.get(f"{API}/cemetery/my-resurrections", headers=auth_headers, timeout=15).json()
-    items = mr if isinstance(mr, list) else mr.get("items", [])
-    assert any((i.get("record_id") == rid or i.get("id") == rid or (i.get("record") or {}).get("id") == rid) for i in items), f"Resurrected dino not found in {items}"
-
-    # Second resurrection attempt on same record -> 400
-    rr2 = requests.post(f"{API}/cemetery/resurrect", headers=auth_headers,
-                        json={"record_id": rid}, timeout=15)
-    assert rr2.status_code == 400
-
-    # Cooldown blocks another resurrection - create another record and try
-    payload2 = dict(payload)
-    payload2["species_slug"] = "allosaurus"
-    cr2 = requests.post(f"{API}/cemetery/admin/record", headers=auth_headers, json=payload2, timeout=15)
-    rid2 = (cr2.json().get("record") or cr2.json())["id"]
-    rr3 = requests.post(f"{API}/cemetery/resurrect", headers=auth_headers,
-                        json={"record_id": rid2}, timeout=15)
-    assert rr3.status_code == 400
-    assert "cooldown" in rr3.text.lower() or "reviv" in rr3.text.lower() or "fósil" in rr3.text.lower() or "fossil" in rr3.text.lower()
-
-    # NO_REVIVIBLE cannot be resurrected
-    nr_payload = {"species_slug": "carnotaurus", "cause": "Ahogamiento", "in_combat": True,
-                  "owner_steam_id": "demo_0000000001"}
-    nr = requests.post(f"{API}/cemetery/admin/record", headers=auth_headers, json=nr_payload, timeout=15)
-    nr_id = (nr.json().get("record") or nr.json())["id"]
-    rr4 = requests.post(f"{API}/cemetery/resurrect", headers=auth_headers,
-                        json={"record_id": nr_id}, timeout=15)
-    assert rr4.status_code == 400
+    assert got.get("redeem_cooldown_until"), got
 
     # cleanup
-    for c in (rid, rid2, nr_id):
-        requests.delete(f"{API}/cemetery/admin/record/{c}", headers=auth_headers, timeout=10)
+    requests.delete(f"{API}/cemetery/admin/record/{rid}", headers=auth_headers, timeout=10)

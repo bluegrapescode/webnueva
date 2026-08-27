@@ -1197,7 +1197,7 @@ function CementerioTab() {
   const [nd, setNd] = useState({ species_slug: "trex", cause: "Combate", in_combat: false, owner_name: "", owner_steam_id: "", growth: 100, kills: 0, playtime_minutes: 0, location: "", killer_name: "", prime: false });
 
   const load = useCallback(() => {
-    api.cemFeed({ limit: 100 }).then((r) => setRecords(r.data.items)).catch(() => {});
+    api.cemAdminRecords().then((r) => setRecords(r.data.items)).catch(() => {});
     api.cemConfig().then((r) => setPrice(String(r.data.fossil_price))).catch(() => {});
     api.cemAdminTransactions().then((r) => setTxs(r.data.items)).catch(() => {});
   }, []);

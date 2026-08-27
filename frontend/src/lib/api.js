@@ -449,6 +449,7 @@ export const api = {
   cemAdminFossils:  (body) => client.post("/cemetery/admin/fossils", body),
   cemAdminConfig:   (fossil_price) => client.put("/cemetery/admin/config", { fossil_price }),
   cemAdminTransactions: () => client.get("/cemetery/admin/transactions"),
+  cemAdminRecords:  (params) => client.get("/cemetery/admin/records", { params }),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

@@ -18104,8 +18104,9 @@ async def creator_ws(ws: WebSocket):
 # restricción de ahogamiento en combate (excepción Deinosuchus) + WebSocket.
 # ═══════════════════════════════════════════════════════════════════════════
 
-CEM_DEFAULT_FOSSIL_PRICE = 1500          # Amberiums (vip_coins) por 1 fósil
+CEM_DEFAULT_FOSSIL_PRICE = 8000          # Amberiums (vip_coins) por 1 fósil
 CEM_RESURRECT_COOLDOWN_H = 24            # horas de cooldown POST-resurrección
+CEM_REDEEM_COOLDOWN_H = 2               # horas que el dino resucitado NO se puede redimir (anti revenge-kill)
 CEM_DEINO_SLUG = "deino"                 # Deinosuchus: excepción al ahogamiento
 CEM_LOCATIONS = [
     "Acceso Oeste", "Tierras Altas", "Pantano Sur", "Lago Panjura",
@@ -18220,6 +18221,28 @@ def _cem_public(rec: dict) -> dict:
     return rec
 
 
+async def _cem_resolve_owner_uid(rec: dict):
+    """El user_id del dueño del registro (para pushes privados por WebSocket).
+    Cae al steam_id cuando el registro vino del mod sin user_id."""
+    o = rec.get("owner") or {}
+    if o.get("user_id"):
+        return o["user_id"]
+    sid = o.get("steam_id")
+    if sid:
+        u = await db.users.find_one({"steam_id": sid}, {"_id": 0, "id": 1})
+        if u:
+            return u["id"]
+    return None
+
+
+def _cem_owner_clause(user: dict) -> dict:
+    """El registro pertenece a este usuario (por user_id o por steam_id)."""
+    ors = [{"owner.user_id": user["id"]}]
+    if user.get("steam_id"):
+        ors.append({"owner.steam_id": user["steam_id"]})
+    return {"$or": ors}
+
+
 async def _cem_fossil_tx(user_id: str, kind: str, amount: int, meta: dict = None):
     """kind: buy | claim_free | resurrect | admin_grant | admin_set"""
     await db.fossil_transactions.insert_one({
@@ -18329,30 +18352,33 @@ async def cemetery_config():
     price = await _cem_fossil_price()
     return {"fossil_price": price, "amber_per_fossil": price,
             "resurrection_cooldown_hours": CEM_RESURRECT_COOLDOWN_H,
+            "redeem_cooldown_hours": CEM_REDEEM_COOLDOWN_H,
             "deino_exception": True}
 
 
-# ── Feed / búsqueda / filtros ────────────────────────────────────────────────
+# ── Feed / búsqueda / filtros  (PRIVADO: cada usuario ve SOLO sus propios dinos) ──
 @api_router.get("/cemetery/feed")
 async def cemetery_feed(
     search: Optional[str] = None, species: Optional[str] = None,
     status: Optional[str] = None, rarity: Optional[str] = None,
     cause: Optional[str] = None, sort: str = "recent",
     limit: int = 60, skip: int = 0,
+    user=Depends(get_current_user),
 ):
-    q: dict = {}
+    owner = _cem_owner_clause(user)
+    and_list = [owner]
     if species:
-        q["dino.species_slug"] = species.strip().lower()
+        and_list.append({"dino.species_slug": species.strip().lower()})
     if status:
-        q["status"] = status.strip().upper()
+        and_list.append({"status": status.strip().upper()})
     if rarity:
-        q["dino.rarity"] = rarity
+        and_list.append({"dino.rarity": rarity})
     if cause:
-        q["cause"] = cause
+        and_list.append({"cause": cause})
     if search:
         rx = {"$regex": re.escape(search.strip()), "$options": "i"}
-        q["$or"] = [{"dino.species_name": rx}, {"owner.persona_name": rx},
-                    {"owner.steam_id": rx}, {"killer.name": rx}, {"group": rx}]
+        and_list.append({"$or": [{"dino.species_name": rx}, {"killer.name": rx}, {"group": rx}]})
+    q = and_list[0] if len(and_list) == 1 else {"$and": and_list}
     sort_map = {
         "recent": [("died_at", -1)], "oldest": [("died_at", 1)],
         "kills": [("kills", -1)], "playtime": [("playtime_minutes", -1)],
@@ -18363,27 +18389,33 @@ async def cemetery_feed(
     cur = db.cemetery_records.find(q, {"_id": 0}).sort(order).skip(max(0, skip)).limit(min(200, max(1, limit)))
     items = await cur.to_list(200)
     stats = {
-        "total": await db.cemetery_records.count_documents({}),
-        "eligible": await db.cemetery_records.count_documents({"status": "ELEGIBLE"}),
-        "resurrected": await db.cemetery_records.count_documents({"status": "RESUCITADO"}),
-        "not_revivable": await db.cemetery_records.count_documents({"status": "NO_REVIVIBLE"}),
+        "total": await db.cemetery_records.count_documents(owner),
+        "eligible": await db.cemetery_records.count_documents({"$and": [owner, {"status": "ELEGIBLE"}]}),
+        "resurrected": await db.cemetery_records.count_documents({"$and": [owner, {"status": "RESUCITADO"}]}),
+        "not_revivable": await db.cemetery_records.count_documents({"$and": [owner, {"status": "NO_REVIVIBLE"}]}),
     }
     return {"items": items, "total": total, "stats": stats}
 
 
 @api_router.get("/cemetery/record/{record_id}")
-async def cemetery_record(record_id: str):
+async def cemetery_record(record_id: str, user=Depends(get_current_user)):
     rec = await db.cemetery_records.find_one({"id": record_id}, {"_id": 0})
     if not rec:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    o = rec.get("owner") or {}
+    is_owner = (o.get("user_id") and o.get("user_id") == user["id"]) or \
+               (o.get("steam_id") and o.get("steam_id") == user.get("steam_id"))
+    if not is_owner and user.get("role") != "admin":
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     return rec
 
 
-# ── Salón de la Fama ─────────────────────────────────────────────────────────
+# ── Salón de la Fama (PRIVADO: solo tus propios dinos caídos) ─────────────────
 @api_router.get("/cemetery/hall-of-fame")
-async def cemetery_hall_of_fame():
+async def cemetery_hall_of_fame(user=Depends(get_current_user)):
+    owner = _cem_owner_clause(user)
     async def top(field, extra=None):
-        q = extra or {}
+        q = {"$and": [owner, extra]} if extra else owner
         cur = db.cemetery_records.find(q, {"_id": 0}).sort(field, -1).limit(5)
         return await cur.to_list(5)
     return {
@@ -18492,9 +18524,12 @@ async def cemetery_resurrect(data: CemResurrectInput, user=Depends(get_current_u
     if upd.modified_count != 1:
         raise HTTPException(status_code=400, detail="No tienes Fósiles")
     # Marca el registro RESUCITADO (idempotencia: sólo si seguía revivible).
+    # redeem_cooldown_until: el dino NO se puede redimir/spawnear en 2h (anti revenge-kill).
+    redeem_until = (datetime.now(timezone.utc) + timedelta(hours=CEM_REDEEM_COOLDOWN_H)).isoformat()
     claimed = await db.cemetery_records.update_one(
         {"id": rec["id"], "status": "ELEGIBLE"},
-        {"$set": {"status": "RESUCITADO", "resurrected_at": now, "resurrected_by": user["id"]}})
+        {"$set": {"status": "RESUCITADO", "resurrected_at": now, "resurrected_by": user["id"],
+                  "redeem_cooldown_until": redeem_until}})
     if claimed.modified_count != 1:
         # Reembolsa el fósil si alguien ganó la carrera.
         await db.users.update_one({"id": user["id"]}, {"$inc": {"fossils": 1}})
@@ -18520,7 +18555,7 @@ async def cemetery_resurrect(data: CemResurrectInput, user=Depends(get_current_u
     restored = {
         "id": new_id(), "owner_user_id": user["id"], "owner_steam_id": sid,
         "record_id": rec["id"], "dino": dino, "vault_row_id": vault_row_id,
-        "created_at": now,
+        "redeemable_at": redeem_until, "created_at": now,
     }
     await db.resurrected_dinos.insert_one(dict(restored))
     if vault_row_id is not None:
@@ -18533,7 +18568,8 @@ async def cemetery_resurrect(data: CemResurrectInput, user=Depends(get_current_u
                   {"record_id": rec["id"], "species": dino.get("species_name")})
     fresh_rec = await db.cemetery_records.find_one({"id": rec["id"]}, {"_id": 0})
     cooldown_until = _cem_cooldown_until({"last_resurrection_at": now})
-    await cemetery_hub.broadcast({"type": "cemetery_resurrection", "record": fresh_rec})
+    # Privado: solo el dueño (que aquí es quien resucita) recibe el update en vivo.
+    await cemetery_hub.push_to_user(user["id"], {"type": "cemetery_resurrection", "record": fresh_rec})
     await cemetery_hub.push_to_user(user["id"], {
         "type": "fossil_balance", "fossils": fresh["fossils"], "amber_balance": fresh["vip_coins"]})
     return {
@@ -18541,6 +18577,7 @@ async def cemetery_resurrect(data: CemResurrectInput, user=Depends(get_current_u
         "restored": _cem_public(restored), "vault_row_id": vault_row_id,
         "vault_written": vault_row_id is not None,
         "cooldown_until": cooldown_until.isoformat() if cooldown_until else None,
+        "redeemable_at": redeem_until,
     }
 
 
@@ -18551,7 +18588,9 @@ async def cemetery_admin_add(data: CemDeathInput, admin=Depends(get_admin_user))
     await db.cemetery_records.insert_one(dict(rec))
     await add_log(admin.get("persona_name"), "cem_add_record", rec["id"],
                   {"species": rec["dino"]["species_name"], "status": rec["status"]})
-    await cemetery_hub.broadcast({"type": "cemetery_death", "record": _cem_public(rec)})
+    owner_uid = await _cem_resolve_owner_uid(rec)
+    if owner_uid:
+        await cemetery_hub.push_to_user(owner_uid, {"type": "cemetery_death", "record": _cem_public(rec)})
     return {"success": True, "record": _cem_public(rec)}
 
 
@@ -18586,17 +18625,22 @@ async def cemetery_admin_update(record_id: str, data: CemRecordUpdateInput, admi
         await db.cemetery_records.update_one({"id": record_id}, {"$set": changes})
     fresh = await db.cemetery_records.find_one({"id": record_id}, {"_id": 0})
     await add_log(admin.get("persona_name"), "cem_update_record", record_id, changes)
-    await cemetery_hub.broadcast({"type": "cemetery_update", "record": fresh})
+    owner_uid = await _cem_resolve_owner_uid(fresh)
+    if owner_uid:
+        await cemetery_hub.push_to_user(owner_uid, {"type": "cemetery_update", "record": fresh})
     return {"success": True, "record": fresh}
 
 
 @api_router.delete("/cemetery/admin/record/{record_id}")
 async def cemetery_admin_delete(record_id: str, admin=Depends(get_admin_user)):
+    rec = await db.cemetery_records.find_one({"id": record_id}, {"_id": 0})
     res = await db.cemetery_records.delete_one({"id": record_id})
     if res.deleted_count != 1:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     await add_log(admin.get("persona_name"), "cem_delete_record", record_id, {})
-    await cemetery_hub.broadcast({"type": "cemetery_delete", "record_id": record_id})
+    owner_uid = await _cem_resolve_owner_uid(rec) if rec else None
+    if owner_uid:
+        await cemetery_hub.push_to_user(owner_uid, {"type": "cemetery_delete", "record_id": record_id})
     return {"success": True}
 
 
@@ -18648,6 +18692,17 @@ async def cemetery_admin_config(data: CemConfigInput, admin=Depends(get_admin_us
 @api_router.get("/cemetery/admin/transactions")
 async def cemetery_admin_transactions(admin=Depends(get_admin_user)):
     cur = db.fossil_transactions.find({}, {"_id": 0}).sort("created_at", -1).limit(200)
+    return {"items": await cur.to_list(200)}
+
+
+@api_router.get("/cemetery/admin/records")
+async def cemetery_admin_records(search: Optional[str] = None, admin=Depends(get_admin_user)):
+    q: dict = {}
+    if search:
+        rx = {"$regex": re.escape(search.strip()), "$options": "i"}
+        q["$or"] = [{"dino.species_name": rx}, {"owner.persona_name": rx},
+                    {"owner.steam_id": rx}, {"killer.name": rx}]
+    cur = db.cemetery_records.find(q, {"_id": 0}).sort("died_at", -1).limit(200)
     return {"items": await cur.to_list(200)}
 
 

@@ -177,3 +177,6 @@ body {
 /* Proximity radar sweep */
 @keyframes radarSweep { to { transform: rotate(360deg); } }
 .radar-sweep { animation: radarSweep 3.4s linear infinite; transform-origin: 50% 50%; }
+
+/* Cemetery hanging vines sway */
+@keyframes vineSway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }

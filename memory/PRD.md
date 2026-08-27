@@ -67,3 +67,10 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - Amberiums = `vip_coins`. 1 Fósil = 1500 Amberiums (configurable). Solo el dueño resucita. Fósil gratis: 1 por mes calendario.
 - La escritura a la bóveda del juego real solo funciona con el servidor Windows online; en preview el dino restaurado vive en `resurrected_dinos` (correcto).
 - Backlog sugerido por QA: endpoint admin para resetear cooldown (solo QA); modularizar `server.py`.
+
+## 2026-06 — Cementerio: ajustes (precio 8000, redención 2h, privacidad, enredaderas) [iteration_9: 100%]
+- Precio del Fósil = **8000 Amberiums** (`CEM_DEFAULT_FOSSIL_PRICE=8000`; se actualizó el doc `settings._id=cemetery` a 8000).
+- **Cooldown de redención de 2h** anti revenge-kill: al resucitar se guarda `redeem_cooldown_until` en el record y `redeemable_at` en `resurrected_dinos`; `config` expone `redeem_cooldown_hours=2`. La UI lo muestra en el perfil ("No se puede redimir por …").
+- **Cementerio PRIVADO**: `feed`, `record/{id}` y `hall-of-fame` requieren auth y se filtran al dueño (`_cem_owner_clause`). WS ahora empuja muertes/resurrecciones/updates SOLO al dueño (`_cem_resolve_owner_uid` + `push_to_user`); `cemetery_config` sigue en broadcast. Nuevo `GET /cemetery/admin/records` (admin ve TODO) y el panel admin lo usa. La página muestra `SignInPrompt` si no hay sesión.
+- **Enredaderas** SVG (`components/cemetery/Vines.jsx`: `VineStrip` sobre el grid + `VineCorner` en las tarjetas; keyframe `vineSway` en index.css).
+- Navbar: carrito (código muerto) reemplazado por pill de **Fósil** (`/fossil.png`, `data-testid=balance-fossil`) junto a las monedas.

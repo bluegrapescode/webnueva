@@ -10,7 +10,9 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
 import { PageLoader } from "@/components/common/PageLoader";
+import { SignInPrompt } from "@/components/common/SignInPrompt";
 import { useCemeterySocket } from "@/hooks/useCemeterySocket";
+import { VineStrip, VineCorner } from "@/components/cemetery/Vines";
 import {
   statusMeta, rarityColor, fmtPlaytime, fmtDate, fmtCountdown,
   CEM_CAUSES, CEM_SORTS,
@@ -75,6 +77,7 @@ const DinoCard = ({ rec, onOpen }) => {
       className="group text-left relative overflow-hidden rounded-2xl bg-[#141418] border border-white/[0.06] hover:border-white/[0.14] transition-colors"
     >
       <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${rc}, transparent)` }} />
+      <VineCorner className="absolute -top-1 left-1 z-10 opacity-50" />
       <div className="relative h-40 flex items-center justify-center bg-gradient-to-b from-white/[0.02] to-black/40 overflow-hidden">
         <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "radial-gradient(circle at 30% 20%, #fff 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         {d.image ? (
@@ -131,7 +134,7 @@ const FossilPanel = ({ fossils, onBuy, onClaim, onOpenTx }) => {
         <span data-testid="fossil-balance" className="text-5xl font-black text-white leading-none">{fossils?.fossils ?? 0}</span>
         <span className="text-xs text-white/40 mb-1">disponibles</span>
       </div>
-      <div className="mt-1 text-xs text-white/40">1 Fósil = 1 resurrección · Precio: {(fossils?.fossil_price ?? 1500).toLocaleString()} Amberiums</div>
+      <div className="mt-1 text-xs text-white/40">1 Fósil = 1 resurrección · Precio: {(fossils?.fossil_price ?? 8000).toLocaleString()} Amberiums</div>
 
       <div className="mt-4 flex items-center gap-2 text-xs text-white/50">
         <Coins size={14} className="text-[#D4AF37]" />
@@ -254,7 +257,12 @@ const ProfileModal = ({ rec, onClose, canResurrect, onResurrect }) => {
         {rec.status === "RESUCITADO" && (
           <div className="mt-5 rounded-xl bg-[#7CA842]/10 border border-[#7CA842]/25 p-4 flex items-start gap-3">
             <Crown size={18} className="text-[#A3C96B] mt-0.5" />
-            <div className="text-sm text-[#c3dd97]">Este dino fue resucitado el {fmtDate(rec.resurrected_at)} y devuelto a la bóveda con todos sus stats, mutaciones y skin.</div>
+            <div className="text-sm text-[#c3dd97]">
+              Este dino fue resucitado el {fmtDate(rec.resurrected_at)} y devuelto a la bóveda con todos sus stats, mutaciones y skin.
+              {fmtCountdown(rec.redeem_cooldown_until) && (
+                <div className="mt-2 flex items-center gap-1.5 text-[#8fd0e8]"><Clock size={13} /> No se puede redimir por {fmtCountdown(rec.redeem_cooldown_until)} (anti revenge-kill).</div>
+              )}
+            </div>
           </div>
         )}
 
@@ -286,7 +294,7 @@ const ConfirmResurrect = ({ rec, busy, onClose, onConfirm }) => {
       <div className="p-6 text-center">
         <div className="mx-auto w-14 h-14 rounded-full bg-[#34D399]/12 border border-[#34D399]/30 flex items-center justify-center"><RotateCcw size={26} className="text-[#34D399]" /></div>
         <h3 className="mt-4 text-xl font-black text-white">¿Resucitar a {d.species_name}?</h3>
-        <p className="mt-2 text-sm text-white/50">Se gastará <b className="text-[#A3C96B]">1 Fósil</b> y el dino volverá a tu bóveda tal cual estaba: {Math.round(d.growth || 0)}% de tamaño, {d.mutations_count || 0} mutaciones{d.prime ? ", PRIME" : ""} y su skin. Iniciará un cooldown de 24h.</p>
+        <p className="mt-2 text-sm text-white/50">Se gastará <b className="text-[#A3C96B]">1 Fósil</b> y el dino volverá a tu bóveda tal cual estaba: {Math.round(d.growth || 0)}% de tamaño, {d.mutations_count || 0} mutaciones{d.prime ? ", PRIME" : ""} y su skin. Iniciará un cooldown de 24h y no podrás redimirlo por 2h (anti revenge-kill).</p>
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button data-testid="resurrect-cancel-btn" disabled={busy} onClick={onClose} className="rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white font-semibold py-3 border border-white/10 transition-colors disabled:opacity-40">Cancelar</button>
           <button data-testid="resurrect-confirm-btn" disabled={busy} onClick={onConfirm} className="rounded-xl bg-[#34D399] hover:bg-[#2bbd88] text-black font-bold py-3 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-60">{busy ? "Resucitando…" : "Confirmar"}</button>
@@ -409,13 +417,14 @@ export default function Cementerio() {
   const [busy, setBusy] = useState(false);
 
   const loadFeed = useCallback(() => {
+    if (!user) return;
     const params = {};
     if (filters.search) params.search = filters.search;
     if (filters.species) params.species = filters.species;
     if (filters.status) params.status = filters.status;
     if (filters.sort) params.sort = filters.sort;
     api.cemFeed(params).then((r) => { setFeed(r.data.items); setStats(r.data.stats); }).catch(() => setFeed([]));
-  }, [filters]);
+  }, [filters, user]);
 
   const loadFossils = useCallback(() => {
     if (!user) return;
@@ -424,7 +433,7 @@ export default function Cementerio() {
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
   useEffect(() => { loadFossils(); }, [loadFossils]);
-  useEffect(() => { api.cemHallOfFame().then((r) => setHof(r.data)).catch(() => {}); }, []);
+  useEffect(() => { if (user) api.cemHallOfFame().then((r) => setHof(r.data)).catch(() => {}); }, [user]);
 
   /* Real-time */
   useCemeterySocket((msg) => {
@@ -480,6 +489,7 @@ export default function Cementerio() {
 
   const openTx = () => { api.cemTransactions().then((r) => { setTxItems(r.data.items); setShowTx(true); }).catch(() => setShowTx(true)); };
 
+  if (!user) return <div className="max-w-7xl mx-auto px-6 py-14"><SignInPrompt title="Tu cementerio te espera" sub="Inicia sesión para ver tus dinos caídos, tus Fósiles y resucitar a los tuyos. Solo tú puedes ver tu propio cementerio." /></div>;
   if (feed === null) return <PageLoader label="Entrando al cementerio" />;
 
   const STAT_CARDS = [
@@ -567,13 +577,17 @@ export default function Cementerio() {
             ))}
           </div>
 
+          {/* Enredaderas colgando sobre las casillas */}
+          <div className="relative -mt-2 mb-1 h-16 overflow-hidden opacity-70">
+            <VineStrip height={90} className="absolute inset-x-0 top-0" />
+          </div>
+
           {/* Grid */}
           {feed.length === 0 ? (
             <div className="rounded-2xl border border-white/[0.06] bg-[#141418] p-16 text-center">
               <Skull size={48} className="mx-auto text-white/15" />
               <p className="mt-4 text-white/40">No hay caídos que coincidan con tu búsqueda.</p>
-            </div>
-          ) : (
+            </div>          ) : (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnimatePresence>
                 {feed.map((rec) => <DinoCard key={rec.id} rec={rec} onOpen={setSelected} />)}
@@ -600,7 +614,9 @@ export default function Cementerio() {
               <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> 1 Fósil = 1 resurrección. Solo el dueño puede resucitar.</li>
               <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> Cooldown de 24h tras cada resurrección.</li>
               <li className="flex gap-2"><ChevronRight size={13} className="text-[#34D399] mt-0.5 shrink-0" /> 1 Fósil gratis cada mes calendario.</li>
+              <li className="flex gap-2"><Clock size={13} className="text-[#38BDF8] mt-0.5 shrink-0" /> El dino resucitado no se puede redimir por 2h (anti revenge-kill).</li>
               <li className="flex gap-2"><ShieldOff size={13} className="text-[#E24A4A] mt-0.5 shrink-0" /> Ahogamiento en combate = no revivible… salvo el Deinosuchus.</li>
+              <li className="flex gap-2"><Skull size={13} className="text-white/40 mt-0.5 shrink-0" /> Tu cementerio es privado: solo tú ves tus dinos caídos.</li>
             </ul>
           </div>
         </div>

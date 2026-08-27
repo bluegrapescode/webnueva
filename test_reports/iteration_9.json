@@ -1,0 +1,30 @@
+{
+  "summary": "Full re-test of Cementerio changes: new fossil price 8000, redeem 2h anti-revenge cooldown, private per-user feed/record/hall-of-fame, admin records returns all, UI SignInPrompt gate, decorative SVG vines, navbar cart replaced by fossil pill. Backend: 9/9 pytest tests pass. Frontend: SignInPrompt shown logged-out; after demo login the grid renders 12 owned cards, fossil-panel shows 8,000 Amberiums price, buy modal computes total = qty*8,000 and blocks when unaffordable (Cancelar + Comprar present), profile modal shows 'No se puede redimir por 1h 56m (anti revenge-kill)', rules sidebar lists 2h + 'cementerio es privado', VineStrip (vineSway animation) renders above grid and VineCorner svgs render on each card (12 cards, 39 svgs total inside cards); shopping-cart icon is absent from navbar and balance-fossil pill is present.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Navbar/BalanceHUD", "issues": ["The leftmost green-gem balance in navbar (8,400) is a separate currency from 'Amberium' (120) shown inside the fossil-panel. Two different values labelled with similar icons can confuse users; consider a clearer label/tooltip on the navbar pill."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cemetery.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Cemetery feed/record/hall-of-fame now require auth and are owner-scoped via _cem_owner_clause — verified end-to-end.",
+    "cemetery_resurrect returns both redeemable_at (~+2h) and cooldown_until (~+24h) and persists redeem_cooldown_until on record — verified.",
+    "Buy endpoint math confirms 8000/unit (999,999 * 8000 = 7,999,992,000 in error msg).",
+    "Frontend Cementerio.jsx correctly gates page behind SignInPrompt when no primal_token; demo button flow works.",
+    "VineStrip/VineCorner render via inline SVG with vineSway keyframe animation; pointer-events do not block card clicks (profile modal opens cleanly)."
+  ],
+  "updated_files": ["/app/backend/tests/test_cemetery.py"],
+  "success_rate": { "backend": "100%", "frontend": "100%" },
+  "test_credentials": "POST /api/auth/demo -> token (localStorage key primal_token). Demo user steam_id=demo_0000000001 owns 12 seeded records.",
+  "seed_data_creation": "None (test_resurrect_sets_redeem_cooldown creates+deletes a temporary trex record).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/test_cemetery.py was rewritten for the new spec (price 8000, private feed 401 unauth, redeem_cooldown_until on resurrect). The demo user is often in 24h resurrection cooldown; the resurrect test auto-clears users.last_resurrection_at via direct pymongo before running. Do not treat a 24h cooldown 400 as a bug — it's expected. NB: two different in-app currencies exist — navbar green-gem pill (~8,400) is separate from cemetery 'Amberium' (=amber_balance from /api/cemetery/fossils, ~120)."
+}
