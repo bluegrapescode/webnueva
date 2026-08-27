@@ -78,3 +78,7 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 ## 2026-06 — Fix enredadera "estilo panteón" [iteration_10: 100% FE]
 - Bug: la enredadera estaba en una tira recortada (`h-16 overflow-hidden`) y se veía cortada.
 - Fix: `VineStrip` ahora es un DOSEL a lo ancho de toda la pantalla (w-screen, absolute top-0 z-20, pointer-events-none, alturas variadas ~280px) + `VineSide` en los bordes izq/der (desktop). Se eliminó la tira recortada. Contenido en `relative z-10`. Tarjetas siguen clicables. Verificado por testing_agent.
+
+## 2026-06 — Fix enredaderas amontonadas a la izquierda [iteration_11: 100% FE]
+- Causa raíz: la animación CSS `vineSway` (`transform: rotate`) SOBRESCRIBÍA el atributo SVG `transform="translate(x 0)"` de cada liana (en SVG el transform de CSS pisa el atributo), colapsando todas las lianas a x=0 (izquierda) al iniciar la animación.
+- Fix: la oscilación ahora usa SMIL `<animateTransform type="rotate" additive="sum">` dentro del `<g transform="translate(x 0)">`, así la rotación se COMPONE con el translate en vez de reemplazarlo. Se quitó la animación CSS de las lianas. Verificado: 34 lianas repartidas en todo el ancho (izq/centro/der), sin colapso tras la animación.

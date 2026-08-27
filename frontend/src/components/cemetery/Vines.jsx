@@ -9,6 +9,10 @@ const LEAF_LIGHT = "#5f8440";
 const STEM = "#3c5526";
 
 // One hanging strand. `len` controls how far it drapes; `x` its horizontal spot.
+// NOTE: the sway uses SMIL <animateTransform additive="sum"> so the rotation
+// COMPOSES with the translate(x) instead of overriding it. (A CSS `transform`
+// animation would override the translate attribute and collapse every strand to
+// x=0 — the "all vines bunched on the left" bug.)
 function Strand({ x, len, delay = 0, flip = false }) {
   const leaves = [];
   const step = 24;
@@ -21,8 +25,14 @@ function Strand({ x, len, delay = 0, flip = false }) {
       </g>
     );
   }
+  const dur = 5 + (delay % 3);
   return (
-    <g transform={`translate(${x} 0)`} style={{ animation: `vineSway ${5 + (delay % 3)}s ease-in-out ${delay}s infinite`, transformOrigin: `${x}px 0px` }}>
+    <g transform={`translate(${x} 0)`}>
+      <animateTransform
+        attributeName="transform" attributeType="XML" type="rotate" additive="sum"
+        values="-2 0 0; 2 0 0; -2 0 0" keyTimes="0; 0.5; 1"
+        dur={`${dur}s`} begin={`${delay}s`} repeatCount="indefinite"
+      />
       <path d={`M0 0 q ${flip ? 10 : -10} ${len * 0.45} ${flip ? 4 : -4} ${len}`} stroke={STEM} strokeWidth="2.6" fill="none" strokeLinecap="round" />
       {leaves}
       <circle cx={flip ? 4 : -4} cy={len} r="3.2" fill={LEAF_LIGHT} />
