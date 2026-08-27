@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only visual/regression test of the sinister Halloween-style cemetery vines on /cementerio. Logged in via 'Probar cuenta demo'. Canopy renders with the new withered look (gnarled dark stems, drooping leaves, glowing toxic-green berries visible in screenshots), and a toxic-green mist layer (radial-gradient divs) is present behind the canopy. Critical regression verified: canopy strands remain distributed across the FULL viewport width after animation start (strand translate-x unique positions span 0..1574 across 41 unique x buckets; left third=majority, mid+right thirds also populated — full-width spread confirmed via screenshot). Dino cards remain clickable — clicking a [data-testid^='cemetery-card'] element successfully opens [data-testid='cemetery-profile-modal']. Side vines (VineSide) render on desktop at the content column edges (2 SVGs, 60x1524 at x=320 and x=1540). No console errors. Layout intact and legible.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/cementerio side vines", "issues": ["VineSide is rendered inside the max-w-7xl content container, so on wide viewports (>=1440px) the side vines appear at x~320 / x~1540 rather than at the true browser edges. If the intent was 'browser left/right edges', move VineSide out of the constrained container. Currently acceptable per code reference."]}
+    ]
+  },
+  "test_report_links": [".screenshots/cementerio_top.png", ".screenshots/cementerio_full.png", ".screenshots/left_edge.png", ".screenshots/right_edge.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Vines.jsx uses SMIL <animateTransform additive='sum'> nested inside translate wrapper — works in Chromium; note SMIL is deprecated in some engines but fine for current preview.",
+    "Consider moving VineSide outside the max-w-7xl wrapper if true browser-edge placement is desired on wide monitors."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "Demo login button 'Probar cuenta demo' on /cementerio (POST /api/auth/demo).",
+  "seed_data_creation": "None. Used existing demo account (12 records).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Full-width canopy distribution is the key regression to guard. Strand xs from VineStrip loop 20..1580 step 42 → ~38 strands. Cards use data-testid 'cemetery-card-{id}', modal is 'cemetery-profile-modal'. Vines container is 'cemetery-vine-canopy' with pointer-events-none.",
+  "rca of the issue": "N/A — no issues found."
+}

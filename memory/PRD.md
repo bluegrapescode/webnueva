@@ -82,3 +82,7 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 ## 2026-06 — Fix enredaderas amontonadas a la izquierda [iteration_11: 100% FE]
 - Causa raíz: la animación CSS `vineSway` (`transform: rotate`) SOBRESCRIBÍA el atributo SVG `transform="translate(x 0)"` de cada liana (en SVG el transform de CSS pisa el atributo), colapsando todas las lianas a x=0 (izquierda) al iniciar la animación.
 - Fix: la oscilación ahora usa SMIL `<animateTransform type="rotate" additive="sum">` dentro del `<g transform="translate(x 0)">`, así la rotación se COMPONE con el translate en vez de reemplazarlo. Se quitó la animación CSS de las lianas. Verificado: 34 lianas repartidas en todo el ancho (izq/centro/der), sin colapso tras la animación.
+
+## 2026-06 — Vibe Halloween: enredaderas siniestras + araña corredora [iteration_12/13: 100% FE]
+- Enredaderas rediseñadas siniestras: tallos secos retorcidos (dos tonos), espinas, hojas marchitas (verde apagado + café muerto), bayas tóxicas/sangre con leve brillo, telarañas + araña diminuta en esquinas de tarjetas, y neblina tóxica detrás del dosel. Mantiene fix SMIL (sin amontonarse).
+- `SpiderRunner.jsx`: araña que cruza TODA la pantalla en dirección aleatoria (8 rutas: horizontal/vertical/diagonales), nunca repite la dirección anterior; primera aparición a los 8s y luego cada 6 min. `position:fixed z-[60] pointer-events-none`, patas animadas (spiderScuttleA/B en index.css), rota para "mirar" hacia donde corre. Montada en `Cementerio.jsx`.

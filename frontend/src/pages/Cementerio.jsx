@@ -13,6 +13,7 @@ import { PageLoader } from "@/components/common/PageLoader";
 import { SignInPrompt } from "@/components/common/SignInPrompt";
 import { useCemeterySocket } from "@/hooks/useCemeterySocket";
 import { VineStrip, VineSide, VineCorner } from "@/components/cemetery/Vines";
+import SpiderRunner from "@/components/cemetery/SpiderRunner";
 import {
   statusMeta, rarityColor, fmtPlaytime, fmtDate, fmtCountdown,
   CEM_CAUSES, CEM_SORTS,
@@ -501,9 +502,13 @@ export default function Cementerio() {
 
   return (
     <div className="relative max-w-7xl mx-auto px-6 py-12" data-testid="cementerio-page">
+      <SpiderRunner />
+      {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
+      <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen h-72 z-0"
+        style={{ background: "radial-gradient(120% 100% at 50% -10%, rgba(84,120,44,0.16) 0%, rgba(20,26,16,0.10) 35%, transparent 70%)" }} />
       {/* Dosel de enredaderas cubriendo TODO el cementerio (estilo panteón) */}
       <div aria-hidden data-testid="cemetery-vine-canopy" className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen z-20">
-        <VineStrip height={280} className="opacity-90" />
+        <VineStrip height={280} className="opacity-95" />
       </div>
       <VineSide side="left" className="absolute left-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
       <VineSide side="right" className="absolute right-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />

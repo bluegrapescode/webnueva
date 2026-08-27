@@ -180,3 +180,7 @@ body {
 
 /* Cemetery hanging vines sway */
 @keyframes vineSway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+
+/* Cemetery spider scuttle */
+@keyframes spiderScuttleA { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes spiderScuttleB { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(-7deg); } }
