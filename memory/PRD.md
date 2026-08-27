@@ -100,3 +100,9 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 ## 2026-06 — Fix telarañas de esquina [iteration_17: 100% FE]
 - Bug: había 4 telarañas en z-0; las de arriba quedaban ocultas tras la tarjeta hero y las de abajo solo asomaban en huecos = se veían "bugueadas".
 - Fix: `CornerWeb` reconstruida como telaraña poligonal limpia (radios + anillos rectos). Ahora solo 2, en esquina superior IZQUIERDA y DERECHA, a z-30 opacity-45 (visibles sobre el hero), pointer-events-none. Responden al Modo Halloween.
+
+## 2026-06 — Cementerio: sin telarañas + arañita colgante + sonido + FX resurrección [iteration_20: 100% FE]
+- Telarañas de esquina ELIMINADAS (CornerWeb sigue exportado pero sin uso).
+- `HangingSpider.jsx`: arañita que cuelga de un hilo en la esquina superior derecha y sube/baja despacio (hilo animado 120<->195px). Gated por Modo Halloween (fx).
+- `CryptAmbience.jsx`: ambiente procedural (viento + drone grave) con Web Audio API (sin asset), reanuda en el primer gesto. Botón `ambience-toggle` en header ("Sonido: ON/OFF"), persiste en localStorage `cem_sound` (default ON), independiente del Modo Halloween.
+- `ResurrectionFX.jsx`: overlay full-screen (z-200) al resucitar — el fósil se disuelve, el dino se materializa con 26 partículas verdes + onda expansiva + texto "Resucitado" + especie; se autocierra ~3s. Disparado en doResurrect success.

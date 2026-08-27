@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Skull, Sparkles, Crown, ShieldOff, Search, Coins, Gift, Clock,
   Trophy, Swords, MapPin, Users, Timer, X, Flame, Droplet, Bone,
-  RotateCcw, ChevronRight, Dna, Gem, Ghost,
+  RotateCcw, ChevronRight, Dna, Gem, Ghost, Volume2, VolumeX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -12,9 +12,12 @@ import { useSound } from "@/context/SoundContext";
 import { PageLoader } from "@/components/common/PageLoader";
 import { SignInPrompt } from "@/components/common/SignInPrompt";
 import { useCemeterySocket } from "@/hooks/useCemeterySocket";
-import { VineStrip, VineSide, VineCorner, CornerWeb } from "@/components/cemetery/Vines";
+import { VineStrip, VineSide, VineCorner } from "@/components/cemetery/Vines";
 import SpiderRunner from "@/components/cemetery/SpiderRunner";
 import FlyingCritters from "@/components/cemetery/FlyingCritters";
+import HangingSpider from "@/components/cemetery/HangingSpider";
+import CryptAmbience from "@/components/cemetery/CryptAmbience";
+import ResurrectionFX from "@/components/cemetery/ResurrectionFX";
 import {
   statusMeta, rarityColor, fmtPlaytime, fmtDate, fmtCountdown,
   CEM_CAUSES, CEM_SORTS,
@@ -419,6 +422,9 @@ export default function Cementerio() {
   const [busy, setBusy] = useState(false);
   const [fx, setFx] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("cem_halloween") !== "0" : true));
   const toggleFx = () => setFx((v) => { const nv = !v; try { localStorage.setItem("cem_halloween", nv ? "1" : "0"); } catch (e) {} return nv; });
+  const [soundOn, setSoundOn] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("cem_sound") !== "0" : true));
+  const toggleSound = () => setSoundOn((v) => { const nv = !v; try { localStorage.setItem("cem_sound", nv ? "1" : "0"); } catch (e) {} return nv; });
+  const [resurrectFx, setResurrectFx] = useState(null);
 
   const loadFeed = useCallback(() => {
     if (!user) return;
@@ -485,6 +491,7 @@ export default function Cementerio() {
     setBusy(true);
     api.cemResurrect(confirmRec.id).then((r) => {
       play("success"); toast.success(`¡${confirmRec.dino?.species_name} resucitado y devuelto a tu bóveda!`);
+      setResurrectFx(confirmRec.dino);
       setFeed((prev) => prev?.map((x) => (x.id === r.data.record.id ? r.data.record : x)));
       setFossils((f) => ({ ...f, fossils: r.data.fossils, cooldown_active: true, cooldown_until: r.data.cooldown_until }));
       setConfirmRec(null); setSelected(null); refresh && refresh();
@@ -507,11 +514,10 @@ export default function Cementerio() {
     <div className="relative max-w-7xl mx-auto px-6 py-12" data-testid="cementerio-page">
       {fx && <SpiderRunner />}
       {fx && <FlyingCritters />}
+      {fx && <HangingSpider side="right" offset={70} />}
+      <CryptAmbience enabled={soundOn} />
       {fx && (
         <>
-          {/* Telarañas fijas en las esquinas inferiores izquierda y derecha */}
-          <CornerWeb corner="bl" size={150} className="absolute bottom-6 left-0 z-30 opacity-60" />
-          <CornerWeb corner="br" size={150} className="absolute bottom-6 right-0 z-30 opacity-60" />
           {/* Neblina tóxica detrás del dosel (ambiente de muerte) */}
           <div aria-hidden className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen h-72 z-0"
             style={{ background: "radial-gradient(120% 100% at 50% -10%, rgba(84,120,44,0.16) 0%, rgba(20,26,16,0.10) 35%, transparent 70%)" }} />
@@ -556,6 +562,14 @@ export default function Cementerio() {
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors ${fx ? "border-[#7CA842]/40 bg-[#7CA842]/10 text-[#A3C96B]" : "border-white/10 bg-white/[0.03] text-white/45 hover:text-white/70"}`}
             >
               <Ghost size={13} /> Modo Halloween: {fx ? "ON" : "OFF"}
+            </button>
+            <button
+              onClick={toggleSound}
+              data-testid="ambience-toggle"
+              title="Sonido ambiental de cripta"
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors ${soundOn ? "border-[#38BDF8]/40 bg-[#38BDF8]/10 text-[#8fd0e8]" : "border-white/10 bg-white/[0.03] text-white/45 hover:text-white/70"}`}
+            >
+              {soundOn ? <Volume2 size={13} /> : <VolumeX size={13} />} Sonido: {soundOn ? "ON" : "OFF"}
             </button>
           </div>
           <h1 className="mt-4 text-4xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3"><Skull className="text-[#7CA842]" size={40} /> Cementerio</h1>
@@ -654,6 +668,7 @@ export default function Cementerio() {
         {confirmRec && <ConfirmResurrect key="confirm" rec={confirmRec} busy={busy} onClose={() => setConfirmRec(null)} onConfirm={doResurrect} />}
         {showBuy && fossils && <BuyModal key="buy" price={fossils.fossil_price} amber={fossils.amber_balance} busy={busy} onClose={() => setShowBuy(false)} onConfirm={doBuy} />}
         {showTx && <TxModal key="tx" items={txItems} onClose={() => setShowTx(false)} />}
+        {resurrectFx && <ResurrectionFX key="resfx" dino={resurrectFx} onDone={() => setResurrectFx(null)} />}
       </AnimatePresence>
     </div>
   );
