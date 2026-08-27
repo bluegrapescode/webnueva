@@ -32,6 +32,20 @@ function makeDevServerV5Compatible(devServerConfig) {
     "Cross-Origin-Resource-Policy": "same-origin",
   };
 
+  // Keep the compile-error overlay, but suppress the full-screen RUNTIME error
+  // overlay. Expected, gracefully-handled failures (e.g. the 3D skin preview
+  // catching a missing /dino-assets texture via its Skin3DBoundary and showing
+  // "Vista 3D no disponible") must not blanket the app with a red dev overlay in
+  // the preview environment. Production builds never render this overlay at all.
+  compatibleConfig.client = {
+    ...compatibleConfig.client,
+    overlay: {
+      errors: true,
+      warnings: false,
+      runtimeErrors: false,
+    },
+  };
+
   if (onBeforeSetupMiddleware || setupMiddlewares) {
     compatibleConfig.setupMiddlewares = (middlewares, devServer) => {
       if (onBeforeSetupMiddleware) {

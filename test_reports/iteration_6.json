@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only retest of /skin-editor to verify that disabling the CRA webpack-dev-server runtime-error overlay (craco.config.js: devServer.client.overlay.runtimeErrors=false) plus surfacing the missing /dino-assets/<species>/diffuse.webp failure through useRequiredTexture/Skin3DBoundary produces a graceful, non-blocking experience. RESULT: FIX CONFIRMED. No red 'Uncaught runtime errors' overlay appears at any point during login -> species select -> Skin Designer -> Glitch Lab -> tab toggles -> species change. Both 3D viewers ([data-testid=skinlab-3d-viewer] and [data-testid=glitch-3d-viewer]) show the intended Spanish fallback text 'Vista 3D no disponible para esta especie todavía. / ARRASTRA PARA ROTAR'. GLITCH LAB now mounts fully ([data-testid=glitch-lab] present) with all 7 slot rows (body, markings, flank, underbelly, detail1, eyes, male_display) rendering their colorpicker + 3 GlitchChannelInput fields. Native-value-setter on [data-testid=glitch-colorpicker-body] with #ff8800 correctly writes 0-1 sRGB into glitch-slot-body-0/1/2 => {r:'1', g:'0.533', b:'0'}. glitch-random-all, glitch-clear, glitch-variation-2/8/16, glitch-save, glitch-code-copy, glitch-apply, glitch-species all present and clickable without crashing. Skin Designer controls (skin-color-body, skin-alpha-body, skin-pattern, skin-preset-name, skin-preset-save, apply-to-live-dino) all present. Regression pass: toggling designer<->glitch multiple times and switching species (Tyrannosaurus -> Ceratosaurus) does not resurrect the overlay. page.on('pageerror') still captures the expected handled 'No se pudo cargar la textura' errors (~5-7 per run) which is the known environmental 404 documented by main agent — these are informational and no longer surface to the user.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "craco.config.js correctly narrows the overlay to compile-errors only (errors:true, runtimeErrors:false); production builds are unaffected — good.",
+    "The env-triggered dev overlay path (window.reportError -> react-dev-utils) is now silenced by client-config, but the underlying handled Error is still logged as a pageerror. This is fine for QA but worth noting that if a real (unhandled) runtime bug ships to dev it will only appear in devtools, not on-screen; document this trade-off in the README/team wiki.",
+    "Consider (non-blocking) migrating useRequiredTexture to a data-based status ({status,texture}) fallback so no Error object ever traverses React's error path — that would also remove the pageerror noise. Not required for this ticket; overlay behavior is what user cares about."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100% for the fix under review"},
+  "seed_data_creation": "",
+  "test_credentials": "Demo login via [data-testid=prompt-demo-login]; JWT stored in localStorage 'primal_token' (per /app/memory/test_credentials.md).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Fix landed and verified. If regressing: navigate /skin-editor -> click prompt-demo-login -> click species-card-Tyrannosaurus -> assert NO 'iframe#webpack-dev-server-client-overlay' node exists AND [data-testid=skinlab-3d-viewer] contains 'Vista 3D no disponible'. Then click skintab-glitch and assert [data-testid=glitch-lab] present and all 7 slot rows exist with keys ['body','markings','flank','underbelly','detail1','eyes','male_display'] (NOT numeric indices — earlier iteration used 0-6 wrongly). Color pickers must be driven with the native HTMLInputElement.value setter for React to see the change.",
+  "rca of the issue": "Previous iteration's runtime-throw hit React 18 dev's window.reportError path which CRA's overlay listened on. Fix in this iteration disables the runtime-error listener in devServer.client.overlay so only compile errors show the overlay; the render-throw is still caught by Skin3DBoundary which renders the graceful 3D fallback. Net effect: same handled failure, no full-screen block, editor and glitch lab fully usable."
+}

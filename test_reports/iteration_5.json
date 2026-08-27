@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only retest of /skin-editor to verify that the FleetDinoModel fix (loadRequiredTexture/useRequiredTexture) eliminates the CRA 'Uncaught runtime errors' red dev overlay when /dino-assets/<species>/diffuse.webp 404s. Result: THE FIX DID NOT WORK. Although the change did convert the unhandled-promise-rejection into a Suspense-throw-then-render-throw, CRA's react-dev-utils overlay still catches the render error via window.reportError and displays the same full-screen red 'Uncaught runtime errors: Error: No se pudo cargar la textura ...' overlay. Skin3DBoundary DOES catch it (console shows 'React will try to recreate this component tree from scratch using the error boundary you provided, Skin3DBoundary') and the graceful 'Vista 3D no disponible' fallback DOES render underneath, but the CRA overlay covers the entire editor UI, exactly as before. Secondary observation: while the overlay is up, GLITCH LAB tab does not mount its inner panel (data-testid='glitch-lab' and all glitch-* controls absent) — likely because the overlay blocks tab-panel mount or the error keeps re-throwing on every render cycle.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FleetDinoModel / Skin3DBoundary",
+        "issue": "CRA 'Uncaught runtime errors' red overlay STILL appears when diffuse texture 404s. The fix (throwing Error from render instead of rejecting a promise) does not suppress CRA's dev overlay: react-dom in dev calls window.reportError for errors caught by error boundaries, and react-dev-utils/webpackHotDevClient listens to those and shows the overlay. Pageerror captured: 'No se pudo cargar la textura: https://synced-animations.preview.emergentagent.com/dino-assets/Tyrannosaurus/diffuse.webp?sv=2'. 0 'Uncaught (in promise)' console entries (rejection is gone) but 1 pageerror instead. Net user-visible outcome is identical to before the fix.",
+        "selector": "[data-testid='skinlab-3d-viewer'], iframe#webpack-dev-server-client-overlay",
+        "priority": "HIGH"
+      },
+      {
+        "component": "GlitchLabPanel",
+        "issue": "After clicking [data-testid='skintab-glitch'], the panel does not mount: data-testid='glitch-lab' and all controls (glitch-species, glitch-random-all, glitch-clear, glitch-save, glitch-code-copy, glitch-apply, glitch-colorpicker-0, glitch-slot-0-*) are not present in the DOM. This appears to be a downstream effect of the render error re-throwing on the shared 3D preview inside GlitchLabPanel (the same texture failure). Cannot re-verify glitch functionality until the render-throw is contained.",
+        "selector": "[data-testid='glitch-lab']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Do NOT throw an Error from render for a missing texture. Instead, return null (or a sentinel) from useRequiredTexture and let FleetDinoModel/SkinPreview3D render a normal, non-throwing 'no diffuse' code path so the Skin3DBoundary fallback is triggered by explicit conditional rendering — not by throwing. Recommended pattern: in loadRequiredTexture keep resolve(null) on error; in useRequiredTexture return entry.result (which may be null); in FleetDinoModel, `if (!diffuseTex) return null;` and have the parent (SkinPreview3D) detect that state (e.g. via a status callback or a separate hook that returns {status,texture}) and render the 'Vista 3D no disponible' fallback INSTEAD of the <Canvas>. This avoids react-dom's error boundary path entirely, so CRA's overlay never fires.",
+    "Alternative if the boundary path must stay: catch the Error inside a component wrapper (try/catch around the throwing hook is not possible in React; use a synchronous status check + early return). Do not rely on Skin3DBoundary to silence the dev overlay — it cannot.",
+    "Also worth verifying: whether the glitch panel needs its own defensive path when SkinPreview3D throws, since currently the whole GlitchLabPanel appears to fail to render alongside the boundary."
+  ],
+  "critical_code_review_comments": [
+    "FleetDinoModel.jsx L101-121: throwing a plain Error from a render-hook to trigger an error boundary is an anti-pattern in a CRA dev environment because CRA's overlay listens to window.reportError (React 18 forwards boundary-caught errors there in dev). The rejection fix removed one channel (unhandledrejection) but the overlay listens on both.",
+    "Consider surfacing texture-load status as data rather than exceptions, e.g. returning { status: 'error'|'loading'|'done', texture } and rendering a fallback JSX branch. This is idiomatic React and dev-overlay-safe.",
+    "useOptionalTexture already resolves-to-null for pattern textures without throwing — mirror that pattern for diffuse and gate the <Canvas>/mesh render on `diffuseTex` being non-null."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "0% for the specific fix under review; skin designer controls (color, alpha, pattern, preset name/save, apply-to-live-dino) all present and reachable behind the overlay"},
+  "seed_data_creation": "",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login with data-testid='prompt-demo-login' on /skin-editor. Then click any species card (e.g. species-card-Tyrannosaurus). If CRA red 'Uncaught runtime errors' overlay covers the page with 'No se pudo cargar la textura ... /dino-assets/<species>/diffuse.webp' — the fix has not landed. Playwright can capture this via page.on('pageerror'). The diffuse texture 404 is environmental in this preview and expected; only the overlay leak matters. Skin designer testids confirmed present: skin-color-body, skin-alpha-body, skin-pattern, skin-preset-name, skin-preset-save, apply-to-live-dino. Glitch lab did not mount while overlay was up, so its controls could not be re-verified this run.",
+  "rca of the issue": "React 18 in development mode forwards errors that are caught by an ErrorBoundary to window.reportError (in addition to the boundary's componentDidCatch). CRA's react-dev-utils/webpackHotDevClient (and equivalent overlay hook) listens to both 'error' and 'unhandledrejection' window events and shows the red overlay. The current fix only stops the 'unhandledrejection' path by making the TextureLoader promise resolve(null) and then re-throwing the Error inside a render-hook to be caught by Skin3DBoundary. Since the render throw still reaches window.reportError, the overlay is still shown. Mitigation: replace the render-throw with a data-based fallback (return null from useRequiredTexture and short-circuit the mesh/canvas render), so no Error object ever escapes into React's error path."
+}

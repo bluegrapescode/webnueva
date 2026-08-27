@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only re-verification of BOTH skin editors on /skin-editor after demo login. RESULT: BOTH editors are FUNCTIONALLY USABLE. SKIN DESIGNER: species-grid (22 cards) loads, selecting Tyrannosaurus keeps skinlab-3d-viewer mounted, per-slot color inputs (skin-color-body) accept new values (#ff8800 confirmed), alpha slider (skin-alpha-body -> 0.5) updates, pattern control present, preset save works without crash, skin-code import controls present, apply-to-live-dino is present and clickable (no crash). GLITCH LAB: glitch-lab renders (owner access), glitch-3d-viewer container mounted, glitch-species select works (switched to Allosaurus), all 7 glitch-row-<slot> rows and glitch-colorpicker-<slot> pickers exist, and — using a React-native value setter — the per-slot color picker correctly writes 0-1 sRGB values into glitch-slot-body-0/1/2 for #ff0000->[1,0,0], #00ff00->[0,1,0], #0000ff->[0,0,1], #ffff00->[1,1,0]. All randomizers (glitch-random-body, glitch-random-all), glitch-clear, glitch-pattern, glitch-variation-2/8/16, glitch-save, glitch-code-copy, glitch-import-input, glitch-import-btn, glitch-apply are present; random-all, clear, and variation-8 clicks execute without crash. Tab-toggle regression: switching designer<->glitch 3 times keeps glitch-lab mounted with no page crash (per-viewer error boundary isolates the 3D failure). As per the review-request note, the /dino-assets/*.webp 404 is a known environmental limitation — both viewers show the 'Vista 3D no disponible' fallback correctly (not a code bug).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "3D preview texture load (both tabs)", "issue": "THREE useTexture rejects unhandled when /dino-assets/<species>/diffuse.webp is unreachable (known env limitation). In CRA dev this trips the red 'Uncaught runtime errors' overlay that visually blocks the editor until dismissed. The error boundary already isolates it and shows 'Vista 3D no disponible', but the loader promise itself is not caught, so the dev overlay still fires. Not a functional blocker (both editors remain usable in production build), but worth wrapping the useTexture call with an onError / try-catch so no unhandled rejection escapes.", "affected_selectors": ["[data-testid=skinlab-3d-viewer]", "[data-testid=glitch-3d-viewer]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional, non-blocking) In /app/frontend/src/components/skin3d/FleetDinoModel.jsx wrap the drei useTexture call so a 404 becomes a caught error that surfaces to the existing Skin3DBoundary WITHOUT an unhandled promise rejection — this stops the CRA dev overlay from covering the editor.",
+    "(Env, outside frontend scope) Populate DINO_ASSETS_ROOT / add ingress rule for /dino-assets/* so the actual 3D canvas can render in the preview URL."
+  ],
+  "critical_code_review_comments": [
+    "GlitchLabPanel color-picker -> RGB sync (setSlotColorFromHex) is correct: hex parsed to sRGB 0-1 with 3-decimal precision and only R/G/B are written (alpha preserved). Verified end-to-end at DOM level.",
+    "previewColors useMemo depends on the full `fields` object; fine for correctness but re-computes on any field change. Minor; not a bug.",
+    "SkinEditor.jsx is ~1486 lines and mixes designer + glitch lab + preview wiring in one file; consider splitting GlitchLabPanel and the designer body into their own modules for maintainability (not blocking)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only)", "frontend": "100% functional (all controls, state, color-picker->RGB sync, tab-toggle stability). 3D <canvas> render blocked only by known env asset 404."},
+  "test_credentials": "Demo login via UI button data-testid='prompt-demo-login' (ALLOW_DEMO_LOGIN=1). JWT in localStorage 'primal_token'. Demo user has owner glitch access.",
+  "seed_data_creation": "None (only ephemeral TEST_preset input filled; not saved server-side beyond client-side preset state).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Both editors verified functional end-to-end at DOM/state level on https://synced-animations.preview.emergentagent.com/skin-editor. Note for color-picker automation: React does not react to a plain el.dispatchEvent('change') on <input type=color>; you MUST use the native value setter trick: Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el, hex) followed by dispatching input+change events. Otherwise glitch-slot-<slot>-0/1/2 will read as 0 and you'll falsely conclude sync is broken (a prior scripting attempt in this iteration showed exactly that false-negative before switching to the native setter). Environmental 3D canvas absence remains — do not report as new bug.",
+  "rca of the issue": "No new bug found. Only known environmental limitation persists: /dino-assets/<species>/diffuse.webp returns 404/SPA HTML in this preview (DINO_ASSETS_ROOT unreachable), so THREE useTexture rejects. In dev-build CRA this surfaces as an 'Uncaught runtime errors' overlay because the useTexture rejection is not wrapped in a try/catch or onError; the existing Skin3DBoundary handles the render-time throw but not the loader promise rejection. Mitigation (optional): defensive HEAD fetch or explicit onError on the texture loader so the graceful 'Vista 3D no disponible' fallback is the only user-visible outcome."
+}

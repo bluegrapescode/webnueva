@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { useTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { Egg } from "lucide-react";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -91,9 +90,39 @@ function useOptionalTexture(url) {
   return entry.result;
 }
 
+// REQUIRED texture (the base diffuse). Like drei's useTexture it throws on a 404
+// so the Skin3DBoundary shows "Vista 3D no disponible" — BUT the underlying
+// loader promise RESOLVES (never rejects), so a missing asset no longer leaks an
+// unhandled promise rejection (which in a CRA dev build pops the red error
+// overlay over the whole editor). The render-time throw is what the boundary
+// catches; the resolved promise is what keeps the console clean.
+const _reqTexCache = new Map(); // url -> { status, promise, result, error }
+
+function loadRequiredTexture(url) {
+  let entry = _reqTexCache.get(url);
+  if (!entry) {
+    entry = { status: "pending" };
+    entry.promise = new Promise((resolve) => {
+      new THREE.TextureLoader().load(url,
+        (t) => { entry.status = "done"; entry.result = t; resolve(t); },
+        undefined,
+        () => { entry.status = "error"; entry.error = new Error(`No se pudo cargar la textura: ${url}`); resolve(null); });
+    });
+    _reqTexCache.set(url, entry);
+  }
+  return entry;
+}
+
+function useRequiredTexture(url) {
+  const entry = loadRequiredTexture(url);
+  if (entry.status === "pending") throw entry.promise;
+  if (entry.status === "error") throw entry.error;
+  return entry.result;
+}
+
 export function FleetDinoModel({ species, colors, pattern = 0, manifest = null, advancedColors = null, advancedMapping = null }) {
   const { scene, animations } = useSpeciesGlb(species);
-  const diffuseTex = useTexture(dinoAssetUrl(species, "diffuse.webp"));
+  const diffuseTex = useRequiredTexture(dinoAssetUrl(species, "diffuse.webp"));
   // The index is resolved against the ART this site ships for THIS species, so a
   // wide species (Omniraptor 0..5) wears its real sheet instead of collapsing
   // onto pattern 2, and a species with only three keeps exactly what it had.
