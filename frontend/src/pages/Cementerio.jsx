@@ -12,7 +12,7 @@ import { useSound } from "@/context/SoundContext";
 import { PageLoader } from "@/components/common/PageLoader";
 import { SignInPrompt } from "@/components/common/SignInPrompt";
 import { useCemeterySocket } from "@/hooks/useCemeterySocket";
-import { VineStrip, VineCorner } from "@/components/cemetery/Vines";
+import { VineStrip, VineSide, VineCorner } from "@/components/cemetery/Vines";
 import {
   statusMeta, rarityColor, fmtPlaytime, fmtDate, fmtCountdown,
   CEM_CAUSES, CEM_SORTS,
@@ -500,9 +500,15 @@ export default function Cementerio() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12" data-testid="cementerio-page">
+    <div className="relative max-w-7xl mx-auto px-6 py-12" data-testid="cementerio-page">
+      {/* Dosel de enredaderas cubriendo TODO el cementerio (estilo panteón) */}
+      <div aria-hidden data-testid="cemetery-vine-canopy" className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-screen z-20">
+        <VineStrip height={280} className="opacity-90" />
+      </div>
+      <VineSide side="left" className="absolute left-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
+      <VineSide side="right" className="absolute right-0 top-52 h-[65%] z-0 opacity-40 hidden lg:block" />
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-[#141418] to-[#0e0e11] p-8 mb-8">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative z-10 overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-[#141418] to-[#0e0e11] p-8 mb-8 mt-6">
         {/* Fósil levitando con pulso de fondo */}
         <div className="pointer-events-none absolute right-6 sm:right-12 top-1/2 -translate-y-1/2 hidden sm:flex items-center justify-center">
           <motion.div
@@ -540,7 +546,7 @@ export default function Cementerio() {
         </div>
       </motion.div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+      <div className="relative z-10 grid lg:grid-cols-[1fr_320px] gap-8">
         {/* Main */}
         <div>
           {/* Filters */}
@@ -575,11 +581,6 @@ export default function Cementerio() {
                 {s.label}
               </button>
             ))}
-          </div>
-
-          {/* Enredaderas colgando sobre las casillas */}
-          <div className="relative -mt-2 mb-1 h-16 overflow-hidden opacity-70">
-            <VineStrip height={90} className="absolute inset-x-0 top-0" />
           </div>
 
           {/* Grid */}

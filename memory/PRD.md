@@ -74,3 +74,7 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - **Cementerio PRIVADO**: `feed`, `record/{id}` y `hall-of-fame` requieren auth y se filtran al dueño (`_cem_owner_clause`). WS ahora empuja muertes/resurrecciones/updates SOLO al dueño (`_cem_resolve_owner_uid` + `push_to_user`); `cemetery_config` sigue en broadcast. Nuevo `GET /cemetery/admin/records` (admin ve TODO) y el panel admin lo usa. La página muestra `SignInPrompt` si no hay sesión.
 - **Enredaderas** SVG (`components/cemetery/Vines.jsx`: `VineStrip` sobre el grid + `VineCorner` en las tarjetas; keyframe `vineSway` en index.css).
 - Navbar: carrito (código muerto) reemplazado por pill de **Fósil** (`/fossil.png`, `data-testid=balance-fossil`) junto a las monedas.
+
+## 2026-06 — Fix enredadera "estilo panteón" [iteration_10: 100% FE]
+- Bug: la enredadera estaba en una tira recortada (`h-16 overflow-hidden`) y se veía cortada.
+- Fix: `VineStrip` ahora es un DOSEL a lo ancho de toda la pantalla (w-screen, absolute top-0 z-20, pointer-events-none, alturas variadas ~280px) + `VineSide` en los bordes izq/der (desktop). Se eliminó la tira recortada. Contenido en `relative z-10`. Tarjetas siguen clicables. Verificado por testing_agent.
