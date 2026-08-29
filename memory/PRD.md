@@ -122,3 +122,21 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - Cambios en `Cementerio.jsx`: eliminado import de CryptAmbience, estado soundOn/toggleSound, el <CryptAmbience>, el botón `ambience-toggle` y los iconos Volume2/VolumeX.
 - Archivo `components/cemetery/CryptAmbience.jsx` borrado.
 - Header ahora solo tiene el botón "Modo Halloween". Verificado: compila sin errores y el botón de sonido ya no está.
+
+## 2026-06 — Tienda de Skins Únicas (estilo Fortnite, Stripe) [iteration_21: BE 100%, FE ~95%; rediseño legendario aplicado]
+- Objetivo: tienda rotativa estilo Fortnite. El owner/admin crea skins únicas por tiempo limitado/temporadas; se compran con DINERO REAL vía Stripe; son coleccionables y equipables a los dinos. WebSockets para tiempo real.
+- Backend `/app/backend/skin_shop.py` (módulo self-contained, `build_router(...)` montado en server.py ~línea 18824, prefix /api; `ensure_indexes()` en startup):
+  - Colecciones: shop_skins, owned_shop_skins, shop_payments. Campo user: equipped_shop_skin.
+  - Público (auth): GET /api/shop/skins (agrupa destacados/diario/temporada, flags owned/live/equipped), /shop/skins/mine, POST /shop/checkout, GET /payments/status/{sid}, POST /shop/equip, /shop/unequip.
+  - Admin: GET/POST/PATCH/DELETE /api/admin/shop/skins (+ stats). Cada skin crea Stripe Product+Price (tax_code digital) al crearse; cambiar precio genera nuevo Price.
+  - WS /api/shop/ws: shop_hello, shop_update (CRUD), purchase_success (push al comprador), inventory, equipped.
+  - Stripe Flow A (claimable sandbox, US) con managed_payments (SMP, tax_mode "full") + fallback automatic_tax. Grant idempotente (webhook /api/stripe/webhook + polling en /payments/status). Llaves en backend/.env (STRIPE_SECRET_KEY etc.).
+- Frontend:
+  - Ruta /tienda-skins (`pages/TiendaSkins.jsx`) + enlace navbar en grupo "Tienda" ("Skins").
+  - Componentes `components/shop/`: SkinCard, SkinDetailModal, PurchaseCelebration, Countdown, shopRarity.js.
+  - Página /payment/success (`pages/PaymentSuccess.jsx`) hace polling y muestra celebración; /payment/cancel -> /tienda-skins.
+  - Admin: pestaña "Tienda Skins" (tab key skins_shop) -> `components/admin/AdminSkinShop.jsx` (form con imagen URL, rareza, sección, precio USD, dino, fechas con Calendar+Popover, activa; vista previa en vivo; lista con activar/editar/eliminar; stats).
+  - api.js: métodos shop* + shopWsUrl().
+- Rediseño "legendario" (a petición del usuario): index.css con keyframes/utilidades (clip-notch, conic frame giratorio, holo foil, sheen, shop-grid-bg, price-tag). Hero "SKIN VAULT" con degradado, encabezados numerados 01/02/03, layout bento (hero grande + banner ancho + grid), banners cinematográficos en Temporada, leyenda de rareza.
+- NOTA: aplicar la skin dentro del juego real necesita el servidor live (RCON); en preview equipar solo marca equipped_shop_skin (web). El campo skin_data queda guardado para el enganche in-game futuro.
+- Stripe tax mode = "full" (Stripe gestiona todo incl. impuestos, +3.5%/tx). Sandbox sin reclamar; onboarding pendiente para pasar a live.

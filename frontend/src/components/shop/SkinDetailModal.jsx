@@ -1,0 +1,117 @@
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Check, Loader2, ShoppingCart, Sparkles, X, Zap } from "lucide-react";
+import { rarityOf } from "./shopRarity";
+import { Countdown } from "./Countdown";
+import { api, externalRedirect } from "@/lib/api";
+import { toast } from "sonner";
+
+export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
+  const [busy, setBusy] = useState(false);
+  const [equipped, setEquipped] = useState(false);
+  useEffect(() => { setEquipped(!!skin?.equipped); }, [skin]);
+  if (!skin) return null;
+  const r = rarityOf(skin.rarity);
+  const holo = skin.rarity === "legendary" || skin.rarity === "mythic";
+
+  const buy = async () => {
+    setBusy(true); play?.("purchase");
+    try {
+      const { data } = await api.shopCheckout(skin.id);
+      if (data?.checkout_url) externalRedirect(data.checkout_url);
+      else { toast.error("No se pudo iniciar el pago"); setBusy(false); }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "No se pudo iniciar el pago");
+      setBusy(false);
+    }
+  };
+
+  const equip = async () => {
+    setBusy(true); play?.("click");
+    try {
+      await api.shopEquip(skin.id);
+      play?.("success");
+      toast.success(`${skin.name} equipada`);
+      setEquipped(true);
+      onEquipped?.(skin.id);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "No se pudo equipar");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose?.()}>
+      <DialogContent
+        className="glass-strong border-0 max-w-3xl p-0 overflow-hidden gap-0 clip-notch"
+        data-testid="skin-detail-modal"
+        style={{ boxShadow: `0 0 0 2px ${r.color}, 0 0 60px ${r.color}66, 0 40px 110px -30px ${r.color}` }}
+      >
+        <DialogTitle className="sr-only">{skin.name}</DialogTitle>
+        <DialogDescription className="sr-only">{skin.description || `Skin ${r.label} para ${skin.dino_species || "dino"}`}</DialogDescription>
+        <button onClick={onClose} data-testid="skin-modal-close"
+          className="absolute top-3 right-3 z-20 rounded-full bg-black/60 hover:bg-black/90 p-2 text-white/70 hover:text-white transition-colors">
+          <X size={16} />
+        </button>
+        <div className="grid md:grid-cols-2">
+          {/* render */}
+          <div className="relative min-h-[300px] md:min-h-[460px] overflow-hidden">
+            <div className="absolute inset-0" style={{ background: `radial-gradient(60% 55% at 50% 40%, ${r.color}66, #0b0d09 82%)` }} />
+            <motion.img src={skin.image_url} alt={skin.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              animate={{ y: [0, -12, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
+            {holo && <div className="skin-card__holo" aria-hidden />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+            <div className="absolute left-0 top-0 h-full w-1" style={{ background: `linear-gradient(to bottom, ${r.color}, transparent)` }} />
+          </div>
+          {/* info */}
+          <div className="p-7 flex flex-col">
+            <span className="inline-flex items-center gap-1 label-overline text-[10px] px-2.5 py-1 border self-start clip-notch-sm"
+              style={{ color: r.color, borderColor: `${r.color}77`, background: `${r.color}22` }}>
+              <Zap size={10} /> {r.label}
+            </span>
+            <h2 className="font-display font-black uppercase tracking-tight text-3xl sm:text-4xl mt-3 leading-[0.9]">{skin.name}</h2>
+            {skin.dino_species && <p className="text-sm text-white/50 mt-1.5">Para {skin.dino_species}</p>}
+            {skin.description && <p className="text-sm text-white/65 mt-4 leading-relaxed">{skin.description}</p>}
+
+            <div className="mt-4 flex items-center gap-2 text-xs text-white/55">
+              <Sparkles size={13} style={{ color: r.color }} />
+              <span className="font-code">
+                {skin.end_at ? <>Disponible por <Countdown endAt={skin.end_at} className="text-white/85" /></> : "Edición por tiempo limitado"}
+              </span>
+            </div>
+
+            <div className="mt-auto pt-7">
+              <div className="flex items-end justify-between mb-3">
+                <span className="text-xs text-white/45 uppercase tracking-widest">Precio</span>
+                <span className="font-code font-black text-3xl" style={{ color: r.color }}>${skin.price_usd.toFixed(2)}</span>
+              </div>
+              {skin.owned ? (
+                equipped ? (
+                  <button disabled data-testid="skin-equipped-btn"
+                    className="w-full inline-flex items-center justify-center gap-2 clip-notch-sm py-4 font-black uppercase tracking-wide bg-emerald-500/20 text-emerald-200 border-2 border-emerald-400/50">
+                    <Check size={18} /> Equipada
+                  </button>
+                ) : (
+                  <button onClick={equip} disabled={busy} data-testid={`equip-btn-${skin.id}`}
+                    className="w-full inline-flex items-center justify-center gap-2 clip-notch-sm py-4 font-black uppercase tracking-wide text-black transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+                    style={{ background: "linear-gradient(135deg,#B8DA7E,#7CA842)" }}>
+                    {busy ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Equipar al dino
+                  </button>
+                )
+              ) : (
+                <button onClick={buy} disabled={busy} data-testid={`buy-btn-${skin.id}`}
+                  className="w-full inline-flex items-center justify-center gap-2 clip-notch-sm py-4 font-black uppercase tracking-wide text-black transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+                  style={{ background: `linear-gradient(135deg,${r.color},#ffffff)` }}>
+                  {busy ? <Loader2 size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
+                  {busy ? "Redirigiendo…" : "Comprar con Stripe"}
+                </button>
+              )}
+              <p className="text-center text-[10px] text-white/35 mt-2.5">Pago seguro por Stripe · Skin única coleccionable</p>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

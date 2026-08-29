@@ -18821,6 +18821,12 @@ _skin_v2_installed = _skin_v2_mount.install(
 )
 
 
+# Tienda de Skins Únicas (skin_shop.py): módulo self-contained con Stripe + WS.
+import skin_shop
+app.include_router(
+    skin_shop.build_router(db, JWT_SECRET, get_current_user, get_admin_user, add_log, JWT_ALGO),
+    prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19423,6 +19429,11 @@ async def on_startup():
         await _cem_seed_demo()
     except Exception:
         logger.warning("[cemetery] startup init skipped", exc_info=True)
+    # Tienda de Skins (Stripe): índices.
+    try:
+        await skin_shop.ensure_indexes()
+    except Exception:
+        logger.warning("[shop] startup init skipped", exc_info=True)
 
 
 @app.on_event("shutdown")

@@ -57,6 +57,14 @@ export function creatorWsUrl() {
   return `${base}/api/creator/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Tienda de Skins — same-origin WebSocket URL for /api/shop/ws (live drops,
+// countdowns, sold-out and purchase_success pushes to the buyer).
+export function shopWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/shop/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -450,6 +458,18 @@ export const api = {
   cemAdminConfig:   (fossil_price) => client.put("/cemetery/admin/config", { fossil_price }),
   cemAdminTransactions: () => client.get("/cemetery/admin/transactions"),
   cemAdminRecords:  (params) => client.get("/cemetery/admin/records", { params }),
+
+  // ── Tienda de Skins Únicas (Stripe) ──
+  shopSkins:        () => client.get("/shop/skins"),
+  shopMine:         () => client.get("/shop/skins/mine"),
+  shopCheckout:     (skin_id) => client.post("/shop/checkout", { skin_id, origin_url: window.location.origin }),
+  shopPaymentStatus: (session_id) => client.get(`/payments/status/${session_id}`),
+  shopEquip:        (skin_id) => client.post("/shop/equip", { skin_id }),
+  shopUnequip:      () => client.post("/shop/unequip"),
+  shopAdminList:    () => client.get("/admin/shop/skins"),
+  shopAdminCreate:  (body) => client.post("/admin/shop/skins", body),
+  shopAdminUpdate:  (id, body) => client.patch(`/admin/shop/skins/${id}`, body),
+  shopAdminDelete:  (id) => client.delete(`/admin/shop/skins/${id}`),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

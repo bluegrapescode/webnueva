@@ -190,3 +190,60 @@ body {
 @keyframes batFlapR { 0%, 100% { transform: rotate(6deg) scaleY(1); } 50% { transform: rotate(-20deg) scaleY(0.6); } }
 @keyframes mothFlapL { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(16deg); } }
 @keyframes mothFlapR { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(-16deg); } }
+
+/* ===================== Tienda de Skins — estilo legendario ===================== */
+@keyframes shopSpin { to { transform: rotate(360deg); } }
+@keyframes shopHolo { 0% { background-position: 0% 50%; } 100% { background-position: 220% 50%; } }
+@keyframes shopFloatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes shopPulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes shopSheen { 0% { transform: translateX(-140%) rotate(12deg); } 100% { transform: translateX(160%) rotate(12deg); } }
+@keyframes shopGridDrift { to { background-position: 46px 46px; } }
+
+/* aggressive notched corners */
+.clip-notch {
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+}
+.clip-notch-sm {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+/* animated technical grid backdrop for the shop */
+.shop-grid-bg {
+  background-image:
+    linear-gradient(rgba(124,168,66,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,168,66,0.06) 1px, transparent 1px);
+  background-size: 46px 46px;
+  animation: shopGridDrift 8s linear infinite;
+}
+
+/* skin card: rotating conic frame revealed on hover + rarity glow */
+.skin-card { --rc: #888; }
+.skin-card__frame {
+  position: absolute; inset: -60%;
+  background: conic-gradient(from 0deg,
+    transparent 0 52%, var(--rc) 66%, #ffffffcc 74%, var(--rc) 82%, transparent 96%);
+  opacity: 0; transition: opacity .45s ease;
+  animation: shopSpin 5s linear infinite;
+}
+.skin-card:hover .skin-card__frame { opacity: .95; }
+.skin-card__inner {
+  position: absolute; inset: 2px; overflow: hidden; background: #0b0d09;
+}
+.skin-card__holo {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .4;
+  background: linear-gradient(115deg, transparent 18%, rgba(255,255,255,.55) 34%,
+    rgba(255,0,200,.4) 48%, rgba(0,200,255,.4) 60%, transparent 78%);
+  background-size: 220% 100%; animation: shopHolo 4.5s linear infinite;
+}
+.skin-card__sheen {
+  position: absolute; top: -60%; left: 0; width: 55%; height: 220%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
+  transform: translateX(-140%) rotate(12deg);
+}
+.skin-card:hover .skin-card__sheen { animation: shopSheen .9s ease forwards; }
+
+/* angular price tag */
+.price-tag {
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+

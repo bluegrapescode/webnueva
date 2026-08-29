@@ -33,6 +33,8 @@ import CreatorDashboard from "@/pages/CreatorDashboard";
 import CreatorPublic from "@/pages/CreatorPublic";
 import RefRedirect from "@/pages/RefRedirect";
 import Cementerio from "@/pages/Cementerio";
+import TiendaSkins from "@/pages/TiendaSkins";
+import PaymentSuccess from "@/pages/PaymentSuccess";
 import CreatorNotifier from "@/components/creator/CreatorNotifier";
 import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
 
@@ -77,6 +79,9 @@ function AnimatedRoutes() {
         <Route path="/cases" element={<Navigate to="/mini-juegos?tab=crates" replace />} />
         <Route path="/my-dino" element={<PageWrap><MyDino /></PageWrap>} />
         <Route path="/cementerio" element={<PageWrap><Cementerio /></PageWrap>} />
+        <Route path="/tienda-skins" element={<PageWrap><TiendaSkins /></PageWrap>} />
+        <Route path="/payment/success" element={<PageWrap><PaymentSuccess /></PageWrap>} />
+        <Route path="/payment/cancel" element={<Navigate to="/tienda-skins?canceled=1" replace />} />
         <Route path="/skin-editor" element={<PageWrap><SkinEditor /></PageWrap>} />
         {/* Renamed 2026-08-13 (owner ask): the word "Casino" was tripping the
             streaming platforms' gambling filters, and the URL shows on stream

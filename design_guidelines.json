@@ -1,0 +1,88 @@
+{
+  "theme": "dark",
+  "project_context": "The Isle Evrima (La Isla Nublar LATAM) - Community Dashboard Skins Shop",
+  "vibe": "Fortnite Item Shop meets Prehistoric/Sci-Fi Survival. Immersive, high-contrast, tempting, and urgent (FOMO).",
+  "typography": {
+    "headings": "Cabinet Grotesk (use .font-display utility)",
+    "body": "Manrope (use .font-sans utility)",
+    "mono": "JetBrains Mono (use .font-code utility)",
+    "guidelines": "Use JetBrains Mono strictly for countdown timers and technical data. Use Cabinet Grotesk (uppercase, tracking-tight) for Shop Section Titles (Destacados, Diario, Temporada) and Skin Names."
+  },
+  "colors": {
+    "primary": "#7CA842",
+    "primary_gradient": "linear-gradient(135deg, #B8DA7E 0%, #7CA842 50%, #557A2A 100%)",
+    "background": "hsl(var(--background))",
+    "surface": "hsl(var(--card))",
+    "rarity": {
+      "common": "#8e9297",
+      "uncommon": "#34D399",
+      "rare": "#38bdf8",
+      "epic": "#a855f7",
+      "legendary": "#f59e0b",
+      "mythic": "#ef4444"
+    },
+    "guidelines": "Do not overuse the primary gold/green; reserve it for Call-to-Actions (Buy/Equip). Use the Rarity colors to create radial gradients behind the skin images inside the cards (e.g., radial-gradient from rarity color at 20% opacity to transparent at edges)."
+  },
+  "layouts_and_grids": {
+    "shop_layout": "Bento-style Grid Protocol. Avoid uniform squares.",
+    "sections": {
+      "Destacados": "Grid items span 2 columns and 2 rows (large impact, Hero-style cards).",
+      "Diario": "Standard 1x1 grid squares, dense.",
+      "Temporada": "Wide banners spanning full width or 3 columns."
+    },
+    "spacing": "Generous spacing between sections (gap-12 or py-16). Tight spacing within the grids (gap-4).",
+    "mobile": "Stack vertically but maintain hierarchy (Featured items are taller, Daily items are a 2-column grid)."
+  },
+  "components": {
+    "SkinCard": {
+      "path": "src/components/shop/SkinCard.js",
+      "instructions": "Fortnite-style layout. Container is relative, overflow-hidden, rounded-lg, border border-white/5. Background uses a subtle tint of the rarity color. Image is centered and absolute, bursting out of its inner bounds. Add a bottom panel with heavy backdrop-blur (glass) that houses the Skin Name (Cabinet Grotesk) and Price (Stripe icon/badge). Hover: framer-motion scale 1.03, elevate shadow, brightness up. Owned state: grayscale filter on the image, 'Adquirido' badge."
+    },
+    "ShopSection": {
+      "path": "src/components/shop/ShopSection.js",
+      "instructions": "Section wrapper. Header contains the Section Title (left) and a live countdown timer (right) with JetBrains Mono. Pass items array to map into SkinCards."
+    },
+    "SkinDetailModal": {
+      "path": "src/components/shop/SkinDetailModal.js",
+      "instructions": "Use shadcn Dialog. Content must use the existing `.glass-strong` CSS class for the background. Layout: 2 columns. Left column: Massive skin render with floating animation (`animate-float`). Right column: Name, Rarity badge, description, countdown remaining, big primary 'Buy via Stripe' button or 'Equip to Dino' button if owned. If buying, overlay a loading spinner."
+    },
+    "AdminSkinForm": {
+      "path": "src/components/admin/AdminSkinForm.js",
+      "instructions": "Dashboard view for Admins. Dense, functional UI. Form fields: Name, Image URL, Rarity (Select), Section (Select: Destacados/Diario/Temporada), Price, Currency (USD), Start Date, End Date (DatePickers). Use shadcn Form, Input, Select, Popover+Calendar."
+    }
+  },
+  "motion_and_audio": {
+    "hover": "Card scale-up (spring physics, stiffness 300, damping 20). Audio: subtle 'tick' or 'whoosh' using useSound.",
+    "purchase_success": "Trigger golden flash on the screen, transition Buy button to 'Owned'. Audio: rewarding 'cha-ching' or 'level-up' style SFX.",
+    "equip": "Button click snaps the state instantly with a satisfying 'click/clack' SFX.",
+    "timers": "Timers must tick every second smoothly without re-rendering the whole page (use local component state or refs for the timer)."
+  },
+  "websockets": {
+    "instructions": "Establish a WebSocket connection (or use existing context) on mount. Listen for 'shop_update'. When a new item drops, animate it into the grid. When an item expires/sells out, instantly overlay the 'Agotado/Sold Out' state on its SkinCard. Listen for 'purchase_success' to auto-update the user's inventory."
+  },
+  "accessibility": {
+    "contrast": "Cards with glowing backgrounds must have high-contrast text. Use drop-shadows on white text overlaying images.",
+    "data_testid": "ALL interactive elements must have data-testid: 'skin-card-[id]', 'buy-btn-[id]', 'equip-btn-[id]', 'admin-submit-skin'."
+  },
+  "image_urls": {
+    "dinosaur_skeleton_skin": {
+      "url": "https://images.unsplash.com/photo-1639524415025-5ae545511fea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwzfHxkaW5vc2F1ciUyMDNkJTIwcmVuZGVyfGVufDB8fHx8MTc4Nzk4NjYxMnww&ixlib=rb-4.1.0&q=85",
+      "category": "mock_data",
+      "description": "Use this as the image URL for the 'Bones' or 'Skeleton' Legendary skin."
+    },
+    "jungle_atmosphere": {
+      "url": "https://images.unsplash.com/photo-1600854163097-3602918f7a9a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwzfHxkYXJrJTIwanVuZ2xlJTIwbGVhdmVzfGVufDB8fHx8MTc4Nzk4NjYxMnww&ixlib=rb-4.1.0&q=85",
+      "category": "shop_background",
+      "description": "Use as a very low-opacity fixed background or header banner for the Shop page to give an immersive jungle feel."
+    }
+  },
+  "universal_guidelines_for_main_agent": [
+    "No generic centered layouts. Use grid-based asymmetrical storytelling (Bento style).",
+    "Do NOT use HTML `<select>` or `<input type='date'>`. You must use shadcn dropdown-menu, select, and calendar components for the Admin Panel.",
+    "Never use completely transparent backgrounds on overlay components. Always use `.glass-strong` or `.glass`.",
+    "Implement the UI exclusively with plain React (.js) + Tailwind and shadcn/ui. No TypeScript (.tsx).",
+    "Integrate the Stripe buy flow as a mock or standard button payload to a backend endpoint.",
+    "Every component should handle loading, empty, and error states elegantly (e.g., Skeleton loaders for the shop grid before WebSocket sync).",
+    "Rarity is crucial for a Fortnite-style shop. Emphasize the rarity colors in glows (`box-shadow`), borders, and text gradients."
+  ]
+}
