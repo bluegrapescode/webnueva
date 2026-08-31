@@ -159,3 +159,9 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
   - ANTI-ESTAFA: A bloquea, B edita -> A ve trade-scam-alert y su lock se resetea de "Desbloquear" a "Bloquear". OK.
   - Swap completo (ambos lock + confirm) -> toast "¡Intercambio completado!", vuelven al lobby, Historial poblado en ambos lados (Diste/Recibiste).
 - Notas menores no bloqueantes (backlog): avatar propio "Tú" pasa src=undefined (cosmético); 503 esporádico en consola del 2º contexto durante carga (recurso de fondo, no bloquea).
+
+## 2026-06 — Trade UI: nombres de items visibles + botón "Confirmar" [smoke-tested FE]
+- A petición del usuario: en `TradeRoom.jsx` el componente Tile ahora muestra el NOMBRE del objeto (barra inferior con degradado, text-[8px], data-testid `<tile>-name`) + tooltip nativo (title) con nombre · rareza. El contador se movió a la esquina superior derecha como "×N".
+- Botón central renombrado de "Barter" (jerga BG3 en inglés, confusa) a "Confirmar".
+- Verificado por captura: nombres renderizan en las 4 columnas (Tu inventario / Tu oferta / Su oferta / Inventario del peer).
+- Script auxiliar para demo de diseño: `/app/backend/_demo_trade_session.py` (inserta una sesión activa A<->B con ofertas y A bloqueado, para capturar el diseño sin necesitar un 2º jugador).

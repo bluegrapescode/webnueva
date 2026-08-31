@@ -14,13 +14,19 @@ function Tile({ it, badge, onClick, onHover, dim, testid }) {
   const color = rc(it.rarity);
   const Comp = onClick ? motion.button : motion.div;
   return (
-    <Comp onClick={onClick} onMouseEnter={onHover} data-testid={testid}
+    <Comp onClick={onClick} onMouseEnter={onHover} data-testid={testid} title={`${it.name}${it.rarity ? " · " + it.rarity : ""}`}
       whileHover={onClick ? { scale: 1.1, zIndex: 5 } : undefined} whileTap={onClick ? { scale: 0.88 } : undefined} transition={SPRING}
       className={`relative aspect-square w-full rounded-[3px] overflow-hidden ${onClick ? "cursor-pointer" : "cursor-default"} ${dim ? "opacity-25 grayscale pointer-events-none" : ""}`}
       style={{ border: `1px solid ${color}88`, background: "#0f120b", boxShadow: `inset 0 0 10px ${color}22` }}>
       <div className="absolute inset-0" style={{ background: `radial-gradient(75% 75% at 50% 30%, ${color}2e, #0b0d09 88%)` }} />
       {it.image ? <img src={it.image} alt={it.name} className="absolute inset-0 w-full h-full object-cover" /> : <Gem className="absolute inset-0 m-auto opacity-40" size={16} />}
-      {badge != null && <span className="absolute bottom-0 right-0.5 text-[10px] font-black tabular-nums text-white" style={{ textShadow: "0 1px 2px #000" }}>{badge}</span>}
+      {badge != null && <span className="absolute top-0 right-0.5 text-[10px] font-black tabular-nums text-white z-[2]" style={{ textShadow: "0 1px 2px #000" }}>×{badge}</span>}
+      {/* nombre del objeto (siempre visible) */}
+      <span data-testid={testid ? `${testid}-name` : undefined}
+        className="absolute inset-x-0 bottom-0 px-0.5 pt-2 pb-[1px] text-[8px] leading-[1.05] font-semibold text-white text-center truncate"
+        style={{ background: "linear-gradient(to top, rgba(0,0,0,.9) 30%, rgba(0,0,0,0))" }}>
+        {it.name}
+      </span>
     </Comp>
   );
 }
@@ -182,7 +188,7 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
             transition={bothLocked && !me.confirmed ? { duration: 1.6, repeat: Infinity } : { duration: 0.2 }}
             className="inline-flex items-center gap-2 rounded-lg px-10 py-3 font-black uppercase tracking-widest text-background disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#E9D8A6,#CAA968)" }}>
-            <Scale size={17} /> {me.confirmed ? <>Esperando…</> : "Barter"}
+            <Scale size={17} /> {me.confirmed ? <>Esperando…</> : "Confirmar"}
           </motion.button>
         </div>
         {!bothLocked && <p className="text-center text-[11px] text-muted-foreground">Ambos deben <b>bloquear</b> su oferta para confirmar. Editar reinicia los bloqueos.</p>}
