@@ -140,3 +140,13 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - Rediseño "legendario" (a petición del usuario): index.css con keyframes/utilidades (clip-notch, conic frame giratorio, holo foil, sheen, shop-grid-bg, price-tag). Hero "SKIN VAULT" con degradado, encabezados numerados 01/02/03, layout bento (hero grande + banner ancho + grid), banners cinematográficos en Temporada, leyenda de rareza.
 - NOTA: aplicar la skin dentro del juego real necesita el servidor live (RCON); en preview equipar solo marca equipped_shop_skin (web). El campo skin_data queda guardado para el enganche in-game futuro.
 - Stripe tax mode = "full" (Stripe gestiona todo incl. impuestos, +3.5%/tx). Sandbox sin reclamar; onboarding pendiente para pasar a live.
+
+## 2026-06 — Trade en Vivo P2P (BG3-style) [iteration_22: BE 83%->fix aplicado y verificado E2E; FE 100%]
+- Sesión de intercambio en vivo cara a cara dentro de la pestaña Intercambios del Mercado (filtro "Trade en Vivo" -> market-filter-live -> <LiveTradeHub/>). NO reemplaza el sistema asíncrono de dinos.
+- Backend `/app/backend/live_trade.py` (build_router montado en server.py ~18829, prefix /api; ensure_indexes en startup):
+  - WS /api/trade/ws: presencia (quién está en línea) + push por usuario. Colecciones: trade_sessions, trade_log. Campos user: trade_amber_day, trade_amber_sent, last_item_trade_at.
+  - REST: /trade/online, /trade/inventory, /trade/active, /trade/invite, /trade/respond, /trade/offer, /trade/lock, /trade/confirm, /trade/cancel.
+  - Reglas: única moneda tradeable = Amberium (vip_coins), máx 1000 ENVIADOS/día por usuario. Tradeable = todo db.inventory EXCEPTO category "Dinosaurs". Cooldown 3h por trade con cualquier item no-amberium; solo-amberium sin cooldown. Editar oferta reinicia ambos locks/confirmaciones. Swap con validación de propiedad, caps y rollback; ejecución idempotente bajo lock por sesión.
+  - FIX aplicado (bug crítico iteration_22): el snapshot de oferta ahora guarda item_id -> los items entregados conservan su item_id (0 filas rotas). Verificado E2E por API: A<->B intercambiaron huevos + amber correctamente, cooldown y tope diario aplicados.
+- Frontend: `components/trade/LiveTradeHub.jsx` (presencia + popup invitación aceptar/rechazar + espera) y `components/trade/TradeRoom.jsx` (dos inventarios estilo BG3, slots animados con muelle sincronizado, sonido click/hover al seleccionar, lock + confirm con glow pulsante). api.js: métodos trade* + tradeWsUrl(). FIX: dedupe por inv_id en AnimatedSlots (warning de key duplicada).
+- Test users: A=demo (POST /api/auth/demo). B=demo_0000000002 (token 7d en /app/memory/test_credentials.md). Reseed: python3 /app/backend/_seed_trade_test.py.

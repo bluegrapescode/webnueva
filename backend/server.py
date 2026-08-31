@@ -18827,6 +18827,12 @@ app.include_router(
     skin_shop.build_router(db, JWT_SECRET, get_current_user, get_admin_user, add_log, JWT_ALGO),
     prefix="/api")
 
+# Trade en Vivo P2P (live_trade.py): presencia + sesiones + swap atómico + WS.
+import live_trade
+app.include_router(
+    live_trade.build_router(db, JWT_SECRET, get_current_user, add_log, JWT_ALGO),
+    prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19434,6 +19440,11 @@ async def on_startup():
         await skin_shop.ensure_indexes()
     except Exception:
         logger.warning("[shop] startup init skipped", exc_info=True)
+    # Trade en Vivo P2P: índices.
+    try:
+        await live_trade.ensure_indexes()
+    except Exception:
+        logger.warning("[trade] startup init skipped", exc_info=True)
 
 
 @app.on_event("shutdown")

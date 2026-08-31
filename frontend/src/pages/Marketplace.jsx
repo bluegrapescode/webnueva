@@ -28,6 +28,7 @@ import {
 } from "@/lib/tradeBoard";
 import TradeOffersPanel from "@/components/market/TradeOffersPanel";
 import TradeOfferModal from "@/components/market/TradeOfferModal";
+import LiveTradeHub from "@/components/trade/LiveTradeHub";
 
 // Every rule this page quotes — the platform cut, the price rails, the legal
 // durations, the bid step, the anti-snipe window, the withdraw fee, the growth
@@ -1195,7 +1196,7 @@ export default function Marketplace({ initialTab }) {
 
       <div className="flex flex-wrap gap-2 mb-8">
         {[["all", "Todas"], ["sale", "Venta Directa"], ["auction", "Subastas"],
-          ["trade", "Intercambios"], ["mine", "Mis publicaciones"], ["offers", "Mis ofertas"]].map(([k, label]) => (
+          ["trade", "Intercambios"], ["live", "Trade en Vivo"], ["mine", "Mis publicaciones"], ["offers", "Mis ofertas"]].map(([k, label]) => (
           <button key={k} onClick={() => { setFilter(k); play("click"); }} data-testid={`market-filter-${k}`}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${filter === k ? "bg-gold text-background" : "glass text-muted-foreground hover:text-foreground"}`}>
             {label}
@@ -1206,7 +1207,9 @@ export default function Marketplace({ initialTab }) {
         ))}
       </div>
 
-      {filter === "offers" ? (
+      {filter === "live" ? (
+        <LiveTradeHub />
+      ) : filter === "offers" ? (
         <TradeOffersPanel
           cfg={tradeCfg}
           mine={tradeMine}

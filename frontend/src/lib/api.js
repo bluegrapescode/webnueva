@@ -65,6 +65,13 @@ export function shopWsUrl() {
   return `${base}/api/shop/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Trade en Vivo — WebSocket URL for /api/trade/ws (presence + live session sync).
+export function tradeWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/trade/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -470,6 +477,17 @@ export const api = {
   shopAdminCreate:  (body) => client.post("/admin/shop/skins", body),
   shopAdminUpdate:  (id, body) => client.patch(`/admin/shop/skins/${id}`, body),
   shopAdminDelete:  (id) => client.delete(`/admin/shop/skins/${id}`),
+
+  // ── Trade en Vivo P2P ──
+  tradeOnline:      () => client.get("/trade/online"),
+  tradeInventory:   () => client.get("/trade/inventory"),
+  tradeActive:      () => client.get("/trade/active"),
+  tradeInvite:      (to_user_id) => client.post("/trade/invite", { to_user_id }),
+  tradeRespond:     (session_id, accept) => client.post("/trade/respond", { session_id, accept }),
+  tradeSetOffer:    (session_id, items, amber) => client.post("/trade/offer", { session_id, items, amber }),
+  tradeLock:        (session_id, locked) => client.post("/trade/lock", { session_id, locked }),
+  tradeConfirm:     (session_id) => client.post("/trade/confirm", { session_id }),
+  tradeCancel:      (session_id) => client.post("/trade/cancel", { session_id }),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).
