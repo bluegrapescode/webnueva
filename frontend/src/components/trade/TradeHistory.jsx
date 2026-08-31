@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { History, ArrowRight, Gem, Loader2, PackageOpen, User } from "lucide-react";
 import { api } from "@/lib/api";
+import { MEDIA } from "@/lib/media";
 
 const RARITY_COLOR = {
   Common: "#8e9297", Uncommon: "#34D399", Rare: "#38bdf8", Epic: "#a855f7",
@@ -32,7 +33,7 @@ function OfferChips({ offer, tone }) {
       ))}
       {offer.amber > 0 && (
         <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-gold border border-gold/40 bg-gold/10">
-          <Gem size={12} /> {offer.amber}
+          <img src={MEDIA.coinVip} alt="Amberium" className="object-contain" style={{ width: 13, height: 13 }} /> {offer.amber}
         </span>
       )}
     </div>

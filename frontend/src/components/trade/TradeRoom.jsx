@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Unlock, Check, X, Gem, ArrowLeftRight, Loader2, User, AlertTriangle, Scale } from "lucide-react";
+import { MEDIA } from "@/lib/media";
+
+const AmberIcon = ({ size = 15, className = "" }) => (
+  <img src={MEDIA.coinVip} alt="Amberium" className={`inline-block object-contain ${className}`} style={{ width: size, height: size }} />
+);
 
 const RC = {
   common: "#8e9297", Common: "#8e9297", uncommon: "#34D399", Uncommon: "#34D399",
@@ -64,7 +69,7 @@ function Avatar({ src, name, side }) {
 }
 
 const AmberTotal = ({ v }) => (
-  <span className="inline-flex items-center gap-1 font-code font-black tabular-nums text-gold text-lg"><Gem size={15} /> {v}</span>
+  <span className="inline-flex items-center gap-1 font-code font-black tabular-nums text-gold text-lg"><AmberIcon size={16} /> {v}</span>
 );
 
 export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConfirm, onCancel, alert, onClearAlert }) {
@@ -158,7 +163,7 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
         {/* 3 · THEIR OFFER */}
         <motion.div layout className="rounded-lg border p-2.5" style={{ borderColor: them.confirmed ? "rgba(52,211,153,.5)" : them.locked ? "rgba(202,169,104,.5)" : "rgba(255,255,255,.1)", background: "rgba(255,255,255,.02)" }}>
           {colHead(<span className="flex items-center gap-1">Su oferta {them.locked && <Lock size={10} className="text-gold" />}{them.confirmed && <Check size={11} className="text-emerald" />}</span>,
-            <motion.span key={them.offer.amber || 0} initial={{ scale: 1.3, color: "#CAA968" }} animate={{ scale: 1, color: "#e5c07b" }} transition={SPRING} className="text-xs font-bold text-gold flex items-center gap-1"><Gem size={11} />{them.offer.amber || 0}</motion.span>)}
+            <motion.span key={them.offer.amber || 0} initial={{ scale: 1.3, color: "#CAA968" }} animate={{ scale: 1, color: "#e5c07b" }} transition={SPRING} className="text-xs font-bold text-gold flex items-center gap-1"><AmberIcon size={13} />{them.offer.amber || 0}</motion.span>)}
           <SlotGrid items={theirItems} cols={4} rows={6} testid="their-offer-slots"
             renderItem={(i) => <Tile it={i} badge={i.qty} testid={`their-offered-${i.inv_id}`} />} />
         </motion.div>
