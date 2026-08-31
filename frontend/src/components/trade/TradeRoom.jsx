@@ -25,7 +25,7 @@ function Tile({ it, badge, onClick, onHover, dim, testid }) {
       style={{ border: `1px solid ${color}88`, background: "#0f120b", boxShadow: `inset 0 0 10px ${color}22` }}>
       <div className="absolute inset-0" style={{ background: `radial-gradient(75% 75% at 50% 30%, ${color}2e, #0b0d09 88%)` }} />
       {it.image ? <img src={it.image} alt={it.name} className="absolute inset-0 w-full h-full object-cover" /> : <Gem className="absolute inset-0 m-auto opacity-40" size={16} />}
-      {badge != null && <span className="absolute top-0 right-0.5 text-[10px] font-black tabular-nums text-white z-[2]" style={{ textShadow: "0 1px 2px #000" }}>×{badge}</span>}
+      {badge != null && <span className="absolute top-0.5 right-0.5 z-[3] rounded-[3px] px-1 py-[1px] text-[10px] font-black tabular-nums text-white leading-none" style={{ background: "rgba(0,0,0,.82)", border: `1px solid ${color}aa`, boxShadow: `0 0 6px ${color}55` }}>×{badge}</span>}
       {/* nombre del objeto (siempre visible) */}
       <span data-testid={testid ? `${testid}-name` : undefined}
         className="absolute inset-x-0 bottom-0 px-0.5 pt-2 pb-[1px] text-[8px] leading-[1.05] font-semibold text-white text-center truncate"
@@ -82,6 +82,35 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
   const amberMax = Math.min(inv?.amber?.balance ?? 0, inv?.amber?.remaining_today ?? 0);
   const invLookup = useMemo(() => Object.fromEntries(invItems.map((i) => [i.inv_id, i])), [invItems]);
 
+  // ── stacking: identical items collapse into one slot with ×N ──
+  const stackKey = (it) => `${it.item_id ?? it.name}|${it.category ?? ""}|${it.rarity ?? ""}|${it.tier ?? ""}`;
+  const stackId = (it) => "stk_" + stackKey(it).replace(/[^a-z0-9]+/gi, "_");
+  const groupInv = (items) => {
+    const m = new Map();
+    for (const it of items) {
+      const k = stackKey(it);
+      if (!m.has(k)) m.set(k, { ...it, inv_id: stackId(it), total: 0, rows: [] });
+      const g = m.get(k); const q = it.quantity ?? 1;
+      g.total += q; g.rows.push({ inv_id: it.inv_id, quantity: q });
+    }
+    return [...m.values()];
+  };
+  const groupOffer = (items, lookup) => {
+    const m = new Map();
+    for (const i of items) {
+      const meta = (lookup && lookup[i.inv_id]) || i;
+      const k = stackKey(meta);
+      if (!m.has(k)) m.set(k, { ...meta, inv_id: stackId(meta), qty: 0, rows: [] });
+      const g = m.get(k); g.qty += i.qty; g.rows.push({ inv_id: i.inv_id, qty: i.qty });
+    }
+    return [...m.values()];
+  };
+  const myInvStacks = useMemo(() => groupInv(invItems), [invItems, offeredMap]);
+  const myOfferStacks = useMemo(() => groupOffer(myItems, invLookup), [myItems, invLookup]);
+  const theirOfferStacks = useMemo(() => groupOffer(theirItems, null), [theirItems]);
+  const peerStacks = useMemo(() => groupInv(peerItems), [peerItems]);
+  const offeredForRows = (rows) => rows.reduce((s, r) => s + (offeredMap[r.inv_id] || 0), 0);
+
   const [amber, setAmber] = useState(me.offer.amber || 0);
   const amberTimer = useRef(null); const focused = useRef(false);
   useEffect(() => { if (!focused.current) setAmber(me.offer.amber || 0); }, [me.offer.amber]);
@@ -89,10 +118,31 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
 
   const click = () => play?.("click");
   const send = (items, a) => onOffer(items.map((i) => ({ inv_id: i.inv_id, qty: i.qty })), a);
-  const addItem = (it) => { if (me.locked) return; const cur = offeredMap[it.inv_id] || 0; if (cur >= it.quantity) return; click();
-    const next = myItems.some((x) => x.inv_id === it.inv_id) ? myItems.map((x) => x.inv_id === it.inv_id ? { ...x, qty: x.qty + 1 } : x) : [...myItems, { inv_id: it.inv_id, qty: 1 }];
-    send(next, amber); };
-  const removeItem = (invId) => { if (me.locked) return; click(); send(myItems.map((x) => x.inv_id === invId ? { ...x, qty: x.qty - 1 } : x).filter((x) => x.qty > 0), amber); };
+  // add one unit of a whole stack: allocate to the first underlying row with capacity
+  const addStack = (g) => {
+    if (me.locked) return;
+    if (offeredForRows(g.rows) >= g.total) return;
+    click();
+    let next = [...myItems];
+    for (const row of g.rows) {
+      if ((offeredMap[row.inv_id] || 0) < row.quantity) {
+        next = next.some((x) => x.inv_id === row.inv_id)
+          ? next.map((x) => x.inv_id === row.inv_id ? { ...x, qty: x.qty + 1 } : x)
+          : [...next, { inv_id: row.inv_id, qty: 1 }];
+        break;
+      }
+    }
+    send(next, amber);
+  };
+  // remove one unit of a stack: take it from the last offered underlying row
+  const removeStack = (g) => {
+    if (me.locked) return;
+    const offeredRows = g.rows.filter((r) => (offeredMap[r.inv_id] || 0) > 0);
+    const row = offeredRows[offeredRows.length - 1];
+    if (!row) return;
+    click();
+    send(myItems.map((x) => x.inv_id === row.inv_id ? { ...x, qty: x.qty - 1 } : x).filter((x) => x.qty > 0), amber);
+  };
   const onAmber = (v) => { focused.current = true; const val = Math.max(0, Math.min(amberMax, parseInt(v || "0", 10) || 0)); setAmber(val);
     clearTimeout(amberTimer.current); amberTimer.current = setTimeout(() => { focused.current = false; send(myItems, val); }, 450); };
 
@@ -144,9 +194,9 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
           {invItems.length === 0
             ? <p className="text-xs text-muted-foreground text-center py-8">Sin objetos</p>
             : <div className="max-h-[420px] overflow-y-auto pr-0.5">
-                <SlotGrid items={invItems.map((it) => ({ ...it }))} cols={4} rows={8} interactive testid="my-inventory-grid"
-                  renderItem={(it) => { const left = it.quantity - (offeredMap[it.inv_id] || 0);
-                    return <Tile it={it} badge={left} dim={left <= 0} onHover={() => play?.("hover")} onClick={() => addItem(it)} testid={`inv-item-${it.inv_id}`} />; }} />
+                <SlotGrid items={myInvStacks} cols={4} rows={8} interactive testid="my-inventory-grid"
+                  renderItem={(g) => { const left = g.total - offeredForRows(g.rows);
+                    return <Tile it={g} badge={left} dim={left <= 0} onHover={() => play?.("hover")} onClick={() => addStack(g)} testid={`inv-item-${g.item_id || g.inv_id}`} />; }} />
               </div>}
         </div>
 
@@ -155,8 +205,8 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
           {colHead(<span className="flex items-center gap-1">Tu oferta {me.locked && <Lock size={10} className="text-gold" />}{me.confirmed && <Check size={11} className="text-emerald" />}</span>,
             <input type="number" min="0" max={amberMax} value={amber} disabled={me.locked} onChange={(e) => onAmber(e.target.value)} data-testid="my-amber-input"
               className="w-20 px-2 py-1 rounded glass border border-gold/20 text-xs text-gold font-bold outline-none focus:border-gold/60 disabled:opacity-50" />)}
-          <SlotGrid items={myItems} cols={4} rows={6} testid="my-offer-slots"
-            renderItem={(i) => { const meta = invLookup[i.inv_id] || i; return <Tile it={meta} badge={i.qty} onClick={me.locked ? undefined : () => removeItem(i.inv_id)} testid={`my-offered-${i.inv_id}`} />; }} />
+          <SlotGrid items={myOfferStacks} cols={4} rows={6} testid="my-offer-slots"
+            renderItem={(g) => <Tile it={g} badge={g.qty} onClick={me.locked ? undefined : () => removeStack(g)} testid={`my-offered-${g.item_id || g.inv_id}`} />} />
           <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Amberium: {amber} / {amberMax} hoy</p>
         </motion.div>
 
@@ -164,8 +214,8 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
         <motion.div layout className="rounded-lg border p-2.5" style={{ borderColor: them.confirmed ? "rgba(52,211,153,.5)" : them.locked ? "rgba(202,169,104,.5)" : "rgba(255,255,255,.1)", background: "rgba(255,255,255,.02)" }}>
           {colHead(<span className="flex items-center gap-1">Su oferta {them.locked && <Lock size={10} className="text-gold" />}{them.confirmed && <Check size={11} className="text-emerald" />}</span>,
             <motion.span key={them.offer.amber || 0} initial={{ scale: 1.3, color: "#CAA968" }} animate={{ scale: 1, color: "#e5c07b" }} transition={SPRING} className="text-xs font-bold text-gold flex items-center gap-1"><AmberIcon size={13} />{them.offer.amber || 0}</motion.span>)}
-          <SlotGrid items={theirItems} cols={4} rows={6} testid="their-offer-slots"
-            renderItem={(i) => <Tile it={i} badge={i.qty} testid={`their-offered-${i.inv_id}`} />} />
+          <SlotGrid items={theirOfferStacks} cols={4} rows={6} testid="their-offer-slots"
+            renderItem={(g) => <Tile it={g} badge={g.qty} testid={`their-offered-${g.item_id || g.inv_id}`} />} />
         </motion.div>
 
         {/* 4 · THEIR INVENTORY */}
@@ -174,8 +224,8 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
           {peerItems.length === 0
             ? <p className="text-xs text-muted-foreground text-center py-8">Sin objetos</p>
             : <div className="max-h-[420px] overflow-y-auto pr-0.5">
-                <SlotGrid items={peerItems.map((it) => ({ ...it }))} cols={4} rows={8} testid="their-inventory-grid"
-                  renderItem={(it) => <Tile it={it} badge={it.quantity} testid={`peer-item-${it.inv_id}`} />} />
+                <SlotGrid items={peerStacks} cols={4} rows={8} testid="their-inventory-grid"
+                  renderItem={(g) => <Tile it={g} badge={g.total} testid={`peer-item-${g.item_id || g.inv_id}`} />} />
               </div>}
         </div>
       </div>
