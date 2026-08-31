@@ -1,212 +1,193 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Unlock, Check, X, Gem, Plus, Minus, ArrowLeftRight, Loader2 } from "lucide-react";
+import { Lock, Unlock, Check, X, Gem, ArrowLeftRight, Loader2, User, AlertTriangle, Scale } from "lucide-react";
 
-const RARITY_COLOR = {
+const RC = {
   common: "#8e9297", Common: "#8e9297", uncommon: "#34D399", Uncommon: "#34D399",
   rare: "#38bdf8", Rare: "#38bdf8", epic: "#a855f7", Epic: "#a855f7",
   legendary: "#f59e0b", Legendary: "#f59e0b", mythic: "#ef4444", Mythic: "#ef4444",
 };
-const rc = (r) => RARITY_COLOR[r] || "#CAA968";
+const rc = (r) => RC[r] || "#6b7280";
 const SPRING = { type: "spring", stiffness: 420, damping: 26 };
 
-function ItemTile({ it, badge, onClick, onHover, dim, testid }) {
+function Tile({ it, badge, onClick, onHover, dim, testid }) {
   const color = rc(it.rarity);
   const Comp = onClick ? motion.button : motion.div;
   return (
-    <Comp
-      onClick={onClick} onMouseEnter={onHover} data-testid={testid}
-      whileHover={onClick ? { scale: 1.09 } : undefined}
-      whileTap={onClick ? { scale: 0.88 } : undefined}
-      transition={SPRING}
-      className={`relative aspect-square rounded-md overflow-hidden border ${onClick ? "cursor-pointer" : "cursor-default"} ${dim ? "opacity-30 grayscale pointer-events-none" : ""}`}
-      style={{ borderColor: `${color}66`, boxShadow: `inset 0 0 0 1px ${color}22, 0 4px 14px -6px ${color}88` }}
-    >
-      <div className="absolute inset-0" style={{ background: `radial-gradient(70% 70% at 50% 30%, ${color}33, #0b0d09 85%)` }} />
-      {it.image ? <img src={it.image} alt={it.name} className="absolute inset-0 w-full h-full object-cover" /> : <Gem className="absolute inset-0 m-auto opacity-40" size={20} />}
-      {badge != null && (
-        <span className="absolute bottom-0.5 right-0.5 text-[10px] font-black tabular-nums px-1 rounded bg-black/70 text-white">{badge}</span>
-      )}
+    <Comp onClick={onClick} onMouseEnter={onHover} data-testid={testid}
+      whileHover={onClick ? { scale: 1.1, zIndex: 5 } : undefined} whileTap={onClick ? { scale: 0.88 } : undefined} transition={SPRING}
+      className={`relative aspect-square w-full rounded-[3px] overflow-hidden ${onClick ? "cursor-pointer" : "cursor-default"} ${dim ? "opacity-25 grayscale pointer-events-none" : ""}`}
+      style={{ border: `1px solid ${color}88`, background: "#0f120b", boxShadow: `inset 0 0 10px ${color}22` }}>
+      <div className="absolute inset-0" style={{ background: `radial-gradient(75% 75% at 50% 30%, ${color}2e, #0b0d09 88%)` }} />
+      {it.image ? <img src={it.image} alt={it.name} className="absolute inset-0 w-full h-full object-cover" /> : <Gem className="absolute inset-0 m-auto opacity-40" size={16} />}
+      {badge != null && <span className="absolute bottom-0 right-0.5 text-[10px] font-black tabular-nums text-white" style={{ textShadow: "0 1px 2px #000" }}>{badge}</span>}
     </Comp>
   );
 }
 
-// Offer columns with synchronized spring-in / spring-out on every add/remove.
-function AnimatedSlots({ items, renderItem, count = 8, testid }) {
-  // defensive dedupe by inv_id to avoid transient duplicate React keys
+function SlotGrid({ items, cols = 4, rows = 6, renderItem, interactive, testid }) {
+  const total = cols * rows;
   const seen = new Set();
   const uniq = items.filter((it) => (seen.has(it.inv_id) ? false : seen.add(it.inv_id)));
-  const empties = Math.max(0, count - uniq.length);
+  const empties = Math.max(0, total - uniq.length);
   return (
-    <div className="grid grid-cols-4 gap-1.5" data-testid={testid}>
+    <div className={`grid gap-1 content-start`} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }} data-testid={testid}>
       <AnimatePresence mode="popLayout" initial={false}>
         {uniq.map((it) => (
-          <motion.div key={it.inv_id} layout
-            initial={{ scale: 0, opacity: 0, y: -8 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={SPRING}>
+          <motion.div key={it.inv_id} layout initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={SPRING}>
             {renderItem(it)}
           </motion.div>
         ))}
       </AnimatePresence>
       {Array.from({ length: empties }).map((_, i) => (
-        <div key={"e" + i} className="aspect-square rounded-md border border-white/[0.06] bg-white/[0.02]" />
+        <div key={"e" + i} className="aspect-square rounded-[3px] border border-[#CAA968]/12 bg-black/30" />
       ))}
     </div>
   );
 }
 
-export function TradeRoom({ session, inv, play, onOffer, onLock, onConfirm, onCancel }) {
+function Avatar({ src, name, side }) {
+  return (
+    <div className={`flex flex-col items-center ${side}`}>
+      <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-[#CAA968]/60" style={{ boxShadow: "0 0 20px rgba(202,169,104,.35)" }}>
+        {src ? <img src={src} alt={name} className="w-full h-full object-cover" /> : <User className="m-auto mt-4 opacity-50" size={26} />}
+      </div>
+      <span className="font-display font-bold text-sm mt-1.5">{name}</span>
+    </div>
+  );
+}
+
+const AmberTotal = ({ v }) => (
+  <span className="inline-flex items-center gap-1 font-code font-black tabular-nums text-gold text-lg"><Gem size={15} /> {v}</span>
+);
+
+export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConfirm, onCancel, alert, onClearAlert }) {
   const me = session.me, them = session.them;
   const myItems = me.offer.items || [];
   const theirItems = them.offer.items || [];
   const offeredMap = useMemo(() => Object.fromEntries(myItems.map((i) => [i.inv_id, i.qty])), [myItems]);
   const invItems = inv?.items || [];
+  const peerItems = peerInv?.items || [];
   const amberMax = Math.min(inv?.amber?.balance ?? 0, inv?.amber?.remaining_today ?? 0);
   const invLookup = useMemo(() => Object.fromEntries(invItems.map((i) => [i.inv_id, i])), [invItems]);
 
   const [amber, setAmber] = useState(me.offer.amber || 0);
-  const amberTimer = useRef(null);
-  const focused = useRef(false);
+  const amberTimer = useRef(null); const focused = useRef(false);
   useEffect(() => { if (!focused.current) setAmber(me.offer.amber || 0); }, [me.offer.amber]);
+  useEffect(() => { if (!alert) return; const t = setTimeout(() => onClearAlert?.(), 6000); return () => clearTimeout(t); }, [alert, onClearAlert]);
 
   const click = () => play?.("click");
-  const sendOffer = (items, amberVal) => onOffer(items.map((i) => ({ inv_id: i.inv_id, qty: i.qty })), amberVal);
-
-  const addItem = (invIt) => {
-    if (me.locked) return;
-    const cur = offeredMap[invIt.inv_id] || 0;
-    if (cur >= invIt.quantity) return;
-    click();
-    const next = myItems.some((i) => i.inv_id === invIt.inv_id)
-      ? myItems.map((i) => i.inv_id === invIt.inv_id ? { ...i, qty: i.qty + 1 } : i)
-      : [...myItems, { inv_id: invIt.inv_id, qty: 1 }];
-    sendOffer(next, amber);
-  };
-  const stepItem = (invId, delta) => {
-    if (me.locked) return;
-    click();
-    const next = myItems.map((i) => i.inv_id === invId ? { ...i, qty: i.qty + delta } : i).filter((i) => i.qty > 0);
-    sendOffer(next, amber);
-  };
-  const onAmber = (v) => {
-    focused.current = true;
-    const val = Math.max(0, Math.min(amberMax, parseInt(v || "0", 10) || 0));
-    setAmber(val);
-    clearTimeout(amberTimer.current);
-    amberTimer.current = setTimeout(() => { focused.current = false; sendOffer(myItems, val); }, 450);
-  };
+  const send = (items, a) => onOffer(items.map((i) => ({ inv_id: i.inv_id, qty: i.qty })), a);
+  const addItem = (it) => { if (me.locked) return; const cur = offeredMap[it.inv_id] || 0; if (cur >= it.quantity) return; click();
+    const next = myItems.some((x) => x.inv_id === it.inv_id) ? myItems.map((x) => x.inv_id === it.inv_id ? { ...x, qty: x.qty + 1 } : x) : [...myItems, { inv_id: it.inv_id, qty: 1 }];
+    send(next, amber); };
+  const removeItem = (invId) => { if (me.locked) return; click(); send(myItems.map((x) => x.inv_id === invId ? { ...x, qty: x.qty - 1 } : x).filter((x) => x.qty > 0), amber); };
+  const onAmber = (v) => { focused.current = true; const val = Math.max(0, Math.min(amberMax, parseInt(v || "0", 10) || 0)); setAmber(val);
+    clearTimeout(amberTimer.current); amberTimer.current = setTimeout(() => { focused.current = false; send(myItems, val); }, 450); };
 
   const bothLocked = me.locked && them.locked;
 
+  const colHead = (label, right) => (
+    <div className="flex items-center justify-between mb-1.5 px-0.5">
+      <span className="label-overline text-[10px] text-muted-foreground">{label}</span>
+      {right}
+    </div>
+  );
+
   return (
-    <div data-testid="trade-room">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="font-display font-black text-2xl tracking-tight flex items-center gap-2"><ArrowLeftRight className="text-gold" size={24} /> Intercambio en curso</h2>
-        <button onClick={() => { click(); onCancel(); }} data-testid="trade-cancel" className="inline-flex items-center gap-1.5 text-sm rounded-lg px-3 py-2 bg-white/10 hover:bg-crimson/20 hover:text-crimson border border-white/10 transition-colors"><X size={15} /> Cancelar</button>
+    <div data-testid="trade-room" className="relative rounded-2xl p-4 sm:p-6"
+      style={{ border: "1px solid rgba(202,169,104,.35)", background: "linear-gradient(180deg,#0e120a,#0a0c07)", boxShadow: "inset 0 0 60px rgba(0,0,0,.6)" }}>
+      {/* corner flourishes */}
+      {["top-2 left-2", "top-2 right-2", "bottom-2 left-2", "bottom-2 right-2"].map((c, i) => (
+        <div key={i} className={`absolute ${c} w-5 h-5 border-gold/50`} style={{ borderTopWidth: c.includes("top") ? 2 : 0, borderBottomWidth: c.includes("bottom") ? 2 : 0, borderLeftWidth: c.includes("left") ? 2 : 0, borderRightWidth: c.includes("right") ? 2 : 0 }} />
+      ))}
+
+      {/* header: avatars + title */}
+      <div className="flex items-center justify-between">
+        <Avatar src={them && me.user_id ? undefined : undefined} name="Tú" />
+        <div className="text-center">
+          <p className="font-display font-black text-lg tracking-tight flex items-center gap-2 justify-center"><ArrowLeftRight className="text-gold" size={18} /> Intercambio</p>
+          <button onClick={() => { click(); onCancel(); }} data-testid="trade-cancel" className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-crimson transition-colors"><X size={12} /> Cancelar</button>
+        </div>
+        <Avatar src={them.avatar} name={them.name} />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* ── MY SIDE ── */}
-        <motion.div layout className="glass rounded-2xl border border-gold/20 p-4"
-          animate={{ boxShadow: me.confirmed ? "0 0 0 1.5px rgba(52,211,153,.6)" : me.locked ? "0 0 0 1.5px rgba(202,169,104,.5)" : "0 0 0 0px rgba(0,0,0,0)" }}
-          transition={{ duration: 0.3 }}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-display font-bold text-lg">Tu oferta</span>
-            <div className="flex items-center gap-1.5 text-xs">
-              <AnimatePresence>
-                {me.locked && <motion.span initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1 text-gold"><Lock size={12} /> Bloqueada</motion.span>}
-                {me.confirmed && <motion.span initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1 text-emerald"><Check size={12} /> Confirmado</motion.span>}
-              </AnimatePresence>
-            </div>
-          </div>
+      {/* anti-scam alert */}
+      <AnimatePresence>
+        {alert && (
+          <motion.div initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+            data-testid="trade-scam-alert"
+            className="mt-3 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold border border-crimson/50 bg-crimson/15 text-crimson"
+            style={{ boxShadow: "0 0 24px rgba(214,60,60,.35)" }}>
+            <AlertTriangle size={16} className="animate-pulse" />
+            {alert.by || "El otro jugador"} cambió su oferta después de que bloqueaste. Revísala antes de confirmar.
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <AnimatedSlots testid="my-offer-slots" items={myItems} renderItem={(i) => {
-            const meta = invLookup[i.inv_id] || i;
-            return (
-              <div className="relative group">
-                <ItemTile it={meta} badge={i.qty} onClick={me.locked ? undefined : () => stepItem(i.inv_id, -1)} testid={`my-offered-${i.inv_id}`} />
-                {!me.locked && (
-                  <div className="absolute -top-1.5 -right-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => stepItem(i.inv_id, -1)} className="w-4 h-4 rounded-full bg-crimson text-white grid place-items-center"><Minus size={9} /></button>
-                    <button onClick={() => stepItem(i.inv_id, 1)} className="w-4 h-4 rounded-full bg-emerald text-background grid place-items-center"><Plus size={9} /></button>
-                  </div>
-                )}
-              </div>
-            );
-          }} />
+      {/* 4-column trade grid */}
+      <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* 1 · MY INVENTORY */}
+        <div className="rounded-lg border border-white/10 bg-black/25 p-2.5">
+          {colHead("Tu inventario", <AmberTotal v={inv?.amber?.balance ?? 0} />)}
+          {invItems.length === 0
+            ? <p className="text-xs text-muted-foreground text-center py-8">Sin objetos</p>
+            : <div className="max-h-[420px] overflow-y-auto pr-0.5">
+                <SlotGrid items={invItems.map((it) => ({ ...it }))} cols={4} rows={8} interactive testid="my-inventory-grid"
+                  renderItem={(it) => { const left = it.quantity - (offeredMap[it.inv_id] || 0);
+                    return <Tile it={it} badge={left} dim={left <= 0} onHover={() => play?.("hover")} onClick={() => addItem(it)} testid={`inv-item-${it.inv_id}`} />; }} />
+              </div>}
+        </div>
 
-          <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold"><Gem size={15} /> Amberium</span>
+        {/* 2 · MY OFFER */}
+        <motion.div layout className="rounded-lg border p-2.5" style={{ borderColor: me.confirmed ? "rgba(52,211,153,.5)" : me.locked ? "rgba(202,169,104,.5)" : "rgba(255,255,255,.1)", background: "rgba(202,169,104,.05)" }}>
+          {colHead(<span className="flex items-center gap-1">Tu oferta {me.locked && <Lock size={10} className="text-gold" />}{me.confirmed && <Check size={11} className="text-emerald" />}</span>,
             <input type="number" min="0" max={amberMax} value={amber} disabled={me.locked} onChange={(e) => onAmber(e.target.value)} data-testid="my-amber-input"
-              className="w-28 px-2.5 py-1.5 rounded-lg glass border border-white/10 text-sm outline-none focus:border-gold/50 disabled:opacity-50" />
-            <span className="text-[11px] text-muted-foreground">/ {amberMax} disp. hoy</span>
-          </div>
-
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mt-5 mb-2">Tu inventario {me.locked && <span className="text-gold normal-case">· desbloquea para editar</span>}</p>
-          {invItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">No tienes objetos intercambiables.</p>
-          ) : (
-            <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-56 overflow-y-auto pr-1" data-testid="my-inventory-grid">
-              {invItems.map((it) => {
-                const left = it.quantity - (offeredMap[it.inv_id] || 0);
-                return <ItemTile key={it.inv_id} it={it} badge={left} dim={left <= 0} testid={`inv-item-${it.inv_id}`} onHover={() => play?.("hover")} onClick={() => addItem(it)} />;
-              })}
-            </div>
-          )}
+              className="w-20 px-2 py-1 rounded glass border border-gold/20 text-xs text-gold font-bold outline-none focus:border-gold/60 disabled:opacity-50" />)}
+          <SlotGrid items={myItems} cols={4} rows={6} testid="my-offer-slots"
+            renderItem={(i) => { const meta = invLookup[i.inv_id] || i; return <Tile it={meta} badge={i.qty} onClick={me.locked ? undefined : () => removeItem(i.inv_id)} testid={`my-offered-${i.inv_id}`} />; }} />
+          <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Amberium: {amber} / {amberMax} hoy</p>
         </motion.div>
 
-        {/* ── THEIR SIDE ── */}
-        <motion.div layout className="glass rounded-2xl border border-white/10 p-4"
-          animate={{ boxShadow: them.confirmed ? "0 0 0 1.5px rgba(52,211,153,.6)" : them.locked ? "0 0 0 1.5px rgba(202,169,104,.5)" : "0 0 0 0px rgba(0,0,0,0)" }}
-          transition={{ duration: 0.3 }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5">{them.avatar ? <img src={them.avatar} alt="" className="w-full h-full object-cover" /> : null}</div>
-              <span className="font-display font-bold text-lg">{them.name}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs">
-              <AnimatePresence>
-                {them.locked && <motion.span initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1 text-gold"><Lock size={12} /> Bloqueada</motion.span>}
-                {them.confirmed && <motion.span initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1 text-emerald"><Check size={12} /> Confirmado</motion.span>}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          <AnimatedSlots testid="their-offer-slots" items={theirItems} renderItem={(i) => (
-            <ItemTile it={i} badge={i.qty} testid={`their-offered-${i.inv_id}`} />
-          )} />
-
-          <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold"><Gem size={15} /> Amberium</span>
-            <motion.span key={them.offer.amber || 0} initial={{ scale: 1.25, color: "#CAA968" }} animate={{ scale: 1, color: "#ffffff" }} transition={SPRING}
-              className="px-2.5 py-1.5 rounded-lg glass border border-white/10 text-sm tabular-nums font-bold">{them.offer.amber || 0}</motion.span>
-          </div>
-          {theirItems.length === 0 && (them.offer.amber || 0) === 0 && (
-            <p className="text-sm text-muted-foreground py-10 text-center">{them.name} aún no ha ofrecido nada.</p>
-          )}
+        {/* 3 · THEIR OFFER */}
+        <motion.div layout className="rounded-lg border p-2.5" style={{ borderColor: them.confirmed ? "rgba(52,211,153,.5)" : them.locked ? "rgba(202,169,104,.5)" : "rgba(255,255,255,.1)", background: "rgba(255,255,255,.02)" }}>
+          {colHead(<span className="flex items-center gap-1">Su oferta {them.locked && <Lock size={10} className="text-gold" />}{them.confirmed && <Check size={11} className="text-emerald" />}</span>,
+            <motion.span key={them.offer.amber || 0} initial={{ scale: 1.3, color: "#CAA968" }} animate={{ scale: 1, color: "#e5c07b" }} transition={SPRING} className="text-xs font-bold text-gold flex items-center gap-1"><Gem size={11} />{them.offer.amber || 0}</motion.span>)}
+          <SlotGrid items={theirItems} cols={4} rows={6} testid="their-offer-slots"
+            renderItem={(i) => <Tile it={i} badge={i.qty} testid={`their-offered-${i.inv_id}`} />} />
         </motion.div>
+
+        {/* 4 · THEIR INVENTORY */}
+        <div className="rounded-lg border border-white/10 bg-black/25 p-2.5">
+          {colHead(`Inventario de ${them.name}`, <AmberTotal v={peerInv?.amber_balance ?? 0} />)}
+          {peerItems.length === 0
+            ? <p className="text-xs text-muted-foreground text-center py-8">Sin objetos</p>
+            : <div className="max-h-[420px] overflow-y-auto pr-0.5">
+                <SlotGrid items={peerItems.map((it) => ({ ...it }))} cols={4} rows={8} testid="their-inventory-grid"
+                  renderItem={(it) => <Tile it={it} badge={it.quantity} testid={`peer-item-${it.inv_id}`} />} />
+              </div>}
+        </div>
       </div>
 
-      {/* ── controls ── */}
-      <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
-        <motion.button whileTap={{ scale: 0.94 }} onClick={() => { click(); onLock(!me.locked); }} data-testid="trade-lock-btn"
-          className={`inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-bold border transition-colors w-full sm:w-auto ${me.locked ? "bg-gold/15 text-gold border-gold/40" : "bg-white/10 border-white/10 hover:bg-white/15"}`}>
-          {me.locked ? <><Unlock size={17} /> Desbloquear</> : <><Lock size={17} /> Bloquear oferta</>}
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.94 }} whileHover={bothLocked && !me.confirmed ? { scale: 1.03 } : undefined}
-          onClick={() => { click(); onConfirm(); }} disabled={!bothLocked || me.confirmed} data-testid="trade-confirm-btn"
-          animate={bothLocked && !me.confirmed ? { boxShadow: ["0 0 0 0 rgba(202,169,104,0)", "0 0 22px 2px rgba(202,169,104,.55)", "0 0 0 0 rgba(202,169,104,0)"] } : { boxShadow: "0 0 0 0 rgba(0,0,0,0)" }}
-          transition={bothLocked && !me.confirmed ? { duration: 1.6, repeat: Infinity } : { duration: 0.2 }}
-          className="inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3.5 font-black uppercase tracking-wide text-background disabled:opacity-40 w-full sm:w-auto"
-          style={{ background: "linear-gradient(135deg,#E9D8A6,#CAA968)" }}>
-          {me.confirmed ? <><Loader2 size={17} className="animate-spin" /> Esperando a {them.name}…</> : <><Check size={18} /> Confirmar intercambio</>}
-        </motion.button>
+      {/* central BARTER control */}
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-3">
+          <motion.button whileTap={{ scale: 0.94 }} onClick={() => { click(); onLock(!me.locked); }} data-testid="trade-lock-btn"
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold border transition-colors ${me.locked ? "bg-gold/15 text-gold border-gold/40" : "bg-white/10 border-white/10 hover:bg-white/15"}`}>
+            {me.locked ? <><Unlock size={15} /> Desbloquear</> : <><Lock size={15} /> Bloquear</>}
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.94 }} whileHover={bothLocked && !me.confirmed ? { scale: 1.03 } : undefined}
+            onClick={() => { click(); onConfirm(); }} disabled={!bothLocked || me.confirmed} data-testid="trade-confirm-btn"
+            animate={bothLocked && !me.confirmed ? { boxShadow: ["0 0 0 0 rgba(202,169,104,0)", "0 0 26px 3px rgba(202,169,104,.6)", "0 0 0 0 rgba(202,169,104,0)"] } : {}}
+            transition={bothLocked && !me.confirmed ? { duration: 1.6, repeat: Infinity } : { duration: 0.2 }}
+            className="inline-flex items-center gap-2 rounded-lg px-10 py-3 font-black uppercase tracking-widest text-background disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg,#E9D8A6,#CAA968)" }}>
+            <Scale size={17} /> {me.confirmed ? <>Esperando…</> : "Barter"}
+          </motion.button>
+        </div>
+        {!bothLocked && <p className="text-center text-[11px] text-muted-foreground">Ambos deben <b>bloquear</b> su oferta para confirmar. Editar reinicia los bloqueos.</p>}
+        {me.confirmed && !them.confirmed && <p className="text-center text-[11px] text-gold flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Esperando la confirmación de {them.name}…</p>}
       </div>
-      {!bothLocked && (
-        <p className="text-center text-xs text-muted-foreground mt-2">Ambos jugadores deben <b>bloquear</b> su oferta para poder confirmar. Editar la oferta reinicia los bloqueos.</p>
-      )}
     </div>
   );
 }

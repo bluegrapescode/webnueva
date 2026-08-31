@@ -340,6 +340,8 @@ def build_router(db, jwt_secret: str, get_current_user, add_log, jwt_algo: str =
 
         await db.trade_log.insert_one({
             "id": _nid(), "a_id": a_id, "b_id": b_id,
+            "a_name": sess.get("a_name"), "b_name": sess.get("b_name"),
+            "a_avatar": sess.get("a_avatar"), "b_avatar": sess.get("b_avatar"),
             "a_offer": a_off, "b_offer": b_off, "created_at": _iso()})
         return {"a_offer": a_off, "b_offer": b_off}
 
@@ -361,6 +363,34 @@ def build_router(db, jwt_secret: str, get_current_user, add_log, jwt_algo: str =
     async def active(user=Depends(get_current_user)):
         sess = await _active_for(user["id"])
         return {"session": _public(sess, user["id"]) if sess else None}
+
+    @router.get("/trade/peer/{session_id}")
+    async def peer_inventory(session_id: str, user=Depends(get_current_user)):
+        sess = await db.trade_sessions.find_one({"id": session_id}, {"_id": 0})
+        if not sess or user["id"] not in (sess["a_id"], sess["b_id"]):
+            raise HTTPException(status_code=404, detail="Sesión no válida")
+        other = sess["b_id"] if sess["a_id"] == user["id"] else sess["a_id"]
+        ou = await db.users.find_one({"id": other}, {"_id": 0, "vip_coins": 1})
+        return {"items": await _tradeable_inventory(other), "amber_balance": int((ou or {}).get("vip_coins", 0))}
+
+    @router.get("/trade/history")
+    async def history(user=Depends(get_current_user)):
+        uid = user["id"]
+        cur = db.trade_log.find({"$or": [{"a_id": uid}, {"b_id": uid}]}, {"_id": 0}).sort("created_at", -1).limit(100)
+        rows = await cur.to_list(100)
+        out = []
+        for r in rows:
+            me_is_a = r["a_id"] == uid
+            gave = r["a_offer"] if me_is_a else r["b_offer"]
+            got = r["b_offer"] if me_is_a else r["a_offer"]
+            out.append({
+                "id": r["id"], "created_at": r["created_at"],
+                "partner_name": (r.get("b_name") if me_is_a else r.get("a_name")) or "Jugador",
+                "partner_avatar": (r.get("b_avatar") if me_is_a else r.get("a_avatar")),
+                "gave": {"items": gave.get("items", []), "amber": gave.get("amber", 0)},
+                "received": {"items": got.get("items", []), "amber": got.get("amber", 0)},
+            })
+        return {"trades": out}
 
     @router.post("/trade/invite")
     async def invite(data: InviteIn, user=Depends(get_current_user)):
@@ -418,6 +448,8 @@ def build_router(db, jwt_secret: str, get_current_user, add_log, jwt_algo: str =
                 if data.amber > st["remaining_today"]:
                     raise HTTPException(status_code=400, detail=f"Te quedan {st['remaining_today']} Amberiums por hoy (límite 1000)")
             side = _side_key(sess, user["id"])
+            other_side = "b" if side == "a" else "a"
+            other_was_locked = sess[f"{other_side}_locked"]
             # editing an offer resets BOTH locks & confirms
             await db.trade_sessions.update_one({"id": sess["id"]}, {"$set": {
                 f"{side}_offer": {"items": [{"inv_id": s["inv_id"], "qty": s["qty"], "item_id": s.get("item_id"),
@@ -427,6 +459,10 @@ def build_router(db, jwt_secret: str, get_current_user, add_log, jwt_algo: str =
                 "updated_at": _iso()}})
             fresh = await db.trade_sessions.find_one({"id": sess["id"]}, {"_id": 0})
             await _push_state(fresh)
+            # anti-scam: if the OTHER player had already locked, alert them loudly
+            if other_was_locked:
+                other_id = sess["b_id"] if side == "a" else sess["a_id"]
+                await hub.push(other_id, {"type": "trade_offer_changed", "by": user.get("persona_name")})
             return {"ok": True}
 
     @router.post("/trade/lock")

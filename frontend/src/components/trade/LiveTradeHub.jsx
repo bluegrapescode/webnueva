@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Search, Radio, ArrowLeftRight, Loader2, X, Check, ShieldAlert } from "lucide-react";
+import { Users, Search, Radio, ArrowLeftRight, Loader2, X, Check, ShieldAlert, History } from "lucide-react";
 import { api, tradeWsUrl } from "@/lib/api";
 import { useSound } from "@/context/SoundContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { TradeRoom } from "@/components/trade/TradeRoom";
+import TradeHistory from "@/components/trade/TradeHistory";
 
 export default function LiveTradeHub() {
   const { play } = useSound();
@@ -16,6 +17,9 @@ export default function LiveTradeHub() {
   const [invite, setInvite] = useState(null);       // incoming
   const [outgoing, setOutgoing] = useState(null);    // waiting for acceptance
   const [inv, setInv] = useState(null);              // my tradeable inventory
+  const [peerInv, setPeerInv] = useState(null);      // other player's inventory (read-only)
+  const [alert, setAlert] = useState(null);          // anti-scam: they edited after I locked
+  const [view, setView] = useState("live");          // live | history
   const wsRef = useRef(null);
 
   const loadInventory = useCallback(async () => {
@@ -35,8 +39,9 @@ export default function LiveTradeHub() {
         switch (m.type) {
           case "presence": setOnline(m.online || []); break;
           case "trade_invite": setInvite(m); play?.("open"); break;
-          case "trade_start": setSession(m.state); setOutgoing(null); setInvite(null); loadInventory(); break;
+          case "trade_start": setSession(m.state); setOutgoing(null); setInvite(null); setAlert(null); loadInventory(); break;
           case "trade_state": setSession(m.state); break;
+          case "trade_offer_changed": setAlert({ by: m.by, ts: Date.now() }); play?.("open"); break;
           case "trade_declined": toast.info(`${m.by} rechazó tu invitación`); setOutgoing(null); break;
           case "trade_cancelled": toast.info(`${m.by || "El otro jugador"} canceló el intercambio`); setSession(null); loadInventory(); break;
           case "trade_error": toast.error(m.detail || "El intercambio falló"); setSession(null); loadInventory(); break;
@@ -59,6 +64,15 @@ export default function LiveTradeHub() {
       try { const { data } = await api.tradeActive(); if (data.session) setSession(data.session); } catch {}
     })();
   }, []);
+
+  // load the other player's (read-only) inventory when a session is active
+  useEffect(() => {
+    const sid = session?.session_id;
+    if (!sid) { setPeerInv(null); return; }
+    let stop = false;
+    api.tradePeerInventory(sid).then((r) => { if (!stop) setPeerInv(r.data); }).catch(() => {});
+    return () => { stop = true; };
+  }, [session?.session_id]);
 
   const doInvite = async (p) => {
     play?.("click");
@@ -87,7 +101,7 @@ export default function LiveTradeHub() {
   if (session) {
     return (
       <TradeRoom
-        session={session} inv={inv} play={play}
+        session={session} inv={inv} peerInv={peerInv} play={play} alert={alert} onClearAlert={() => setAlert(null)}
         onOffer={(items, amber) => api.tradeSetOffer(session.session_id, items, amber).catch((e) => toast.error(e?.response?.data?.detail || "Error en la oferta"))}
         onLock={(locked) => api.tradeLock(session.session_id, locked).catch((e) => toast.error(e?.response?.data?.detail || "Error"))}
         onConfirm={() => api.tradeConfirm(session.session_id).catch((e) => toast.error(e?.response?.data?.detail || "No se pudo confirmar"))}
@@ -113,6 +127,13 @@ export default function LiveTradeHub() {
         </div>
       </div>
 
+      {/* view toggle */}
+      <div className="inline-flex rounded-lg border border-white/10 p-1 mb-5 bg-black/20" data-testid="trade-view-toggle">
+        <button onClick={() => setView("live")} data-testid="trade-view-live" className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-semibold transition-colors ${view === "live" ? "bg-gold text-background" : "text-muted-foreground hover:text-foreground"}`}><Radio size={13} /> En vivo</button>
+        <button onClick={() => setView("history")} data-testid="trade-view-history" className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-semibold transition-colors ${view === "history" ? "bg-gold text-background" : "text-muted-foreground hover:text-foreground"}`}><History size={13} /> Historial</button>
+      </div>
+
+      {view === "history" ? <TradeHistory /> : (<>
       {/* limits notice */}
       <div className="flex flex-wrap gap-3 mb-6 text-xs">
         <span className="inline-flex items-center gap-1.5 glass rounded-full px-3 py-1.5 border border-white/10 text-muted-foreground"><ShieldAlert size={13} className="text-gold" /> Máx. 1.000 Amberiums enviados por día</span>
@@ -148,6 +169,7 @@ export default function LiveTradeHub() {
         </div>
       )}
 
+      </>)}
       {/* incoming invite popup */}
       <AnimatePresence>
         {invite && (

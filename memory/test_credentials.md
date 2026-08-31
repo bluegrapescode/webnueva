@@ -23,5 +23,6 @@ Base preview URL: https://synced-animations.preview.emergentagent.com
 ## Trade en Vivo P2P (test users) — 2026-06
 - Usuario A (demo): POST /api/auth/demo -> token. steam_id demo_0000000001, id=3c45966b9bbf4bf59035ebae8237faa4. Inventario: Huevo Común x3, Skin Verde Selva x1. vip_coins(Amberium)=500.
 - Usuario B (trader): id=96dffc3fe0de4217a969e56f2eec716f, steam_id demo_0000000002. Inventario: Huevo Raro x5, Cofre Bronce x2. vip_coins=500.
-  - Token B (7 días): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5NmRmZmMzZmUwZGU0MjE3YTk2OWU1NmYyZWVjNzE2ZiIsImV4cCI6MTc4ODgxMzM0MX0.zVqLaQ6rrGK_qwrYyMr6-5T2ERwmK0JvJ3UcdDeG1vY
+  - Token A (7 días, reseed 2026-06): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzYzQ1OTY2YjliYmY0YmY1OTAzNWViYWU4MjM3ZmFhNCIsImV4cCI6MTc4ODgxNTI3MH0.gLTiY7CKG-VTEDlDjF9Lr-LOQiyYGxdN1o9q1DwP_F8
+  - Token B (7 días, reseed 2026-06): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5NmRmZmMzZmUwZGU0MjE3YTk2OWU1NmYyZWVjNzE2ZiIsImV4cCI6MTc4ODgxNTI3MH0.ya9zVXQhdxY9b0LrPpRBFIj1is-7GunceV9hUluHqm4
 - Reseed script: python3 /app/backend/_seed_trade_test.py (re-crea inventario y reimprime tokens).

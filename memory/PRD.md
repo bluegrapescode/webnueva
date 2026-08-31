@@ -149,4 +149,13 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
   - Reglas: única moneda tradeable = Amberium (vip_coins), máx 1000 ENVIADOS/día por usuario. Tradeable = todo db.inventory EXCEPTO category "Dinosaurs". Cooldown 3h por trade con cualquier item no-amberium; solo-amberium sin cooldown. Editar oferta reinicia ambos locks/confirmaciones. Swap con validación de propiedad, caps y rollback; ejecución idempotente bajo lock por sesión.
   - FIX aplicado (bug crítico iteration_22): el snapshot de oferta ahora guarda item_id -> los items entregados conservan su item_id (0 filas rotas). Verificado E2E por API: A<->B intercambiaron huevos + amber correctamente, cooldown y tope diario aplicados.
 - Frontend: `components/trade/LiveTradeHub.jsx` (presencia + popup invitación aceptar/rechazar + espera) y `components/trade/TradeRoom.jsx` (dos inventarios estilo BG3, slots animados con muelle sincronizado, sonido click/hover al seleccionar, lock + confirm con glow pulsante). api.js: métodos trade* + tradeWsUrl(). FIX: dedupe por inv_id en AnimatedSlots (warning de key duplicada).
-- Test users: A=demo (POST /api/auth/demo). B=demo_0000000002 (token 7d en /app/memory/test_credentials.md). Reseed: python3 /app/backend/_seed_trade_test.py.
+- Test users: A=demo (POST /api/auth/demo). B=demo_0000000002 (token 7d en /app/memory/test_credentials.md). Reseed: python3 /app/backend/_seed_trade_test.py. Reset sesiones/cooldowns: python3 /app/backend/_reset_trade_test.py.
+
+## 2026-06 — Verificación E2E del Trade en Vivo BG3 4 columnas [iteration_23: FE 100%]
+- Se validó todo el flujo con DOS contextos de navegador (A/B) autenticados vía localStorage primal_token:
+  - Lobby (market-filter-live) renderiza; invitación->aceptar por WebSocket; ambos entran a trade-room.
+  - Layout 4 columnas OK: Tu inventario | Tu oferta | Su oferta | Inventario del peer (solo lectura con items reales).
+  - Add/remove de objetos (click en inv-item -> my-offered y de vuelta); cap de Amberium (99999 -> 500); sync en vivo de "Su oferta" en ambas direcciones.
+  - ANTI-ESTAFA: A bloquea, B edita -> A ve trade-scam-alert y su lock se resetea de "Desbloquear" a "Bloquear". OK.
+  - Swap completo (ambos lock + confirm) -> toast "¡Intercambio completado!", vuelven al lobby, Historial poblado en ambos lados (Diste/Recibiste).
+- Notas menores no bloqueantes (backlog): avatar propio "Tú" pasa src=undefined (cosmético); 503 esporádico en consola del 2º contexto durante carga (recurso de fondo, no bloquea).

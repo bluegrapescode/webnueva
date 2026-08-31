@@ -488,6 +488,8 @@ export const api = {
   tradeLock:        (session_id, locked) => client.post("/trade/lock", { session_id, locked }),
   tradeConfirm:     (session_id) => client.post("/trade/confirm", { session_id }),
   tradeCancel:      (session_id) => client.post("/trade/cancel", { session_id }),
+  tradeHistory:     () => client.get("/trade/history"),
+  tradePeerInventory: (session_id) => client.get(`/trade/peer/${session_id}`),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).
