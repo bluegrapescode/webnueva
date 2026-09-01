@@ -548,4 +548,15 @@ export const SOUNDS = {
   // Real recorded coin sound (reuses the wheel's coin.mp3 asset) — used when
   // picking items into a trade offer.
   coinReal: () => { _wheelPool.play("coin", { volume: 0.5, rate: 1.0 }); },
+
+  // Soft "coins in a pouch" jingle — a few gentle, slightly-detuned metallic
+  // clinks layered over a faint cloth/sack texture. Quiet + short so it feels
+  // like real coins settling, not an arcade chime. Fires on each item pick.
+  coinSack: () => {
+    const parts = [2100, 2550, 3050, 1850];
+    parts.forEach((f, i) => {
+      bell({ freq: f + (Math.random() * 130 - 65), dur: 0.08 + Math.random() * 0.05, gain: 0.016, delay: i * 0.03, ratio: 3.2, index: 42 });
+    });
+    noise({ dur: 0.045, gain: 0.011, filterType: "bandpass", filterFreq: 2800, filterQ: 1.2, delay: 0.01 });
+  },
 };
