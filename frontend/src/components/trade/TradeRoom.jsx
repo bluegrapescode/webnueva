@@ -117,7 +117,7 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
   useEffect(() => { if (!alert) return; const t = setTimeout(() => onClearAlert?.(), 6000); return () => clearTimeout(t); }, [alert, onClearAlert]);
 
   const click = () => play?.("click");
-  const coin = () => play?.("tileClick");
+  const coin = () => play?.("coinReal");
   const send = (items, a) => onOffer(items.map((i) => ({ inv_id: i.inv_id, qty: i.qty })), a);
   // add one unit of a whole stack: allocate to the first underlying row with capacity
   const addStack = (g) => {

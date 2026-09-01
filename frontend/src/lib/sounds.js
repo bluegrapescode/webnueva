@@ -544,4 +544,8 @@ export const SOUNDS = {
     else _wheelPool.play("coin", { volume: 0.3, rate: 1.15, maxDuration: 700 });
   },
   wheelJackpot: () => { _wheelPool.play("jackpot", { volume: 0.4, maxDuration: 2600 }); },
+
+  // Real recorded coin sound (reuses the wheel's coin.mp3 asset) — used when
+  // picking items into a trade offer.
+  coinReal: () => { _wheelPool.play("coin", { volume: 0.5, rate: 1.0 }); },
 };
