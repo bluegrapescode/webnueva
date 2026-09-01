@@ -262,11 +262,13 @@ export const SOUNDS = {
     voice({ freq: 1318.51, type: "square", dur: 0.13, gain: 0.032, delay: 0.055, attack: 0.001, release: 0.09, filterType: "bandpass", filterFreq: 2600, filterQ: 2 });
     bell({ freq: 2637, dur: 0.12, gain: 0.014, delay: 0.055, ratio: 3, index: 60 });
   },
-  // Soft, rounded "select" bloop — a warm upward pop, no metallic ring. Used
-  // when picking items into a trade offer (fires rapidly, stays gentle).
+  // Elder Scrolls / Skyrim-style menu "thunk": a deep, muffled, organic click
+  // (low body thud + soft leather/parchment noise + a subtle mid tick). Fires
+  // when picking items into a trade offer.
   tileClick: () => {
-    voice({ freq: 430, type: "triangle", dur: 0.06, gain: 0.05, slideTo: 640, attack: 0.001, release: 0.04, filterType: "lowpass", filterFreq: 3000 });
-    voice({ freq: 860, type: "sine", dur: 0.035, gain: 0.018, delay: 0.006, attack: 0.001, release: 0.03, filterType: "lowpass", filterFreq: 4000 });
+    voice({ freq: 165, type: "sine", dur: 0.10, gain: 0.075, slideTo: 82, attack: 0.001, release: 0.07, filterType: "lowpass", filterFreq: 820 });
+    noise({ dur: 0.055, gain: 0.04, filterType: "lowpass", filterFreq: 1150, filterQ: 0.7 });
+    voice({ freq: 300, type: "triangle", dur: 0.045, gain: 0.03, slideTo: 210, attack: 0.001, release: 0.035, filterType: "lowpass", filterFreq: 1700 });
   },
   reward: () => { [523, 659, 784, 988, 1318].forEach((f, i) => bell({ freq: f, dur: 0.5, gain: 0.05, delay: i * 0.07, ratio: 2, index: 130 })); },
 
