@@ -117,12 +117,13 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
   useEffect(() => { if (!alert) return; const t = setTimeout(() => onClearAlert?.(), 6000); return () => clearTimeout(t); }, [alert, onClearAlert]);
 
   const click = () => play?.("click");
+  const coin = () => play?.("coinClick");
   const send = (items, a) => onOffer(items.map((i) => ({ inv_id: i.inv_id, qty: i.qty })), a);
   // add one unit of a whole stack: allocate to the first underlying row with capacity
   const addStack = (g) => {
     if (me.locked) return;
     if (offeredForRows(g.rows) >= g.total) return;
-    click();
+    coin();
     let next = [...myItems];
     for (const row of g.rows) {
       if ((offeredMap[row.inv_id] || 0) < row.quantity) {
@@ -140,11 +141,12 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
     const offeredRows = g.rows.filter((r) => (offeredMap[r.inv_id] || 0) > 0);
     const row = offeredRows[offeredRows.length - 1];
     if (!row) return;
-    click();
+    coin();
     send(myItems.map((x) => x.inv_id === row.inv_id ? { ...x, qty: x.qty - 1 } : x).filter((x) => x.qty > 0), amber);
   };
   const onAmber = (v) => { focused.current = true; const val = Math.max(0, Math.min(amberMax, parseInt(v || "0", 10) || 0)); setAmber(val);
     clearTimeout(amberTimer.current); amberTimer.current = setTimeout(() => { focused.current = false; send(myItems, val); }, 450); };
+  const stepAmber = (d) => { if (me.locked) return; coin(); onAmber(String(Math.max(0, Math.min(amberMax, (amber || 0) + d)))); };
 
   const bothLocked = me.locked && them.locked;
 
@@ -203,11 +205,24 @@ export function TradeRoom({ session, inv, peerInv, play, onOffer, onLock, onConf
         {/* 2 · MY OFFER */}
         <motion.div layout className="rounded-lg border p-2.5" style={{ borderColor: me.confirmed ? "rgba(52,211,153,.5)" : me.locked ? "rgba(202,169,104,.5)" : "rgba(255,255,255,.1)", background: "rgba(202,169,104,.05)" }}>
           {colHead(<span className="flex items-center gap-1">Tu oferta {me.locked && <Lock size={10} className="text-gold" />}{me.confirmed && <Check size={11} className="text-emerald" />}</span>,
-            <input type="number" min="0" max={amberMax} value={amber} disabled={me.locked} onChange={(e) => onAmber(e.target.value)} data-testid="my-amber-input"
-              className="w-20 px-2 py-1 rounded glass border border-gold/20 text-xs text-gold font-bold outline-none focus:border-gold/60 disabled:opacity-50" />)}
+            <span className="flex items-center gap-1 text-xs font-bold text-gold"><AmberIcon size={13} /> {amber}</span>)}
           <SlotGrid items={myOfferStacks} cols={4} rows={6} testid="my-offer-slots"
             renderItem={(g) => <Tile it={g} badge={g.qty} onClick={me.locked ? undefined : () => removeStack(g)} testid={`my-offered-${g.item_id || g.inv_id}`} />} />
-          <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Amberium: {amber} / {amberMax} hoy</p>
+          {/* Amberium control — clear +/- stepper */}
+          <div className="mt-2.5 rounded-lg border border-gold/25 bg-gold/[0.06] p-2" data-testid="amber-control">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-gold"><AmberIcon size={14} /> Amberium a enviar</span>
+              <span className="text-[10px] text-muted-foreground">máx {amberMax} hoy</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => stepAmber(-10)} disabled={me.locked || amber <= 0} data-testid="amber-minus"
+                className="w-9 h-9 shrink-0 rounded-md bg-white/10 border border-white/10 text-lg font-black text-gold leading-none disabled:opacity-40 hover:bg-white/15 transition-colors">−</button>
+              <input type="number" min="0" max={amberMax} value={amber} disabled={me.locked} onChange={(e) => onAmber(e.target.value)} data-testid="my-amber-input"
+                className="flex-1 min-w-0 px-2 py-2 rounded-md glass border border-gold/25 text-center text-sm text-gold font-bold outline-none focus:border-gold/60 disabled:opacity-50" />
+              <button type="button" onClick={() => stepAmber(10)} disabled={me.locked || amber >= amberMax} data-testid="amber-plus"
+                className="w-9 h-9 shrink-0 rounded-md bg-white/10 border border-white/10 text-lg font-black text-gold leading-none disabled:opacity-40 hover:bg-white/15 transition-colors">+</button>
+            </div>
+          </div>
         </motion.div>
 
         {/* 3 · THEIR OFFER */}

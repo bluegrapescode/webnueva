@@ -414,9 +414,13 @@ def build_router(db, jwt_secret: str, get_current_user, add_log, jwt_algo: str =
         bot = await _ensure_demo_bot()
         my_inv = await _ensure_demo_items_for(user["id"])
         bot_inv = await _tradeable_inventory(bot["id"])
+        # give a demo Amberium balance so the user can try the amber control
+        me_fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+        if int((me_fresh or {}).get("vip_coins", 0)) <= 0:
+            await db.users.update_one({"id": user["id"]}, {"$set": {"vip_coins": 500}})
+            me_fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
         a_items = [_offer_snap(my_inv[0], min(2, my_inv[0]["quantity"]))] if my_inv else []
         b_items = [_offer_snap(bot_inv[0], min(2, bot_inv[0]["quantity"]))] if bot_inv else []
-        me_fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
         sess = {
             "id": _nid(), "a_id": user["id"], "a_name": user.get("persona_name"), "a_avatar": user.get("avatar"),
             "b_id": bot["id"], "b_name": bot.get("persona_name"), "b_avatar": bot.get("avatar"),

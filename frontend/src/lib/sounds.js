@@ -255,6 +255,13 @@ export const SOUNDS = {
   // ── Rewards / economy ──
   purchase: () => { [523, 659, 784, 1046].forEach((f, i) => bell({ freq: f, dur: 0.4, gain: 0.05, delay: i * 0.06, ratio: 2, index: 100 })); },
   coins: () => { for (let i = 0; i < 4; i++) voice({ freq: 1400 + i * 220, type: "triangle", dur: 0.07, gain: 0.03, delay: i * 0.045, filterType: "bandpass", filterFreq: 2600, filterQ: 3 }); },
+  // Single crisp "coin pickup" (Mario-style two ascending blips) — short so it
+  // can fire on every item click without stacking.
+  coinClick: () => {
+    voice({ freq: 987.77, type: "square", dur: 0.055, gain: 0.03, attack: 0.001, release: 0.03, filterType: "bandpass", filterFreq: 2000, filterQ: 2 });
+    voice({ freq: 1318.51, type: "square", dur: 0.13, gain: 0.032, delay: 0.055, attack: 0.001, release: 0.09, filterType: "bandpass", filterFreq: 2600, filterQ: 2 });
+    bell({ freq: 2637, dur: 0.12, gain: 0.014, delay: 0.055, ratio: 3, index: 60 });
+  },
   reward: () => { [523, 659, 784, 988, 1318].forEach((f, i) => bell({ freq: f, dur: 0.5, gain: 0.05, delay: i * 0.07, ratio: 2, index: 130 })); },
 
   // Single roulette "tick" (ball clicking a divider) — driven repeatedly & decelerating by the Roll component.
