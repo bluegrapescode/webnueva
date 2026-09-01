@@ -165,3 +165,18 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - Botón central renombrado de "Barter" (jerga BG3 en inglés, confusa) a "Confirmar".
 - Verificado por captura: nombres renderizan en las 4 columnas (Tu inventario / Tu oferta / Su oferta / Inventario del peer).
 - Script auxiliar para demo de diseño: `/app/backend/_demo_trade_session.py` (inserta una sesión activa A<->B con ofertas y A bloqueado, para capturar el diseño sin necesitar un 2º jugador).
+
+## 2026-06 — Trade: apilado, sonidos, control Amberium, sala DEMO, invitación [smoke-tested FE]
+- APILADO: items idénticos (item_id+cat+rareza+tier) se agrupan en UNA casilla con ×N en las 4 columnas (TradeRoom `groupInv`/`groupOffer`). Add/remove reparte entre filas subyacentes (por inv_id) → swap sigue seguro. Chip ×N en esquina con borde de rareza.
+- ICONO AMBERIUM: se reemplazó el icono Gem por la imagen real `/coins/amber.png` (MEDIA.coinVip) en TradeRoom y TradeHistory.
+- NOMBRES DE ITEMS: barra inferior con el nombre + tooltip nativo (nombre·rareza) en cada Tile.
+- CONTROL AMBERIUM: panel visible en "Tu oferta" con etiqueta "Amberium a enviar", botones +/- (stepAmber ±10) e input central (data-testid amber-control/amber-plus/amber-minus/my-amber-input).
+- SONIDO: item click usa `coinSack` (tintineo suave de monedas en saco, sintetizado en lib/sounds.js). Se probaron y descartaron: click mecánico, bloop, thunk Skyrim, coin.mp3 real (muy fuerte), coinClick Mario.
+- BOTÓN "Barter" → "Confirmar".
+- SALA DEMO: `POST /api/trade/demo` (live_trade.py) crea sesión contra bot "Demo Trader" para la cuenta actual (sin 2º jugador). Asegura items demo si el user no tiene, y da 500 Amberium demo si su saldo es 0. Botón "Ver demo" (Sparkles) en el lobby de LiveTradeHub (api.tradeDemo). Reset sesiones: `/app/backend/_reset_trade_test.py` o borrar trade_sessions.
+- INVITACIÓN: popup central `trade-invite-popup` (avatar+nombre, Aceptar/Rechazar) vía WS `trade_invite` + sonido "open".
+
+## 2026-06 — Optimización producción (code-splitting) [build verificado]
+- Deployment readiness check: PASS (sin secretos/URLs hardcodeados, env-only, CORS ok, compila).
+- `App.js`: rutas convertidas a `React.lazy` + `Suspense` (fallback spinner `page-loading`); Landing y AuthCallback quedan eager.
+- Resultado build: main.js **1.04 MB → 342 kB gzip** (~67% menos en carga inicial). 31 chunks; el chunk pesado de 3D (three.js/R3F ~204 kB gzip) solo carga al abrir el editor de skins. Smoke test OK (Landing + Marketplace lazy sin pantalla en blanco).

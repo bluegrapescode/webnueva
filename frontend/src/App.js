@@ -14,29 +14,40 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { LiveTicker } from "@/components/live/LiveTicker";
 
 import Landing from "@/pages/Landing";
-import Dashboard from "@/pages/Dashboard";
-import Store from "@/pages/Store";
-import Economy from "@/pages/Economy";
-import Profile from "@/pages/Profile";
 import AuthCallback from "@/pages/AuthCallback";
-import RedeemCode from "@/pages/RedeemCode";
-import Quests from "@/pages/Quests";
-import Leaderboard from "@/pages/Leaderboard";
-import Admin from "@/pages/Admin";
-import MyDino from "@/pages/MyDino";
-import Marketplace from "@/pages/Marketplace";
-import SkinEditor from "@/pages/SkinEditor";
-import Casino from "@/pages/Casino";
-import ProximityVoice from "@/pages/ProximityVoice";
-import BattlePass from "@/pages/BattlePass";
-import CreatorDashboard from "@/pages/CreatorDashboard";
-import CreatorPublic from "@/pages/CreatorPublic";
-import RefRedirect from "@/pages/RefRedirect";
-import Cementerio from "@/pages/Cementerio";
-import TiendaSkins from "@/pages/TiendaSkins";
-import PaymentSuccess from "@/pages/PaymentSuccess";
+
+// Route-level code splitting — heavy pages (3D skin editor, marketplace, admin,
+// mini-games, cemetery) load on demand so the initial bundle stays small.
+const Dashboard = React.lazy(() => import("@/pages/Dashboard"));
+const Store = React.lazy(() => import("@/pages/Store"));
+const Economy = React.lazy(() => import("@/pages/Economy"));
+const Profile = React.lazy(() => import("@/pages/Profile"));
+const RedeemCode = React.lazy(() => import("@/pages/RedeemCode"));
+const Quests = React.lazy(() => import("@/pages/Quests"));
+const Leaderboard = React.lazy(() => import("@/pages/Leaderboard"));
+const Admin = React.lazy(() => import("@/pages/Admin"));
+const MyDino = React.lazy(() => import("@/pages/MyDino"));
+const Marketplace = React.lazy(() => import("@/pages/Marketplace"));
+const SkinEditor = React.lazy(() => import("@/pages/SkinEditor"));
+const Casino = React.lazy(() => import("@/pages/Casino"));
+const ProximityVoice = React.lazy(() => import("@/pages/ProximityVoice"));
+const BattlePass = React.lazy(() => import("@/pages/BattlePass"));
+const CreatorDashboard = React.lazy(() => import("@/pages/CreatorDashboard"));
+const CreatorPublic = React.lazy(() => import("@/pages/CreatorPublic"));
+const RefRedirect = React.lazy(() => import("@/pages/RefRedirect"));
+const Cementerio = React.lazy(() => import("@/pages/Cementerio"));
+const TiendaSkins = React.lazy(() => import("@/pages/TiendaSkins"));
+const PaymentSuccess = React.lazy(() => import("@/pages/PaymentSuccess"));
 import CreatorNotifier from "@/components/creator/CreatorNotifier";
 import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
+
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center py-40" data-testid="page-loading">
+      <div className="w-9 h-9 rounded-full border-2 border-gold/25 border-t-gold animate-spin" />
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -70,6 +81,7 @@ function AnimatedRoutes() {
   return (
     <ErrorBoundary resetKey={location.pathname}>
       <AnimatePresence mode="wait">
+        <React.Suspense fallback={<PageFallback />}>
         <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageWrap><Landing /></PageWrap>} />
         <Route path="/dashboard" element={<PageWrap><Dashboard /></PageWrap>} />
@@ -118,6 +130,7 @@ function AnimatedRoutes() {
         <Route path="/admin" element={<PageWrap><Admin /></PageWrap>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
+      </React.Suspense>
     </AnimatePresence>
     </ErrorBoundary>
   );
