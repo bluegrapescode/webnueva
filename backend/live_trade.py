@@ -364,6 +364,71 @@ def build_router(db, jwt_secret: str, get_current_user, add_log, jwt_algo: str =
         sess = await _active_for(user["id"])
         return {"session": _public(sess, user["id"]) if sess else None}
 
+    # ── demo trade room (no second player needed) ──
+    DEMO_BOT_STEAM = "demo_trade_bot"
+    DEMO_IMG = "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=200"
+
+    def _offer_snap(it, qty):
+        return {"inv_id": it["inv_id"], "qty": int(qty), "item_id": it.get("item_id"),
+                "name": it.get("name"), "image": it.get("image"), "category": it.get("category"),
+                "rarity": it.get("rarity"), "tier": it.get("tier")}
+
+    async def _ensure_demo_bot():
+        bot = await db.users.find_one({"steam_id": DEMO_BOT_STEAM}, {"_id": 0})
+        if not bot:
+            bid = _nid()
+            await db.users.insert_one({
+                "id": bid, "steam_id": DEMO_BOT_STEAM, "persona_name": "Demo Trader",
+                "avatar": "https://api.dicebear.com/7.x/adventurer/svg?seed=DemoTrader",
+                "role": "user", "coins": 5000, "vip_coins": 1000,
+                "created_at": _iso(), "last_login": _iso()})
+            bot = await db.users.find_one({"id": bid}, {"_id": 0})
+        for item_id, name, cat, rar, tier, qty in [
+                ("demo_egg_rare", "Huevo Raro", "Eggs", "Rare", "rare", 3),
+                ("demo_crate_bronze", "Cofre Bronce", "Crates", "Common", None, 2)]:
+            if not await db.inventory.find_one({"user_id": bot["id"], "item_id": item_id}):
+                await db.inventory.insert_one({"id": _nid(), "user_id": bot["id"], "item_id": item_id,
+                    "name": name, "category": cat, "rarity": rar, "image": DEMO_IMG, "tier": tier,
+                    "quantity": qty, "acquired_at": _iso()})
+        return bot
+
+    async def _ensure_demo_items_for(user_id):
+        inv = await _tradeable_inventory(user_id)
+        if inv:
+            return inv
+        for item_id, name, cat, rar, tier, qty in [
+                ("demo_egg_common", "Huevo Común", "Eggs", "Common", "common", 3),
+                ("demo_skin_verde", "Skin Verde Selva", "Skins", "Rare", None, 1)]:
+            if not await db.inventory.find_one({"user_id": user_id, "item_id": item_id}):
+                await db.inventory.insert_one({"id": _nid(), "user_id": user_id, "item_id": item_id,
+                    "name": name, "category": cat, "rarity": rar, "image": DEMO_IMG, "tier": tier,
+                    "quantity": qty, "acquired_at": _iso()})
+        return await _tradeable_inventory(user_id)
+
+    @router.post("/trade/demo")
+    async def demo(user=Depends(get_current_user)):
+        existing = await _active_for(user["id"])
+        if existing:
+            await db.trade_sessions.update_one({"id": existing["id"]},
+                                               {"$set": {"status": "cancelled", "updated_at": _iso()}})
+        bot = await _ensure_demo_bot()
+        my_inv = await _ensure_demo_items_for(user["id"])
+        bot_inv = await _tradeable_inventory(bot["id"])
+        a_items = [_offer_snap(my_inv[0], min(2, my_inv[0]["quantity"]))] if my_inv else []
+        b_items = [_offer_snap(bot_inv[0], min(2, bot_inv[0]["quantity"]))] if bot_inv else []
+        me_fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+        sess = {
+            "id": _nid(), "a_id": user["id"], "a_name": user.get("persona_name"), "a_avatar": user.get("avatar"),
+            "b_id": bot["id"], "b_name": bot.get("persona_name"), "b_avatar": bot.get("avatar"),
+            "a_offer": {"items": a_items, "amber": 150 if int((me_fresh or {}).get("vip_coins", 0)) >= 150 else 0},
+            "b_offer": {"items": b_items, "amber": 0},
+            "a_locked": False, "b_locked": True, "a_confirmed": False, "b_confirmed": False,
+            "status": "active", "created_at": _iso(), "updated_at": _iso(), "is_demo": True,
+        }
+        await db.trade_sessions.insert_one(dict(sess))
+        await hub.push(user["id"], {"type": "trade_start", "state": _public(sess, user["id"])})
+        return {"session": _public(sess, user["id"])}
+
     @router.get("/trade/peer/{session_id}")
     async def peer_inventory(session_id: str, user=Depends(get_current_user)):
         sess = await db.trade_sessions.find_one({"id": session_id}, {"_id": 0})

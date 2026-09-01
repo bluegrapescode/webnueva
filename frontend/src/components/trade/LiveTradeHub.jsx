@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Search, Radio, ArrowLeftRight, Loader2, X, Check, ShieldAlert, History } from "lucide-react";
+import { Users, Search, Radio, ArrowLeftRight, Loader2, X, Check, ShieldAlert, History, Sparkles } from "lucide-react";
 import { api, tradeWsUrl } from "@/lib/api";
 import { useSound } from "@/context/SoundContext";
 import { useAuth } from "@/context/AuthContext";
@@ -94,6 +94,11 @@ export default function LiveTradeHub() {
     try { const s = await api.tradeActive(); if (s.data.session) await api.tradeCancel(s.data.session.session_id); } catch {}
     setOutgoing(null);
   };
+  const doDemo = async () => {
+    play?.("click");
+    try { const { data } = await api.tradeDemo(); if (data.session) { setSession(data.session); toast.success("Sala de demostración abierta"); } }
+    catch (e) { toast.error(e?.response?.data?.detail || "No se pudo abrir la demo"); }
+  };
 
   const filtered = online.filter((p) => p.name?.toLowerCase().includes(query.toLowerCase()));
 
@@ -120,10 +125,17 @@ export default function LiveTradeHub() {
           <h2 className="font-display font-black text-3xl tracking-tight flex items-center gap-2.5"><ArrowLeftRight className="text-gold" size={28} /> Trade en Vivo</h2>
           <p className="text-sm text-muted-foreground mt-1">Invita a un jugador conectado y intercambien objetos y Amberiums cara a cara.</p>
         </div>
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar jugador…" data-testid="trade-search"
-            className="pl-9 pr-3 py-2.5 rounded-lg glass border border-white/10 text-sm w-full sm:w-64 outline-none focus:border-gold/50" />
+        <div className="flex items-center gap-2">
+          <button onClick={doDemo} data-testid="trade-demo-btn"
+            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold text-background bg-gold hover:brightness-110 transition-all whitespace-nowrap"
+            style={{ boxShadow: "0 0 20px rgba(202,169,104,.35)" }}>
+            <Sparkles size={15} /> Ver demo
+          </button>
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar jugador…" data-testid="trade-search"
+              className="pl-9 pr-3 py-2.5 rounded-lg glass border border-white/10 text-sm w-full sm:w-64 outline-none focus:border-gold/50" />
+          </div>
         </div>
       </div>
 

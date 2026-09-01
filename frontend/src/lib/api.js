@@ -482,6 +482,7 @@ export const api = {
   tradeOnline:      () => client.get("/trade/online"),
   tradeInventory:   () => client.get("/trade/inventory"),
   tradeActive:      () => client.get("/trade/active"),
+  tradeDemo:        () => client.post("/trade/demo"),
   tradeInvite:      (to_user_id) => client.post("/trade/invite", { to_user_id }),
   tradeRespond:     (session_id, accept) => client.post("/trade/respond", { session_id, accept }),
   tradeSetOffer:    (session_id, items, amber) => client.post("/trade/offer", { session_id, items, amber }),
