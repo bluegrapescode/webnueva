@@ -1,88 +1,115 @@
 {
-  "theme": "dark",
-  "project_context": "The Isle Evrima (La Isla Nublar LATAM) - Community Dashboard Skins Shop",
-  "vibe": "Fortnite Item Shop meets Prehistoric/Sci-Fi Survival. Immersive, high-contrast, tempting, and urgent (FOMO).",
+  "page_target": "/app/frontend/src/pages/ProximityVoice.jsx",
+  "brand_identity": {
+    "community": "The Isle: Evrima LATAM",
+    "theme_description": "Dark, tactical military radio rack & pro audio comms console. Blends military comms hardware (tactical keycaps, dark olive anodized aluminum plates, LCD telemetry, LED signal meters) with pro audio mixing interfaces.",
+    "anti_patterns": [
+      "DO NOT re-introduce any radar, sonar, or circular map sweep visual",
+      "No generic centered card layouts or plain light forms",
+      "No transparent dropdown/modal overlays without solid/glass backgrounds",
+      "No missing data-testid attributes on interactive elements"
+    ]
+  },
+  "color_palette": {
+    "background_primary": "#0B0D09",
+    "background_shell": "linear-gradient(180deg, #1C2016 0%, #11140D 100%)",
+    "plate_dark": "#070A05",
+    "border_tactical": "rgba(124, 168, 66, 0.28)",
+    "olive_primary": "#7CA842",
+    "lime_soft": "#A3C96B",
+    "olive_deep": "#3A4B20",
+    "amber_gold": "#F0B429",
+    "amber_soft": "#DCE7C4",
+    "crimson_danger": "#E24A4A",
+    "text_primary": "#E2E8F0",
+    "text_muted": "#8C967A",
+    "lcd_glow": "0 0 12px rgba(163, 201, 107, 0.45)"
+  },
   "typography": {
-    "headings": "Cabinet Grotesk (use .font-display utility)",
-    "body": "Manrope (use .font-sans utility)",
-    "mono": "JetBrains Mono (use .font-code utility)",
-    "guidelines": "Use JetBrains Mono strictly for countdown timers and technical data. Use Cabinet Grotesk (uppercase, tracking-tight) for Shop Section Titles (Destacados, Diario, Temporada) and Skin Names."
+    "font_display": "'Cabinet Grotesk', 'Clash Display', sans-serif",
+    "font_body": "'Manrope', system-ui, sans-serif",
+    "font_mono": "'JetBrains Mono', ui-monospace, monospace",
+    "scale": {
+      "page_title": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight font-display",
+      "section_header": "text-lg sm:text-xl font-extrabold tracking-wide font-display text-amber_soft",
+      "overline": "text-[11px] font-bold tracking-[0.2em] uppercase font-mono text-lime_soft",
+      "lcd_value": "text-2xl sm:text-3xl font-extrabold tracking-wider font-mono text-lime_soft",
+      "player_name": "text-sm font-bold tracking-tight text-foreground font-sans",
+      "telemetry_text": "text-[11px] font-mono text-muted-foreground"
+    }
   },
-  "colors": {
-    "primary": "#7CA842",
-    "primary_gradient": "linear-gradient(135deg, #B8DA7E 0%, #7CA842 50%, #557A2A 100%)",
-    "background": "hsl(var(--background))",
-    "surface": "hsl(var(--card))",
-    "rarity": {
-      "common": "#8e9297",
-      "uncommon": "#34D399",
-      "rare": "#38bdf8",
-      "epic": "#a855f7",
-      "legendary": "#f59e0b",
-      "mythic": "#ef4444"
-    },
-    "guidelines": "Do not overuse the primary gold/green; reserve it for Call-to-Actions (Buy/Equip). Use the Rarity colors to create radial gradients behind the skin images inside the cards (e.g., radial-gradient from rarity color at 20% opacity to transparent at edges)."
-  },
-  "layouts_and_grids": {
-    "shop_layout": "Bento-style Grid Protocol. Avoid uniform squares.",
+  "layout_architecture": {
+    "grid_structure": "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-7xl mx-auto px-4 sm:px-6 py-10",
+    "column_left_console": "lg:col-span-5 space-y-5",
+    "column_right_roster": "lg:col-span-7 space-y-5",
     "sections": {
-      "Destacados": "Grid items span 2 columns and 2 rows (large impact, Hero-style cards).",
-      "Diario": "Standard 1x1 grid squares, dense.",
-      "Temporada": "Wide banners spanning full width or 3 columns."
-    },
-    "spacing": "Generous spacing between sections (gap-12 or py-16). Tight spacing within the grids (gap-4).",
-    "mobile": "Stack vertically but maintain hierarchy (Featured items are taller, Daily items are a 2-column grid)."
-  },
-  "components": {
-    "SkinCard": {
-      "path": "src/components/shop/SkinCard.js",
-      "instructions": "Fortnite-style layout. Container is relative, overflow-hidden, rounded-lg, border border-white/5. Background uses a subtle tint of the rarity color. Image is centered and absolute, bursting out of its inner bounds. Add a bottom panel with heavy backdrop-blur (glass) that houses the Skin Name (Cabinet Grotesk) and Price (Stripe icon/badge). Hover: framer-motion scale 1.03, elevate shadow, brightness up. Owned state: grayscale filter on the image, 'Adquirido' badge."
-    },
-    "ShopSection": {
-      "path": "src/components/shop/ShopSection.js",
-      "instructions": "Section wrapper. Header contains the Section Title (left) and a live countdown timer (right) with JetBrains Mono. Pass items array to map into SkinCards."
-    },
-    "SkinDetailModal": {
-      "path": "src/components/shop/SkinDetailModal.js",
-      "instructions": "Use shadcn Dialog. Content must use the existing `.glass-strong` CSS class for the background. Layout: 2 columns. Left column: Massive skin render with floating animation (`animate-float`). Right column: Name, Rarity badge, description, countdown remaining, big primary 'Buy via Stripe' button or 'Equip to Dino' button if owned. If buying, overlay a loading spinner."
-    },
-    "AdminSkinForm": {
-      "path": "src/components/admin/AdminSkinForm.js",
-      "instructions": "Dashboard view for Admins. Dense, functional UI. Form fields: Name, Image URL, Rarity (Select), Section (Select: Destacados/Diario/Temporada), Price, Currency (USD), Start Date, End Date (DatePickers). Use shadcn Form, Input, Select, Popover+Calendar."
+      "header_hero": {
+        "title": "Radio de Proximidad",
+        "subtitle": "Canal de voz espacial en tiempo real · The Isle: Evrima LATAM",
+        "quick_actions": ["Power Switch (Encender/Apagar)", "Live Connection Telemetry Chip", "Quick Mute All Trigger"]
+      },
+      "left_transceiver_panel": {
+        "lcd_display_deck": "Dark olive anodized bevel container containing frequency status, live status (EN LÍNEA / FUERA DE LÍNEA), range in meters, active speakers count, and precision multi-segment LED VU meter",
+        "mic_mode_deck": "Tactical dual selector (Pulsar para hablar vs Micrófono abierto) with keycap indicator",
+        "ptt_key_binding_row": "Interactive key binding selector chips (Espacio, V, T, C)",
+        "master_ptt_keycap_button": "Heavyweight military grade PTT keycap trigger button with hold state animations and glowing border",
+        "master_volume_dock": "Master output Gain Fader / Slider + (-/+) step adjustment buttons + 'Silenciar a todos' emergency switch",
+        "spatial_dials_deck": "Dual rotary precision dials for 'Nitidez' (spatial falloff exponent) and 'Alcance' (hearing distance in meters)"
+      },
+      "right_spatial_roster": {
+        "header_bar": "Roster telemetry header showing active transmitters in spatial range vs out-of-range signal count",
+        "in_range_section": "Interactive channel cards for each nearby player with signal strength meter, speaker icon with pulse effect when talking, dino species & live distance, per-player volume slider, and per-player mute toggle",
+        "out_of_range_section": "Dimmed telemetry rows for players beyond hearing radius showing distance and out-of-reach status",
+        "empty_states": "Tactical placeholder for offline state and empty in-range state with helpful adjustment hints"
+      }
     }
   },
-  "motion_and_audio": {
-    "hover": "Card scale-up (spring physics, stiffness 300, damping 20). Audio: subtle 'tick' or 'whoosh' using useSound.",
-    "purchase_success": "Trigger golden flash on the screen, transition Buy button to 'Owned'. Audio: rewarding 'cha-ching' or 'level-up' style SFX.",
-    "equip": "Button click snaps the state instantly with a satisfying 'click/clack' SFX.",
-    "timers": "Timers must tick every second smoothly without re-rendering the whole page (use local component state or refs for the timer)."
+  "key_components_and_testids": {
+    "voice_connect": "data-testid=\"voice-connect\"",
+    "voice_disconnect": "data-testid=\"voice-disconnect\"",
+    "voice_inrange_count": "data-testid=\"voice-inrange-count\"",
+    "voice_participant_count": "data-testid=\"voice-participant-count\"",
+    "voice_panel": "data-testid=\"voice-panel\"",
+    "voice_mic_meter": "data-testid=\"voice-mic-meter\"",
+    "voice_mic_mode_ptt": "data-testid=\"voice-mic-mode-ptt\"",
+    "voice_mic_mode_open": "data-testid=\"voice-mic-mode-open\"",
+    "voice_ptt_key_row": "data-testid=\"voice-ptt-key-row\"",
+    "voice_ptt_keys": "data-testid=\"voice-ptt-key-{code}\"",
+    "voice_ptt_button": "data-testid=\"voice-ptt-button\"",
+    "voice_mute_toggle": "data-testid=\"voice-mute-toggle\"",
+    "voice_mic_mute_ptt": "data-testid=\"voice-mic-mute-ptt\"",
+    "voice_master_control": "data-testid=\"voice-master-control\"",
+    "voice_master_value": "data-testid=\"voice-master-value\"",
+    "voice_master_minus": "data-testid=\"voice-master-minus\"",
+    "voice_master_plus": "data-testid=\"voice-master-plus\"",
+    "voice_set_master": "data-testid=\"voice-set-master\"",
+    "voice_mute_all": "data-testid=\"voice-mute-all\"",
+    "voice_set_exponent": "data-testid=\"voice-set-exponent\"",
+    "voice_set_exponent_value": "data-testid=\"voice-set-exponent-value\"",
+    "voice_set_hearing": "data-testid=\"voice-set-hearing\"",
+    "voice_set_hearing_value": "data-testid=\"voice-set-hearing-value\"",
+    "voice_participants_list": "data-testid=\"voice-participants-list\"",
+    "voice_participant_card": "data-testid=\"voice-participant-{id}\"",
+    "voice_persona_name": "data-testid=\"voice-persona-{id}\"",
+    "voice_range_telemetry": "data-testid=\"voice-range-{id}\"",
+    "voice_speaking_indicator": "data-testid=\"voice-speaking-{id}\"",
+    "voice_signal_meter": "data-testid=\"voice-signal\"",
+    "voice_speaker_vol": "data-testid=\"voice-speaker-vol-{id}\"",
+    "voice_speaker_mute": "data-testid=\"voice-speaker-mute-{id}\""
   },
-  "websockets": {
-    "instructions": "Establish a WebSocket connection (or use existing context) on mount. Listen for 'shop_update'. When a new item drops, animate it into the grid. When an item expires/sells out, instantly overlay the 'Agotado/Sold Out' state on its SkinCard. Listen for 'purchase_success' to auto-update the user's inventory."
-  },
-  "accessibility": {
-    "contrast": "Cards with glowing backgrounds must have high-contrast text. Use drop-shadows on white text overlaying images.",
-    "data_testid": "ALL interactive elements must have data-testid: 'skin-card-[id]', 'buy-btn-[id]', 'equip-btn-[id]', 'admin-submit-skin'."
-  },
-  "image_urls": {
-    "dinosaur_skeleton_skin": {
-      "url": "https://images.unsplash.com/photo-1639524415025-5ae545511fea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwzfHxkaW5vc2F1ciUyMDNkJTIwcmVuZGVyfGVufDB8fHx8MTc4Nzk4NjYxMnww&ixlib=rb-4.1.0&q=85",
-      "category": "mock_data",
-      "description": "Use this as the image URL for the 'Bones' or 'Skeleton' Legendary skin."
-    },
-    "jungle_atmosphere": {
-      "url": "https://images.unsplash.com/photo-1600854163097-3602918f7a9a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwzfHxkYXJrJTIwanVuZ2xlJTIwbGVhdmVzfGVufDB8fHx8MTc4Nzk4NjYxMnww&ixlib=rb-4.1.0&q=85",
-      "category": "shop_background",
-      "description": "Use as a very low-opacity fixed background or header banner for the Shop page to give an immersive jungle feel."
-    }
-  },
-  "universal_guidelines_for_main_agent": [
-    "No generic centered layouts. Use grid-based asymmetrical storytelling (Bento style).",
-    "Do NOT use HTML `<select>` or `<input type='date'>`. You must use shadcn dropdown-menu, select, and calendar components for the Admin Panel.",
-    "Never use completely transparent backgrounds on overlay components. Always use `.glass-strong` or `.glass`.",
-    "Implement the UI exclusively with plain React (.js) + Tailwind and shadcn/ui. No TypeScript (.tsx).",
-    "Integrate the Stripe buy flow as a mock or standard button payload to a backend endpoint.",
-    "Every component should handle loading, empty, and error states elegantly (e.g., Skeleton loaders for the shop grid before WebSocket sync).",
-    "Rarity is crucial for a Fortnite-style shop. Emphasize the rarity colors in glows (`box-shadow`), borders, and text gradients."
+  "visual_enhancements": [
+    "Textured tactical plates with bevel borders and inner glow",
+    "Anodized aluminum bevel cuts on key panels",
+    "Dynamic LED VU meter with peak amber/crimson segments",
+    "Micro-animations on speak state (pinging gold rings and active channel highlight)",
+    "Custom styled volume sliders with olive/gold accent thumbs",
+    "Tactical keycap styling for PTT button with active press down state"
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Must preserve all logic, state, and hooks (useProximitySim, useMicLevel, useSound)",
+    "Must preserve all exact data-testid attributes",
+    "Do not import or render any radar or sonar visual component",
+    "Ensure all contrast ratios meet WCAG AA standards over dark panels",
+    "Use framer-motion for smooth entrance and list transitions"
   ]
 }
