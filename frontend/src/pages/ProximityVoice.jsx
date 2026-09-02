@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, Mic, MicOff, PhoneOff, Power, Users, Volume2, VolumeX, Signal, Plus, Minus, Keyboard, Waves, Activity } from "lucide-react";
+import { Radio, Mic, MicOff, PhoneOff, Power, Users, Volume2, VolumeX, Signal, Plus, Minus, Keyboard, Waves, Activity, Star, Ban, Search, History as HistoryIcon, Play, Loader2, ShieldOff } from "lucide-react";
 import { useSound } from "@/context/SoundContext";
 import { useProximitySim, useMicLevel } from "@/lib/proximitySim";
 
@@ -108,10 +108,23 @@ export default function ProximityVoice() {
   const [master, setMaster] = useState(0.8);
   const [allMuted, setAllMuted] = useState(false);
   const [exponent, setExponent] = useState(1.6);
+  const [preset, setPreset] = useState("");
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState("dist"); // dist | name
+  const [selfSpeaking, setSelfSpeaking] = useState(false);
 
   const connected = sim.on;
   const micActive = connected && !micMuted && (micMode === "ptt" ? transmitting : true);
   const pttLabel = PTT_KEYS.find((k) => k.code === pttKey)?.label || "Espacio";
+
+  // VAD: light up when the real mic level crosses a threshold while transmitting.
+  useEffect(() => {
+    if (!micActive) { setSelfSpeaking(false); return undefined; }
+    let alive = true, raf = 0;
+    const tick = () => { if (!alive) return; setSelfSpeaking((mic.getLevel() || 0) > 0.08); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => { alive = false; cancelAnimationFrame(raf); };
+  }, [micActive, mic]);
 
   useEffect(() => {
     if (!connected || micMode !== "ptt") return undefined;
@@ -127,10 +140,26 @@ export default function ProximityVoice() {
   const stepMaster = (d) => { play("click"); setMaster((m) => Math.max(0, Math.min(1, Math.round((m + d) * 100) / 100))); };
   const toggleMuteAll = () => { play("click"); const next = !allMuted; setAllMuted(next); sim.setAllMuted(next); };
 
-  const inRange = useMemo(() => sim.players.filter((p) => p.dist <= sim.hearing), [sim.players, sim.hearing]);
-  const outRange = useMemo(() => sim.players.filter((p) => p.dist > sim.hearing), [sim.players, sim.hearing]);
-  const speakingNow = useMemo(() => inRange.filter((p) => p.speaking && !p.muted).length, [inRange]);
-  const sortByDist = (a, b) => a.dist - b.dist;
+  const applyPreset = (id) => {
+    play("click"); setPreset(id);
+    if (id === "manada") { sim.setHearing(60); setMaster(0.85); }
+    else if (id === "explorar") { sim.setHearing(sim.serverRadius); setMaster(0.8); }
+    else if (id === "sigilo") { sim.setHearing(100); setMaster(0.3); }
+  };
+  useEffect(() => { setPreset(""); }, [sim.hearing, master]); // any manual tweak clears the active preset badge
+
+  const doTestMic = async () => { play("click"); await mic.testMic(); };
+
+  const filterSort = (list) => {
+    const q = query.trim().toLowerCase();
+    let out = q ? list.filter((p) => p.name.toLowerCase().includes(q) || (p.dino || "").toLowerCase().includes(q)) : list;
+    out = [...out].sort(sortBy === "name" ? (a, b) => a.name.localeCompare(b.name) : (a, b) => a.dist - b.dist);
+    // favourites float to the top of the in-range list
+    return out.sort((a, b) => (sim.isFavorite(b.name) ? 1 : 0) - (sim.isFavorite(a.name) ? 1 : 0));
+  };
+  const inRange = useMemo(() => filterSort(sim.players.filter((p) => p.dist <= sim.hearing)), [sim.players, sim.hearing, query, sortBy, sim.favorites]);
+  const outRange = useMemo(() => filterSort(sim.players.filter((p) => p.dist > sim.hearing)), [sim.players, sim.hearing, query, sortBy, sim.favorites]);
+  const speakingNow = useMemo(() => sim.players.filter((p) => p.dist <= sim.hearing && p.speaking && !p.muted).length, [sim.players, sim.hearing]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-7xl mx-auto px-4 sm:px-6 py-10">
@@ -171,7 +200,7 @@ export default function ProximityVoice() {
         className="lg:col-span-5 rounded-[24px] p-5 space-y-4" style={SHELL} data-testid="voice-panel">
 
         {/* LCD display deck */}
-        <div className="rounded-2xl p-4 sm:p-[18px]" style={PLATE}>
+        <div className="rounded-2xl p-4 sm:p-[18px] transition-all" style={{ ...PLATE, ...(selfSpeaking ? { borderColor: "rgba(52,211,153,.6)", boxShadow: "inset 0 0 42px rgba(52,211,153,.16), 0 0 22px rgba(52,211,153,.28)" } : {}) }} data-testid="voice-vad" data-active={selfSpeaking}>
           <div className="flex items-start justify-between gap-3">
             <div className="font-mono min-w-0" style={LCD_GLOW}>
               <p className="text-[10px] tracking-[0.20em] opacity-70" style={{ color: "#A3C96B" }}>CANAL DE PROXIMIDAD</p>
@@ -286,14 +315,80 @@ export default function ProximityVoice() {
             <b style={{ color: "#F0B429" }}>Alcance</b> define hasta dónde oyes; <b style={{ color: "#A3C96B" }}>Nitidez</b> ajusta cómo cae el volumen con la distancia. Baja el alcance y los jugadores lejanos salen de rango en vivo.
           </p>
         </div>
+
+        {/* quick presets */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 font-mono">Presets rápidos</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: "manada", label: "Manada", sub: "rango corto" },
+              { id: "explorar", label: "Explorar", sub: "rango largo" },
+              { id: "sigilo", label: "Sigilo", sub: "volumen bajo" },
+            ].map((pr) => (
+              <button key={pr.id} onClick={() => applyPreset(pr.id)} data-testid={`voice-preset-${pr.id}`}
+                className={`rounded-xl px-2 py-2.5 text-center border transition-all ${preset === pr.id ? "bg-gold/15 border-gold/50 text-gold" : "glass border-white/12 text-muted-foreground hover:text-foreground"}`}>
+                <span className="block text-xs font-extrabold">{pr.label}</span>
+                <span className="block text-[9px] opacity-70 font-mono">{pr.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* audio devices + noise suppression + mic test */}
+        <div className="rounded-xl px-3.5 py-3.5 space-y-3" style={SUBPLATE} data-testid="voice-devices">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5 font-mono"><Activity size={12} /> Dispositivos de audio</p>
+          <label className="block">
+            <span className="text-[10px] font-mono opacity-70" style={{ color: "#A3C96B" }}>Micrófono</span>
+            <select value={mic.inputId} onChange={(e) => mic.changeInput(e.target.value)} onFocus={mic.listDevices} data-testid="voice-input-device"
+              className="mt-1 w-full text-xs rounded-lg bg-black/40 border border-white/12 px-2.5 py-2 outline-none focus:border-gold/50 text-foreground">
+              <option value="">Predeterminado del sistema</option>
+              {mic.devices.inputs.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-mono opacity-70" style={{ color: "#A3C96B" }}>Altavoz</span>
+            <select value={mic.outputId} onChange={(e) => mic.changeOutput(e.target.value)} onFocus={mic.listDevices} data-testid="voice-output-device"
+              className="mt-1 w-full text-xs rounded-lg bg-black/40 border border-white/12 px-2.5 py-2 outline-none focus:border-gold/50 text-foreground">
+              <option value="">Predeterminado del sistema</option>
+              {mic.devices.outputs.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
+            </select>
+          </label>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] font-semibold inline-flex items-center gap-1.5"><Waves size={13} className="text-muted-foreground" /> Supresión de ruido</span>
+            <button onClick={() => { mic.setNoiseSuppression(!mic.noiseSuppression); play("click"); }} data-testid="voice-noise-suppression" role="switch" aria-checked={mic.noiseSuppression}
+              className={`relative h-6 w-11 rounded-full transition-colors ${mic.noiseSuppression ? "bg-emerald-500/70" : "bg-white/15"}`}>
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${mic.noiseSuppression ? "left-[22px]" : "left-0.5"}`} />
+            </button>
+          </div>
+          <button onClick={doTestMic} disabled={!!mic.testing} data-testid="voice-test-mic"
+            className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold px-3 py-2.5 rounded-lg border border-white/12 glass text-foreground hover:border-gold/40 transition-all disabled:opacity-70">
+            {mic.testing === "rec" ? <><Loader2 size={14} className="animate-spin" /> Grabando 3s…</> : mic.testing === "play" ? <><Loader2 size={14} className="animate-spin" /> Reproduciendo…</> : <><Play size={14} /> Probar micrófono</>}
+          </button>
+          <p className="text-[10px] leading-relaxed" style={{ color: "#7E8672" }}>Graba 3 segundos y te los reproduce para confirmar que se te escucha.</p>
+        </div>
       </motion.div>
 
       {/* ═══════════ right · spatial roster ═══════════ */}
       <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="lg:col-span-7 space-y-5">
         <div className="glass rounded-2xl overflow-hidden" data-testid="voice-participants-list">
-          <div className="flex items-center justify-between gap-3 px-4 py-4 border-b border-white/10" style={{ background: "rgba(124,168,66,.04)" }}>
-            <p className="text-lg font-extrabold tracking-wide font-display inline-flex items-center gap-2"><Users size={17} className="text-gold" /> Canales cerca de ti</p>
-            {connected && <span className="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-mono">{inRange.length} en rango · {outRange.length} fuera</span>}
+          <div className="px-4 py-4 border-b border-white/10" style={{ background: "rgba(124,168,66,.04)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-lg font-extrabold tracking-wide font-display inline-flex items-center gap-2"><Users size={17} className="text-gold" /> Canales cerca de ti</p>
+              {connected && <span className="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-mono">{inRange.length} en rango · {outRange.length} fuera</span>}
+            </div>
+            {connected && (
+              <div className="flex items-center gap-2 mt-3">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar jugador o dino…" data-testid="voice-search"
+                    className="w-full pl-8 pr-3 py-2 rounded-lg bg-black/40 border border-white/12 text-sm outline-none focus:border-gold/50" />
+                </div>
+                <div className="flex rounded-lg overflow-hidden border border-white/12 shrink-0">
+                  <button onClick={() => { setSortBy("dist"); play("click"); }} data-testid="voice-sort-dist" className={`text-[11px] font-bold px-3 py-2 transition-colors ${sortBy === "dist" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:text-foreground"}`}>Cercanía</button>
+                  <button onClick={() => { setSortBy("name"); play("click"); }} data-testid="voice-sort-name" className={`text-[11px] font-bold px-3 py-2 transition-colors ${sortBy === "name" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:text-foreground"}`}>Nombre</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {!connected ? (
@@ -304,20 +399,24 @@ export default function ProximityVoice() {
           ) : (
             <div className="p-3 sm:p-4 space-y-2.5">
               <AnimatePresence initial={false}>
-                {[...inRange].sort(sortByDist).map((p) => {
+                {inRange.map((p) => {
                   const bars = signalBars(p.dist, sim.hearing, exponent);
                   const talking = p.speaking && !p.muted;
+                  const fav = sim.isFavorite(p.name);
+                  const blk = sim.isBlocked(p.name);
                   return (
                     <motion.div key={p.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 14 }} transition={{ duration: 0.22 }}
-                      className="relative flex items-center gap-3.5 pl-4 pr-3 py-3 rounded-xl border overflow-hidden transition-colors"
-                      style={{ background: talking ? "rgba(240,180,41,.07)" : "rgba(255,255,255,.02)", borderColor: talking ? "rgba(240,180,41,.35)" : "rgba(255,255,255,.08)" }}
+                      className="relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border overflow-hidden transition-colors"
+                      style={{ background: talking ? "rgba(240,180,41,.07)" : fav ? "rgba(240,180,41,.04)" : "rgba(255,255,255,.02)", borderColor: talking ? "rgba(240,180,41,.35)" : fav ? "rgba(240,180,41,.22)" : "rgba(255,255,255,.08)" }}
                       data-testid={`voice-participant-${p.id}`} data-speaking={talking}>
-                      <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: p.muted ? "#E24A4A" : talking ? "#F0B429" : "#7CA842", boxShadow: talking ? "0 0 10px #F0B429" : "none" }} />
+                      <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: blk ? "#E24A4A" : talking ? "#F0B429" : fav ? "#F0B429" : "#7CA842", boxShadow: talking ? "0 0 10px #F0B429" : "none" }} />
                       <SignalMeter bars={p.muted ? 0 : bars} danger={p.muted} />
                       <span className="flex-1 min-w-0">
                         <span className="flex items-center gap-2">
+                          {fav && <Star size={12} className="text-gold shrink-0 fill-current" />}
                           <span className="block text-sm font-bold truncate" data-testid={`voice-persona-${p.id}`}>{p.name}</span>
                           {talking && <span className="relative flex h-2.5 w-2.5 shrink-0" data-testid={`voice-speaking-${p.id}`}><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-70" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gold" /></span>}
+                          {blk && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-crimson/15 text-crimson border border-crimson/25 shrink-0">bloqueado</span>}
                         </span>
                         <span className="block text-[10.5px] font-mono text-muted-foreground/80 truncate" data-testid={`voice-range-${p.id}`}>
                           {p.dino} · {Math.round(p.dist)} m {p.muted ? "· silenciado" : talking ? "· hablando" : ""}
@@ -327,8 +426,16 @@ export default function ProximityVoice() {
                         <VolumeX size={12} className="text-muted-foreground/50" />
                         <input type="range" min={0} max={100} step={1} value={Math.round(p.vol * 100)} disabled={p.muted} onChange={(e) => sim.setVol(p.id, Number(e.target.value) / 100)}
                           aria-label={`Volumen de ${p.name}`} data-testid={`voice-speaker-vol-${p.id}`}
-                          className="w-24 md:w-32 h-1.5 rounded-full bg-white/10 accent-emerald-400 cursor-pointer disabled:opacity-40" />
+                          className="w-20 md:w-28 h-1.5 rounded-full bg-white/10 accent-emerald-400 cursor-pointer disabled:opacity-40" />
                       </span>
+                      <button onClick={() => { sim.toggleFavorite(p.name); play("click"); }} data-testid={`voice-fav-${p.id}`} aria-label={fav ? "Quitar de favoritos" : "Marcar favorito"}
+                        className={`inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-lg border transition-all ${fav ? "bg-gold/15 text-gold border-gold/40" : "glass border-white/12 text-muted-foreground hover:text-foreground"}`}>
+                        <Star size={15} className={fav ? "fill-current" : ""} />
+                      </button>
+                      <button onClick={() => { sim.toggleBlock(p.name); play("click"); }} data-testid={`voice-block-${p.id}`} aria-label={blk ? "Desbloquear" : "Bloquear"}
+                        className={`inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-lg border transition-all ${blk ? "bg-crimson/20 text-crimson border-crimson/40" : "glass border-white/12 text-muted-foreground hover:text-crimson"}`}>
+                        {blk ? <ShieldOff size={15} /> : <Ban size={15} />}
+                      </button>
                       <button onClick={() => sim.toggleMute(p.id)} data-testid={`voice-speaker-mute-${p.id}`} aria-label={p.muted ? "Reactivar" : "Silenciar"}
                         className={`inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-lg border transition-all ${p.muted ? "bg-crimson/15 text-crimson border-crimson/30" : "glass border-white/12 text-muted-foreground hover:text-foreground"}`}>
                         {p.muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
@@ -346,7 +453,7 @@ export default function ProximityVoice() {
                 <div className="pt-2">
                   <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 inline-flex items-center gap-1.5 font-mono"><Signal size={11} /> Fuera de rango</p>
                   <div className="space-y-1.5">
-                    {[...outRange].sort(sortByDist).map((p) => (
+                    {outRange.map((p) => (
                       <div key={p.id} className="flex items-center gap-3.5 px-4 py-2.5 rounded-lg opacity-45" style={{ background: "rgba(255,255,255,.015)" }} data-testid={`voice-participant-${p.id}`}>
                         <SignalMeter bars={0} />
                         <span className="flex-1 min-w-0">
@@ -361,6 +468,31 @@ export default function ProximityVoice() {
             </div>
           )}
         </div>
+
+        {/* talk history */}
+        {connected && (
+          <div className="glass rounded-2xl overflow-hidden" data-testid="voice-history">
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-white/10" style={{ background: "rgba(124,168,66,.04)" }}>
+              <p className="text-sm font-extrabold tracking-wide font-display inline-flex items-center gap-2"><HistoryIcon size={15} className="text-gold" /> Últimos en hablar</p>
+            </div>
+            {sim.history.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 px-4 text-center">Aún nadie ha hablado cerca de ti. Cuando alguien transmita en rango aparecerá aquí.</p>
+            ) : (
+              <div className="p-2 space-y-1">
+                {sim.history.map((h, i) => (
+                  <div key={`${h.name}-${h.at}`} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: i === 0 ? "rgba(240,180,41,.05)" : "transparent" }} data-testid={`voice-history-${i}`}>
+                    <span className="h-7 w-7 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(124,168,66,.12)", border: "1px solid rgba(124,168,66,.2)" }}><Mic size={12} className="text-gold" /></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-xs font-bold truncate">{h.name}</span>
+                      <span className="block text-[10px] font-mono text-muted-foreground/70 truncate">{h.dino}</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">{new Date(h.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );

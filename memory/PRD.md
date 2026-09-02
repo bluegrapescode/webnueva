@@ -180,3 +180,19 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
 - Deployment readiness check: PASS (sin secretos/URLs hardcodeados, env-only, CORS ok, compila).
 - `App.js`: rutas convertidas a `React.lazy` + `Suspense` (fallback spinner `page-loading`); Landing y AuthCallback quedan eager.
 - Resultado build: main.js **1.04 MB → 342 kB gzip** (~67% menos en carga inicial). 31 chunks; el chunk pesado de 3D (three.js/R3F ~204 kB gzip) solo carga al abrir el editor de skins. Smoke test OK (Landing + Marketplace lazy sin pantalla en blanco).
+
+## 2026-06 — Radio de Proximidad: rediseño pro + controles avanzados [smoke-tested FE]
+- Rediseño completo de `ProximityVoice.jsx` a consola de comunicaciones táctica (grid 12 col: consola izq 5 / roster der 7). Sin radar (eliminado a petición). Se mantuvo toda la lógica de `useProximitySim` y `useMicLevel`.
+- Controles base: encender/apagar, LCD con telemetría (alcance/en canal/en rango/hablando), VU LED 16 seg, modo PTT/abierto, tecla PTT configurable (Espacio/V/T/C), botón keycap transmitir, silenciar mi mic, volumen general (slider + ±5% + silenciar a todos), diales Nitidez y Alcance, roster in/out range con señal, marcador hablando, volumen y mute por jugador.
+- Nuevas features (todas en la sim, persistencia localStorage donde aplica):
+  - Presets rápidos: Manada (alcance 60), Explorar (alcance máx), Sigilo (volumen 30%). testids voice-preset-{id}.
+  - Buscar/filtrar roster (voice-search) + ordenar Cercanía/Nombre (voice-sort-dist/name).
+  - Favoritos (voice-fav-{id}): fija arriba + sube volumen a 100%; persiste en localStorage 'prox_favs'.
+  - Bloquear (voice-block-{id}): silencia permanente; persiste en 'prox_blocked'; badge "bloqueado".
+  - Historial "Últimos en hablar" (voice-history): últimos 8 que transmitieron en rango.
+  - Dispositivos (voice-devices): selects de micrófono/altavoz (enumerateDevices + setSinkId en la prueba).
+  - Supresión de ruido toggle (voice-noise-suppression) → re-adquiere el mic.
+  - Probar micrófono (voice-test-mic): graba 3s con MediaRecorder y lo reproduce.
+  - Indicador VAD (voice-vad): el panel LCD brilla en verde cuando el mic real supera el umbral al transmitir.
+- Lógica añadida en `proximitySim.js`: setAllMuted, favorites/blocked persistentes, history; y en `useMicLevel`: devices/listDevices, changeInput/Output, noiseSuppression, testMic, testing.
+- Pendiente opcional: cablear estos controles nuevos (tecla PTT configurable, ±volumen, silenciar a todos, dispositivos, NS) a la voz REAL LiveKit en `VoiceContext.jsx` para el servidor de juego.
