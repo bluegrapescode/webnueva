@@ -80,8 +80,9 @@ export function useProximitySim() {
 
   const setVol = useCallback((id, v) => setPlayers((p) => p.map((x) => (x.id === id ? { ...x, vol: v } : x))), []);
   const toggleMute = useCallback((id) => setPlayers((p) => p.map((x) => (x.id === id ? { ...x, muted: !x.muted } : x))), []);
+  const setAllMuted = useCallback((muted) => setPlayers((p) => p.map((x) => ({ ...x, muted }))), []);
 
-  return { on, connect, disconnect, hearing, setHearing, players, setVol, toggleMute, serverRadius: SERVER_RADIUS_M };
+  return { on, connect, disconnect, hearing, setHearing, players, setVol, toggleMute, setAllMuted, serverRadius: SERVER_RADIUS_M };
 }
 
 // Real microphone level (0..1 RMS) via getUserMedia — makes the VU meter react
