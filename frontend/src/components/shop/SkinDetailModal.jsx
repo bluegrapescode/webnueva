@@ -56,12 +56,13 @@ export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
         <div className="grid md:grid-cols-2">
           {/* render */}
           <div className="relative min-h-[300px] md:min-h-[460px] overflow-hidden">
-            <div className="absolute inset-0" style={{ background: `radial-gradient(60% 55% at 50% 40%, ${r.color}66, #0b0d09 82%)` }} />
+            <div className="absolute inset-0" style={{ background: `radial-gradient(65% 60% at 50% 45%, ${r.color}55, #07080a 88%)` }} />
             <motion.img src={skin.image_url} alt={skin.name}
-              className="absolute inset-0 w-full h-full object-cover"
-              animate={{ y: [0, -12, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
+              className="absolute inset-0 w-full h-full object-contain p-3 drop-shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+              transition={{ opacity: { duration: 0.4 }, scale: { duration: 0.4 }, y: { duration: 5, repeat: Infinity, ease: "easeInOut" } }} />
             {holo && <div className="skin-card__holo" aria-hidden />}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute left-0 top-0 h-full w-1" style={{ background: `linear-gradient(to bottom, ${r.color}, transparent)` }} />
           </div>
           {/* info */}

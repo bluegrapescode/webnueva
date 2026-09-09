@@ -196,3 +196,12 @@ Epic completo: registro de dinos muertos + moneda FÓSIL (comprada con Amberiums
   - Indicador VAD (voice-vad): el panel LCD brilla en verde cuando el mic real supera el umbral al transmitir.
 - Lógica añadida en `proximitySim.js`: setAllMuted, favorites/blocked persistentes, history; y en `useMicLevel`: devices/listDevices, changeInput/Output, noiseSuppression, testMic, testing.
 - Pendiente opcional: cablear estos controles nuevos (tecla PTT configurable, ±volumen, silenciar a todos, dispositivos, NS) a la voz REAL LiveKit en `VoiceContext.jsx` para el servidor de juego.
+
+## 2026-06 — Tienda de Skins → Catálogo/Galería (sin carrito) [smoke-tested FE]
+- La Tienda de Skins (`TiendaSkins.jsx`) se reescribió como GALERÍA tipo catálogo: filtros (dino, tipo, orden), buscador, toggle grid/lista. Tarjetas SIN botón de carrito; clic → `SkinDetailModal` (que ya tiene checkout Stripe + equipar).
+- Nuevo `components/shop/GalleryCard.jsx` (grid y lista), entrada escalonada (delay por índice), glow de rareza en hover, sonidos hover/click/open.
+- `SkinDetailModal`: la foto de preview ahora usa `object-contain` (dino completo, sin recorte) + entrada con zoom y flotación.
+- Backend `skin_shop.py`: nuevo `GET /shop/catalog` (lista plana de skins live + owned/equipped + facets dinos/types). Campo nuevo `skin_type` en modelo/_public/admin_create/admin_update.
+- Admin (`AdminSkinShop.jsx`): añadido campo "Tipo de skin" (para el filtro del catálogo). El admin gestiona: nombre, descripción, imagen, rareza, sección, dino, tipo, precio (sincroniza Stripe), fechas y activar/ocultar.
+- Seed de ejemplo: `backend/_seed_skins_catalog.py` creó 8 skins (Rex/Austroraptor/Spinosaurus/Ceratosaurus) con imágenes generadas (renders oscuros) y PRODUCTOS/PRECIOS Stripe reales. Idempotente por nombre+dino.
+- api.js: `shopCatalog`. Verificado: catálogo 200 con 15 skins; grid/list, filtros, buscador, detalle y checkout Stripe operativos; sin overflow en móvil (390) ni desktop (1440).

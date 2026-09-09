@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Search, LayoutGrid, List as ListIcon, PackageOpen } from "lucide-react";
 import { api, shopWsUrl } from "@/lib/api";
 import { useSound } from "@/context/SoundContext";
@@ -78,14 +78,14 @@ export default function TiendaSkins() {
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-10">
       {/* header */}
-      <div className="mb-7">
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-7">
         <p className="label-overline text-xs text-gold">Cosméticos del servidor</p>
         <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl leading-none">Catálogo de Skins</h1>
         <p className="text-sm text-muted-foreground mt-2 max-w-xl">Explora todas las skins disponibles por especie. Toca cualquiera para ver el detalle y comprarla con Stripe.</p>
-      </div>
+      </motion.div>
 
       {/* filter bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }} className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
         <div className="flex flex-wrap items-center gap-2.5">
           <Select value={dino} onValueChange={(v) => { setDino(v); play?.("click"); }}>
             <SelectTrigger className="w-[180px] bg-white/[0.03] border-white/10" data-testid="filter-dino"><SelectValue placeholder="Todos los dinos" /></SelectTrigger>
@@ -121,7 +121,7 @@ export default function TiendaSkins() {
               className={`p-2.5 transition-colors ${view === "list" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:text-foreground"}`}><ListIcon size={17} /></button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* results */}
       {!data ? (
@@ -140,13 +140,13 @@ export default function TiendaSkins() {
           {view === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="skins-grid">
               <AnimatePresence mode="popLayout">
-                {filtered.map((s) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="grid" />)}
+                {filtered.map((s, i) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="grid" index={i} />)}
               </AnimatePresence>
             </div>
           ) : (
             <div className="space-y-2" data-testid="skins-list">
               <AnimatePresence mode="popLayout">
-                {filtered.map((s) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="list" />)}
+                {filtered.map((s, i) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="list" index={i} />)}
               </AnimatePresence>
             </div>
           )}

@@ -5,11 +5,12 @@ import { rarityOf } from "./shopRarity";
 
 // Catalog gallery card — clean showcase tile (NO cart button). Click opens the
 // detail/preview modal. Themed with the rarity accent + site glass aesthetic.
-export function GalleryCard({ skin, onClick, play, view = "grid" }) {
+export function GalleryCard({ skin, onClick, play, view = "grid", index = 0 }) {
   const r = rarityOf(skin.rarity);
+  const delay = Math.min(index * 0.035, 0.45);
   if (view === "list") {
     return (
-      <motion.button layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+      <motion.button layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay }}
         onMouseEnter={() => play?.("hover")} onClick={() => onClick?.(skin)} data-testid={`skin-card-${skin.id}`}
         className="group relative w-full flex items-center gap-4 rounded-xl overflow-hidden border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-colors text-left p-2.5"
         style={{ boxShadow: `inset 3px 0 0 ${r.color}` }}>
@@ -28,11 +29,12 @@ export function GalleryCard({ skin, onClick, play, view = "grid" }) {
     );
   }
   return (
-    <motion.button layout initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 320, damping: 24 }}
+    <motion.button layout initial={{ opacity: 0, y: 22, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 320, damping: 24, delay }}
       onMouseEnter={() => play?.("hover")} onClick={() => onClick?.(skin)} data-testid={`skin-card-${skin.id}`}
-      className="group relative w-full block text-left rounded-2xl overflow-hidden border transition-colors"
+      className="group relative w-full block text-left rounded-2xl overflow-hidden border transition-[border-color,box-shadow] duration-300"
       style={{ borderColor: `${r.color}33`, background: "#0c0f0a", boxShadow: `0 14px 40px -22px ${r.color}` }}>
+      <span className="pointer-events-none absolute inset-0 z-[3] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: `inset 0 0 0 1.5px ${r.color}, 0 0 26px -4px ${r.color}` }} aria-hidden />
       <div className="relative aspect-[16/10] overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-2/3 z-[1]" style={{ background: `radial-gradient(60% 90% at 50% 0%, ${r.color}44, transparent 70%)` }} />
         <img src={skin.image_url} alt={skin.name} loading="lazy"
