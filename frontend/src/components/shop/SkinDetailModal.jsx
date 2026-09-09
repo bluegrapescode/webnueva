@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Loader2, ShoppingCart, Sparkles, X, Zap } from "lucide-react";
+import { Check, Loader2, ShoppingCart, Sparkles, X, Zap, Gem, Tag, Clock, Layers, ShieldCheck } from "lucide-react";
 import { rarityOf } from "./shopRarity";
 import { Countdown } from "./Countdown";
 import { api, externalRedirect } from "@/lib/api";
 import { toast } from "sonner";
+
+const RARITY_FLAVOR = {
+  common: "Cosmético estándar del servidor.",
+  uncommon: "Acabado poco común con detalles mejorados.",
+  rare: "Diseño raro con tonalidades exclusivas.",
+  epic: "Skin épica de edición especial, muy solicitada.",
+  legendary: "Pieza legendaria con acabado premium y brillo único.",
+  mythic: "Rareza mítica: de las más exclusivas del catálogo.",
+};
 
 export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
   const [busy, setBusy] = useState(false);
@@ -43,7 +52,7 @@ export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose?.()}>
       <DialogContent
-        className="glass-strong border-0 max-w-3xl p-0 overflow-hidden gap-0 clip-notch"
+        className="glass-strong border-0 max-w-4xl p-0 overflow-hidden gap-0 clip-notch"
         data-testid="skin-detail-modal"
         style={{ boxShadow: `0 0 0 2px ${r.color}, 0 0 60px ${r.color}66, 0 40px 110px -30px ${r.color}` }}
       >
@@ -66,19 +75,42 @@ export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
             <div className="absolute left-0 top-0 h-full w-1" style={{ background: `linear-gradient(to bottom, ${r.color}, transparent)` }} />
           </div>
           {/* info */}
-          <div className="p-7 flex flex-col">
-            <span className="inline-flex items-center gap-1 label-overline text-[10px] px-2.5 py-1 border self-start clip-notch-sm"
-              style={{ color: r.color, borderColor: `${r.color}77`, background: `${r.color}22` }}>
-              <Zap size={10} /> {r.label}
-            </span>
+          <div className="p-7 flex flex-col max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 label-overline text-[10px] px-2.5 py-1 border self-start clip-notch-sm"
+                style={{ color: r.color, borderColor: `${r.color}77`, background: `${r.color}22` }}>
+                <Zap size={10} /> {r.label}
+              </span>
+              {skin.owned && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"><Check size={11} /> En tu colección</span>}
+            </div>
             <h2 className="font-display font-black uppercase tracking-tight text-3xl sm:text-4xl mt-3 leading-[0.9]">{skin.name}</h2>
             {skin.dino_species && <p className="text-sm text-white/50 mt-1.5">Para {skin.dino_species}</p>}
-            {skin.description && <p className="text-sm text-white/65 mt-4 leading-relaxed">{skin.description}</p>}
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-white/55">
-              <Sparkles size={13} style={{ color: r.color }} />
-              <span className="font-code">
-                {skin.end_at ? <>Disponible por <Countdown endAt={skin.end_at} className="text-white/85" /></> : "Edición por tiempo limitado"}
+            {/* rarity flavour */}
+            <p className="text-sm text-white/70 mt-4 leading-relaxed">{skin.description || RARITY_FLAVOR[skin.rarity] || RARITY_FLAVOR.common}</p>
+
+            {/* attribute grid */}
+            <div className="grid grid-cols-2 gap-2.5 mt-5">
+              {[
+                { icon: Gem, label: "Rareza", value: r.label, accent: true },
+                { icon: Layers, label: "Especie", value: skin.dino_species || "Universal" },
+                { icon: Tag, label: "Tipo", value: skin.skin_type || "Estándar" },
+                { icon: Clock, label: "Disponibilidad", value: skin.end_at ? "Limitada" : "Permanente" },
+              ].map((a) => (
+                <div key={a.label} className="rounded-xl px-3 py-2.5 border" style={{ background: "rgba(255,255,255,.03)", borderColor: a.accent ? `${r.color}44` : "rgba(255,255,255,.08)" }}>
+                  <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-white/45"><a.icon size={11} style={a.accent ? { color: r.color } : {}} /> {a.label}</span>
+                  <span className="block text-sm font-bold mt-0.5 truncate" style={a.accent ? { color: r.color } : {}}>{a.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* perks */}
+            <div className="mt-4 space-y-2">
+              <span className="flex items-center gap-2 text-xs text-white/70"><ShieldCheck size={14} style={{ color: r.color }} /> Se aplica a tu {skin.dino_species || "dinosaurio"} en el servidor</span>
+              <span className="flex items-center gap-2 text-xs text-white/70"><Sparkles size={14} style={{ color: r.color }} /> Skin única coleccionable, ligada a tu cuenta</span>
+              <span className="flex items-center gap-2 text-xs text-white/70 font-code">
+                <Clock size={14} style={{ color: r.color }} />
+                {skin.end_at ? <>Disponible por <Countdown endAt={skin.end_at} className="text-white/90" /></> : "Disponible por tiempo indefinido"}
               </span>
             </div>
 
