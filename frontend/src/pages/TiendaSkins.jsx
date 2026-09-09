@@ -1,46 +1,39 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Sparkles, PackageOpen, Clock, Skull } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { Search, LayoutGrid, List as ListIcon, PackageOpen } from "lucide-react";
 import { api, shopWsUrl } from "@/lib/api";
 import { useSound } from "@/context/SoundContext";
 import { useAuth } from "@/context/AuthContext";
-import { SkinCard } from "@/components/shop/SkinCard";
+import { GalleryCard } from "@/components/shop/GalleryCard";
 import { SkinDetailModal } from "@/components/shop/SkinDetailModal";
 import { PurchaseCelebration } from "@/components/shop/PurchaseCelebration";
-import { RARITY, RARITY_ORDER } from "@/components/shop/shopRarity";
+import { RARITY_ORDER } from "@/components/shop/shopRarity";
 import { SkeletonCard } from "@/components/common/PageLoader";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const ORDER = ["destacados", "diario", "temporada"];
-const SECTION_META = {
-  destacados: { n: "01", title: "Destacados", icon: Flame, color: "#f59e0b", sub: "Lo más codiciado ahora mismo" },
-  diario: { n: "02", title: "Diario", icon: Sparkles, color: "#38bdf8", sub: "Rota cada 24 horas" },
-  temporada: { n: "03", title: "Temporada", icon: Skull, color: "#a855f7", sub: "Ediciones limitadas de evento" },
+const SORTS = {
+  featured: "Destacados",
+  price_desc: "Precio: mayor",
+  price_asc: "Precio: menor",
+  name: "Nombre A-Z",
+  rarity: "Rareza",
 };
-
-// bento span pattern for Destacados (aggressive, editorial arrangement)
-function featSpan(i) {
-  if (i === 0) return "col-span-2 row-span-2";
-  if (i === 1) return "col-span-2 row-span-1";
-  return "col-span-1 row-span-1";
-}
-
-function nextResetLabel() {
-  const d = new Date();
-  d.setUTCHours(24, 0, 0, 0);
-  return d.toISOString();
-}
 
 export default function TiendaSkins() {
   const { play } = useSound();
   const { refresh } = useAuth();
-  const [sections, setSections] = useState(null);
+  const [data, setData] = useState(null); // { items, dinos, types }
   const [selected, setSelected] = useState(null);
   const [celebrate, setCelebrate] = useState(null);
-  const dailyReset = useRef(nextResetLabel());
+  const [dino, setDino] = useState("all");
+  const [type, setType] = useState("all");
+  const [sort, setSort] = useState("featured");
+  const [q, setQ] = useState("");
+  const [view, setView] = useState("grid");
 
   const load = useCallback(async () => {
-    try { const { data } = await api.shopSkins(); setSections(data.sections); }
-    catch { setSections({ destacados: [], diario: [], temporada: [] }); }
+    try { const { data } = await api.shopCatalog(); setData(data); }
+    catch { setData({ items: [], dinos: [], types: [] }); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -62,141 +55,107 @@ export default function TiendaSkins() {
     return () => { try { clearInterval(ws?._ping); ws?.close(); } catch {} };
   }, [load, refresh]);
 
-  const onEquipped = (skinId) => {
-    setSections((prev) => {
-      if (!prev) return prev;
-      const clone = { ...prev };
-      for (const k of ORDER) clone[k] = (clone[k] || []).map((s) => ({ ...s, equipped: s.id === skinId }));
-      return clone;
+  const items = data?.items || [];
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    let out = items.filter((s) =>
+      (dino === "all" || s.dino_species === dino) &&
+      (type === "all" || s.skin_type === type) &&
+      (!term || s.name.toLowerCase().includes(term) || (s.dino_species || "").toLowerCase().includes(term)));
+    const rIdx = (r) => RARITY_ORDER.indexOf(r);
+    out = [...out].sort((a, b) => {
+      if (sort === "price_desc") return b.price_usd - a.price_usd;
+      if (sort === "price_asc") return a.price_usd - b.price_usd;
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "rarity") return rIdx(b.rarity) - rIdx(a.rarity);
+      return 0; // featured = backend order (newest first)
     });
-    setSelected((s) => (s ? { ...s, equipped: s.id === skinId, owned: true } : s));
-    refresh?.();
-  };
+    return out;
+  }, [items, dino, type, sort, q]);
 
-  const total = sections ? ORDER.reduce((n, k) => n + (sections[k]?.length || 0), 0) : 0;
+  const openSkin = (s) => { play?.("open"); setSelected(s); };
 
   return (
-    <div className="relative min-h-screen" data-testid="tienda-skins-page">
-      {/* animated technical backdrop */}
-      <div className="pointer-events-none fixed inset-0 shop-grid-bg opacity-40" />
-      <div className="pointer-events-none fixed inset-0" style={{ background: "radial-gradient(80% 50% at 50% -10%, rgba(124,168,66,0.12), transparent 60%)" }} />
-
-      <div className="relative max-w-[1400px] mx-auto px-6 py-10">
-        {/* HERO */}
-        <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}
-          className="relative overflow-hidden clip-notch border border-white/10 p-8 sm:p-12 mb-12"
-          style={{ background: "linear-gradient(115deg,#141a0e 0%,#0b0d09 55%)" }}>
-          <div className="absolute -right-16 -top-24 w-96 h-96 rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(circle,#7CA842,transparent)" }} />
-          <div className="absolute -left-10 bottom-0 w-72 h-72 rounded-full blur-3xl opacity-20" style={{ background: "radial-gradient(circle,#f59e0b,transparent)" }} />
-          <div className="relative">
-            <p className="label-overline text-[11px] text-[#f59e0b] mb-3 flex items-center gap-2">
-              <Flame size={14} /> Tienda rotativa · Ediciones únicas
-            </p>
-            <h1 className="font-display font-black uppercase tracking-tighter leading-[0.85] text-5xl sm:text-7xl lg:text-8xl">
-              <span className="text-white">Skin</span>{" "}
-              <span style={{ background: "linear-gradient(120deg,#B8DA7E,#7CA842 40%,#f59e0b)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Vault</span>
-            </h1>
-            <p className="text-white/55 mt-4 max-w-xl text-sm sm:text-base">
-              Colecciona skins <b className="text-white">únicas</b> y legendarias por tiempo limitado. Cuando rotan, desaparecen. Consíguelas y equípalas a tus dinos.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-2 clip-notch-sm border border-white/10 bg-black/40 px-4 py-2 font-code text-xs text-white/70">
-                <Clock size={13} className="text-[#38bdf8]" /> Diario rota en <DailyTimer target={dailyReset.current} />
-              </div>
-              {/* rarity legend */}
-              <div className="inline-flex items-center gap-2.5 clip-notch-sm border border-white/10 bg-black/40 px-4 py-2">
-                {RARITY_ORDER.map((k) => (
-                  <span key={k} title={RARITY[k].label} className="w-3 h-3 rounded-sm" style={{ background: RARITY[k].color, boxShadow: `0 0 8px ${RARITY[k].color}` }} />
-                ))}
-                <span className="text-[10px] text-white/40 uppercase tracking-wider ml-1">Rareza</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {sections === null ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} className="aspect-[3/4]" />)}
-          </div>
-        ) : total === 0 ? (
-          <div className="text-center py-28 text-white/40" data-testid="shop-empty">
-            <PackageOpen size={52} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg">La bóveda está vacía por ahora.</p>
-            <p className="text-sm mt-1">Vuelve pronto — nuevas skins caen cada semana.</p>
-          </div>
-        ) : (
-          <div className="space-y-16">
-            {ORDER.map((key) => {
-              const items = sections[key] || [];
-              if (items.length === 0) return null;
-              const m = SECTION_META[key];
-              return (
-                <section key={key} data-testid={`shop-section-${key}`}>
-                  {/* section header */}
-                  <div className="flex items-center gap-4 mb-6">
-                    <span className="font-display font-black text-5xl sm:text-6xl leading-none opacity-20" style={{ color: m.color }}>{m.n}</span>
-                    <div className="flex-1">
-                      <h2 className="font-display font-black uppercase tracking-tight text-2xl sm:text-4xl flex items-center gap-2.5">
-                        <m.icon size={26} style={{ color: m.color }} /> {m.title}
-                      </h2>
-                      <p className="text-xs text-white/45 mt-0.5">{m.sub}</p>
-                    </div>
-                    <div className="hidden sm:block h-[2px] flex-[0.4]" style={{ background: `linear-gradient(90deg,transparent,${m.color})` }} />
-                    <span className="font-code text-xs text-white/45 whitespace-nowrap">{items.length} skins</span>
-                  </div>
-
-                  {/* grids per section */}
-                  {key === "destacados" ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[190px] gap-4">
-                      <AnimatePresence>
-                        {items.map((skin, i) => (
-                          <div key={skin.id} className={featSpan(i)}>
-                            <SkinCard skin={skin} onClick={setSelected} play={play} featured={i === 0} />
-                          </div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  ) : key === "temporada" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 auto-rows-[260px] gap-4">
-                      <AnimatePresence>
-                        {items.map((skin, i) => (
-                          <div key={skin.id} className={i === 0 ? "md:col-span-2" : ""}>
-                            <SkinCard skin={skin} onClick={setSelected} play={play} featured={i === 0} />
-                          </div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 auto-rows-[260px] gap-4">
-                      <AnimatePresence>
-                        {items.map((skin) => (
-                          <div key={skin.id}>
-                            <SkinCard skin={skin} onClick={setSelected} play={play} />
-                          </div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        )}
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-10">
+      {/* header */}
+      <div className="mb-7">
+        <p className="label-overline text-xs text-gold">Cosméticos del servidor</p>
+        <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl leading-none">Catálogo de Skins</h1>
+        <p className="text-sm text-muted-foreground mt-2 max-w-xl">Explora todas las skins disponibles por especie. Toca cualquiera para ver el detalle y comprarla con Stripe.</p>
       </div>
 
-      <SkinDetailModal skin={selected} open={!!selected} onClose={() => setSelected(null)} play={play} onEquipped={onEquipped} />
-      <PurchaseCelebration skin={celebrate} onDone={() => setCelebrate(null)} play={play} />
+      {/* filter bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Select value={dino} onValueChange={(v) => { setDino(v); play?.("click"); }}>
+            <SelectTrigger className="w-[180px] bg-white/[0.03] border-white/10" data-testid="filter-dino"><SelectValue placeholder="Todos los dinos" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los dinos</SelectItem>
+              {(data?.dinos || []).map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={type} onValueChange={(v) => { setType(v); play?.("click"); }}>
+            <SelectTrigger className="w-[160px] bg-white/[0.03] border-white/10" data-testid="filter-type"><SelectValue placeholder="Todas las skins" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las skins</SelectItem>
+              {(data?.types || []).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => { setSort(v); play?.("click"); }}>
+            <SelectTrigger className="w-[170px] bg-white/[0.03] border-white/10" data-testid="filter-sort"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORTS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2.5 lg:ml-auto">
+          <div className="relative flex-1 lg:flex-none">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar skins…" data-testid="skin-search"
+              className="pl-9 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/10 text-sm w-full lg:w-64 outline-none focus:border-gold/50" />
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-white/10 shrink-0">
+            <button onClick={() => { setView("grid"); play?.("click"); }} data-testid="view-grid" aria-label="Vista cuadrícula"
+              className={`p-2.5 transition-colors ${view === "grid" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:text-foreground"}`}><LayoutGrid size={17} /></button>
+            <button onClick={() => { setView("list"); play?.("click"); }} data-testid="view-list" aria-label="Vista lista"
+              className={`p-2.5 transition-colors ${view === "list" ? "bg-gold/20 text-gold" : "text-muted-foreground hover:text-foreground"}`}><ListIcon size={17} /></button>
+          </div>
+        </div>
+      </div>
+
+      {/* results */}
+      {!data ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-24">
+          <PackageOpen size={40} className="mx-auto text-muted-foreground mb-4" />
+          <p className="text-lg font-bold">No hay skins que coincidan</p>
+          <p className="text-sm text-muted-foreground mt-1">Prueba con otro filtro o búsqueda.</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground mb-3 font-mono" data-testid="catalog-count">{filtered.length} skins</p>
+          {view === "grid" ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="skins-grid">
+              <AnimatePresence mode="popLayout">
+                {filtered.map((s) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="grid" />)}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="space-y-2" data-testid="skins-list">
+              <AnimatePresence mode="popLayout">
+                {filtered.map((s) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="list" />)}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
+      )}
+
+      <SkinDetailModal skin={selected} open={!!selected} onClose={() => setSelected(null)} play={play}
+        onEquipped={() => { load(); refresh?.(); }} />
+      <PurchaseCelebration skin={celebrate} play={play} onDone={() => setCelebrate(null)} />
     </div>
   );
-}
-
-function DailyTimer({ target }) {
-  const [, force] = useState(0);
-  useEffect(() => { const id = setInterval(() => force((n) => n + 1), 1000); return () => clearInterval(id); }, []);
-  const ms = new Date(target).getTime() - Date.now();
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = String(Math.floor(s / 3600)).padStart(2, "0");
-  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
-  const sec = String(s % 60).padStart(2, "0");
-  return <span className="text-[#38bdf8] tabular-nums font-bold">{h}:{m}:{sec}</span>;
 }

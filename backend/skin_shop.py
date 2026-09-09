@@ -88,6 +88,7 @@ def _public(skin: dict) -> dict:
         "rarity": skin.get("rarity", "common"),
         "section": skin.get("section", "diario"),
         "dino_species": skin.get("dino_species"),
+        "skin_type": skin.get("skin_type"),
         "price_cents": skin.get("price_cents", 0),
         "price_usd": round((skin.get("price_cents", 0) or 0) / 100, 2),
         "currency": skin.get("currency", "usd"),
@@ -144,6 +145,7 @@ class SkinCreate(BaseModel):
     rarity: str = "common"
     section: str = "diario"
     dino_species: Optional[str] = Field(default=None, max_length=80)
+    skin_type: Optional[str] = Field(default=None, max_length=40)
     price_usd: float = Field(gt=0, le=100000)
     skin_data: Optional[str] = None
     start_at: Optional[str] = None
@@ -158,6 +160,7 @@ class SkinUpdate(BaseModel):
     rarity: Optional[str] = None
     section: Optional[str] = None
     dino_species: Optional[str] = None
+    skin_type: Optional[str] = None
     price_usd: Optional[float] = Field(default=None, gt=0, le=100000)
     skin_data: Optional[str] = None
     start_at: Optional[str] = None
@@ -320,6 +323,27 @@ def build_router(db, jwt_secret: str, get_current_user, get_admin_user, add_log,
         owned = await db.owned_shop_skins.find({"user_id": user["id"]}, {"_id": 0}).sort("acquired_at", -1).to_list(500)
         return {"skins": owned, "equipped": user.get("equipped_shop_skin")}
 
+    @router.get("/shop/catalog")
+    async def catalog(user=Depends(get_current_user)):
+        """Flat catalog of all live skins for the gallery, plus filter facets."""
+        owned_ids = set(d["skin_id"] for d in await db.owned_shop_skins.find(
+            {"user_id": user["id"]}, {"_id": 0, "skin_id": 1}).to_list(500))
+        equipped = user.get("equipped_shop_skin")
+        skins = await db.shop_skins.find({"active": True}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+        items, dinos, types = [], set(), set()
+        for s in skins:
+            if not _is_live(s):
+                continue
+            p = _public(s)
+            p["owned"] = s["id"] in owned_ids
+            p["equipped"] = equipped == s["id"]
+            items.append(p)
+            if p.get("dino_species"):
+                dinos.add(p["dino_species"])
+            if p.get("skin_type"):
+                types.add(p["skin_type"])
+        return {"items": items, "dinos": sorted(dinos), "types": sorted(types), "server_time": _iso()}
+
     @router.post("/shop/checkout")
     async def checkout(data: CheckoutIn, user=Depends(get_current_user)):
         skin = await db.shop_skins.find_one({"id": data.skin_id}, {"_id": 0})
@@ -445,6 +469,7 @@ def build_router(db, jwt_secret: str, get_current_user, get_admin_user, add_log,
             "id": skin_id, "name": data.name, "description": data.description,
             "image_url": data.image_url, "rarity": data.rarity, "section": data.section,
             "dino_species": data.dino_species, "price_cents": price_cents, "currency": "usd",
+            "skin_type": data.skin_type,
             "skin_data": data.skin_data, "start_at": data.start_at, "end_at": data.end_at,
             "active": data.active, "stripe_product_id": product_id, "stripe_price_id": price_id,
             "created_at": _iso(), "created_by": admin.get("persona_name"),

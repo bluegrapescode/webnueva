@@ -468,6 +468,7 @@ export const api = {
 
   // ── Tienda de Skins Únicas (Stripe) ──
   shopSkins:        () => client.get("/shop/skins"),
+  shopCatalog:      () => client.get("/shop/catalog"),
   shopMine:         () => client.get("/shop/skins/mine"),
   shopCheckout:     (skin_id) => client.post("/shop/checkout", { skin_id, origin_url: window.location.origin }),
   shopPaymentStatus: (session_id) => client.get(`/payments/status/${session_id}`),

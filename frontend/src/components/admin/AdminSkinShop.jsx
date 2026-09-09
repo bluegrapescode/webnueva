@@ -18,7 +18,7 @@ import { RARITY, RARITY_ORDER, SECTION_LABEL, rarityOf } from "@/components/shop
 
 const EMPTY = {
   name: "", description: "", image_url: "", rarity: "epic", section: "destacados",
-  dino_species: "", price_usd: "", skin_data: "", start_at: null, end_at: null, active: true,
+  dino_species: "", skin_type: "", price_usd: "", skin_data: "", start_at: null, end_at: null, active: true,
 };
 
 function DateField({ label, value, onChange }) {
@@ -61,7 +61,7 @@ export default function AdminSkinShop() {
     setForm({
       name: s.name || "", description: s.description || "", image_url: s.image_url || "",
       rarity: s.rarity || "epic", section: s.section || "destacados",
-      dino_species: s.dino_species || "", price_usd: String(s.price_usd ?? ""),
+      dino_species: s.dino_species || "", skin_type: s.skin_type || "", price_usd: String(s.price_usd ?? ""),
       skin_data: s.skin_data || "", start_at: s.start_at || null, end_at: s.end_at || null,
       active: s.active !== false,
     });
@@ -76,6 +76,7 @@ export default function AdminSkinShop() {
     const body = {
       name: form.name.trim(), description: form.description || null, image_url: form.image_url.trim(),
       rarity: form.rarity, section: form.section, dino_species: form.dino_species || null,
+      skin_type: form.skin_type || null,
       price_usd: parseFloat(form.price_usd), skin_data: form.skin_data || null,
       start_at: form.start_at, end_at: form.end_at, active: form.active,
     };
@@ -175,6 +176,11 @@ export default function AdminSkinShop() {
                 <label className="text-[11px] uppercase tracking-wider text-white/50">Dino (opcional)</label>
                 <Input value={form.dino_species} onChange={(e) => set("dino_species", e.target.value)} placeholder="Tyrannosaurus" className="mt-1 bg-white/[0.03] border-white/10" />
               </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-white/50">Tipo de skin (para el filtro del catálogo)</label>
+              <Input value={form.skin_type} onChange={(e) => set("skin_type", e.target.value)} placeholder="Ej: Clásica, Evento, Élite" data-testid="skin-type-input" className="mt-1 bg-white/[0.03] border-white/10" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
