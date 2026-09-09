@@ -33,26 +33,35 @@ export function GalleryCard({ skin, onClick, play, view = "grid", index = 0 }) {
       whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 320, damping: 24, delay }}
       onMouseEnter={() => play?.("hover")} onClick={() => onClick?.(skin)} data-testid={`skin-card-${skin.id}`}
       className="group relative w-full block text-left rounded-2xl overflow-hidden border transition-[border-color,box-shadow] duration-300"
-      style={{ borderColor: `${r.color}33`, background: "#0c0f0a", boxShadow: `0 14px 40px -22px ${r.color}` }}>
-      <span className="pointer-events-none absolute inset-0 z-[3] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: `inset 0 0 0 1.5px ${r.color}, 0 0 26px -4px ${r.color}` }} aria-hidden />
-      <div className="relative aspect-[16/10] overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-2/3 z-[1]" style={{ background: `radial-gradient(60% 90% at 50% 0%, ${r.color}44, transparent 70%)` }} />
+      style={{ borderColor: `${r.color}55`, background: "#0a0c07", boxShadow: `0 18px 50px -24px ${r.color}` }}>
+      <span className="pointer-events-none absolute inset-0 z-[5] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: `inset 0 0 0 2px ${r.color}, 0 0 34px -6px ${r.color}` }} aria-hidden />
+      <div className="relative aspect-[3/4] overflow-hidden">
+        {/* rarity gradient base (Fortnite-style colour wash) */}
+        <div className="absolute inset-0" style={{ background: `linear-gradient(155deg, ${r.color}dd 0%, ${r.color}55 42%, #0a0c07 100%)` }} />
+        <div className="absolute inset-0" style={{ background: `radial-gradient(75% 55% at 50% 8%, ${r.color}66, transparent 75%)` }} />
+        {/* item render */}
         <img src={skin.image_url} alt={skin.name} loading="lazy"
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[650ms] ease-out group-hover:scale-[1.1] ${skin.owned ? "grayscale opacity-70" : ""}`} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-        <div className="absolute left-0 top-0 h-full w-[3px]" style={{ background: `linear-gradient(to bottom, ${r.color}, transparent)` }} />
-        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 z-[2]">
-          <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-md backdrop-blur-sm"
-            style={{ color: r.color, borderColor: `${r.color}66`, border: "1px solid", background: `${r.color}22` }}>{r.label}</span>
-          {skin.owned && <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-md bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 backdrop-blur-sm"><Check size={10} /> Tuya</span>}
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.14] ${skin.owned ? "grayscale opacity-70" : ""}`} />
+        {/* rarity tint + depth */}
+        <div className="absolute inset-0 mix-blend-soft-light opacity-45" style={{ background: r.color }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/25 to-transparent" />
+        {/* diagonal shine sweep on hover */}
+        <span className="pointer-events-none absolute top-[-40%] bottom-[-40%] left-[-30%] w-1/3 rotate-[18deg] bg-white/25 blur-md z-[3] -translate-x-[220%] group-hover:translate-x-[520%] transition-transform duration-[800ms] ease-out" aria-hidden />
+        {/* top chips */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 z-[4]">
+          <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md backdrop-blur-sm"
+            style={{ color: "#0a0c07", background: r.color, boxShadow: `0 2px 10px -2px ${r.color}` }}>{r.label}</span>
+          {skin.owned && <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-md bg-emerald-500/30 text-emerald-100 border border-emerald-400/60 backdrop-blur-sm"><Check size={10} /> Tuya</span>}
         </div>
-      </div>
-      <div className="px-3.5 py-3 flex items-end justify-between gap-2 border-t border-white/5">
-        <div className="min-w-0">
-          <p className="font-display font-bold text-[15px] leading-tight truncate">{skin.name}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{skin.dino_species || "—"}{skin.skin_type ? ` · ${skin.skin_type}` : ""}</p>
+        {/* name slab (Fortnite footer) */}
+        <div className="absolute bottom-0 inset-x-0 z-[4] px-3 pt-6 pb-3">
+          <span className="block h-[3px] w-10 rounded-full mb-2" style={{ background: r.color, boxShadow: `0 0 10px ${r.color}` }} />
+          <p className="font-display font-black uppercase tracking-tight text-[17px] leading-none truncate" style={{ textShadow: "0 2px 8px rgba(0,0,0,.8)" }}>{skin.name}</p>
+          <div className="flex items-center justify-between gap-2 mt-1.5">
+            <p className="text-[11px] font-semibold text-white/70 truncate">{skin.dino_species || "—"}{skin.skin_type ? ` · ${skin.skin_type}` : ""}</p>
+            <span className="shrink-0 font-code font-black tabular-nums text-xs px-2 py-0.5 rounded-full text-white" style={{ background: `${r.color}cc`, boxShadow: `inset 0 0 0 1px ${r.color}` }}>${skin.price_usd.toFixed(2)}</span>
+          </div>
         </div>
-        <span className="font-code font-black tabular-nums text-sm shrink-0" style={{ color: r.color }}>${skin.price_usd.toFixed(2)}</span>
       </div>
     </motion.button>
   );
