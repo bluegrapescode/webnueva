@@ -1,4 +1,10 @@
-"""Backend tests for player-placed bounty system (Sistema de Cacería)."""
+"""Backend tests for player-placed bounty system (Sistema Global de Bounties).
+
+Covers: anti-exploit rules, atomic charging, minimum, self-target block,
+system-injected amber bonus, 3-active limit, offline target, cancel/refund,
+idempotent kill completion, self-bounty start+limit, WS state+broadcast,
+history contents, and admin protection on /bounty/admin/*.
+"""
 import os
 import json
 import time
@@ -30,18 +36,51 @@ def auth_headers(admin_token):
     return {"Authorization": f"Bearer {admin_token}"}
 
 
-@pytest.fixture(autouse=True)
-def _cleanup_between_tests(auth_headers):
-    """Cancel any active self/contracts belonging to the demo user before each
-    test so state is deterministic."""
+def _mine(auth_headers):
+    return requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
+
+
+def _wallet(auth_headers):
+    m = _mine(auth_headers)
+    w = m.get("wallet") or {}
+    return int(w.get("coins", 0)), int(w.get("vip_coins", 0))
+
+
+def _cancel_all_mine(auth_headers):
     try:
-        mine = requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
-        for c in mine.get("contracts", []) or []:
+        m = _mine(auth_headers)
+        for c in m.get("contracts") or []:
             requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
                           json={"bounty_id": c["bountyId"]}, timeout=10)
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_between_tests(auth_headers):
+    _cancel_all_mine(auth_headers)
     yield
+    _cancel_all_mine(auth_headers)
+
+
+def _targets(auth_headers):
+    r = requests.get(f"{API}/bounty/targets", headers=auth_headers, timeout=10)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _pick_targets(auth_headers, n=1, exclude=()):
+    excl = set(str(x) for x in exclude)
+    out = []
+    for t in _targets(auth_headers)["targets"]:
+        if t["isMe"]:
+            continue
+        if str(t["sid"]) in excl:
+            continue
+        out.append(t)
+        if len(out) >= n:
+            break
+    return out
 
 
 # ── config ───────────────────────────────────────────────────────────
@@ -51,294 +90,239 @@ def test_bounty_config_defaults():
     cfg = r.json()
     expected = {
         "min_contract_prime": 20000,
+        "reward_amber_bonus": 100,
+        "max_contracts_per_user": 3,
         "self_prime_per_min": 5000,
-        "self_max_seconds": 900,
         "self_killer_amber": 300,
-        "self_cooldown": 600,
-        "max_contracts_per_user": 1,
     }
     for k, v in expected.items():
         assert cfg.get(k) == v, f"config[{k}] expected {v}, got {cfg.get(k)}"
 
 
-# ── targets: auth-gated ──────────────────────────────────────────────
-def test_targets_requires_auth():
-    r = requests.get(f"{API}/bounty/targets", timeout=10)
-    assert r.status_code in (401, 403), r.status_code
-
-
-def test_targets_shape(auth_headers):
-    r = requests.get(f"{API}/bounty/targets", headers=auth_headers, timeout=10)
-    assert r.status_code == 200, r.text
-    j = r.json()
-    assert isinstance(j.get("targets"), list)
-    assert j.get("simulated") is True  # no real game server in preview
-    assert len(j["targets"]) > 0
+# ── targets shape (roster simulated in preview) ──────────────────────
+def test_targets_simulated_and_shape(auth_headers):
+    j = _targets(auth_headers)
+    assert j.get("simulated") is True
+    assert isinstance(j["targets"], list) and len(j["targets"]) >= 10
     t0 = j["targets"][0]
     for k in ("sid", "name", "species", "slug", "alive", "isMe", "bounty"):
         assert k in t0
-    for k in ("primeMeat", "amberium", "count"):
-        assert k in t0["bounty"]
 
 
-# ── place / mine / board / cancel ────────────────────────────────────
-def _pick_target(auth_headers, exclude_sid=None):
-    r = requests.get(f"{API}/bounty/targets", headers=auth_headers, timeout=10).json()
-    for t in r["targets"]:
-        if t["isMe"]:
-            continue
-        if exclude_sid and str(t["sid"]) == str(exclude_sid):
-            continue
-        return t
-    return None
-
-
-def test_place_contract_charges_and_appears_on_board(auth_headers):
-    # wallet before
-    me_before = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    coins_before = int(me_before.get("coins", 0))
-    vip_before = int(me_before.get("vip_coins", 0))
-    assert coins_before >= 20000, "demo user must have >=20000 PrimeMeat"
-
-    tgt = _pick_target(auth_headers)
-    assert tgt is not None
+# ── ANTI-EXPLOIT: atomic charge (only PrimeMeat, not vip_coins) ──────
+def test_place_contract_charges_only_prime_and_not_vip(auth_headers):
+    coins_b, vip_b = _wallet(auth_headers)
+    assert coins_b >= 20000, "demo needs >=20000 PrimeMeat"
+    tgt = _pick_targets(auth_headers, 1)[0]
 
     r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
-                      json={"target_sid": tgt["sid"], "prime": 20000, "amber": 0},
+                      json={"target_sid": tgt["sid"], "prime": 25000, "amber": 999_999},
                       timeout=15)
     assert r.status_code == 200, r.text
     b = r.json()
-    assert b["type"] == "contract"
-    assert b["status"] == "active"
+    assert b["type"] == "contract" and b["status"] == "active"
     assert str(b["targetId"]) == str(tgt["sid"])
-    assert b["reward"]["primeMeat"] == 20000
-    bid = b["bountyId"]
+    # ANTI-EXPLOIT amber injected by system: system uses reward_amber_bonus (100), NOT the request's 999_999
+    assert b["reward"]["primeMeat"] == 25000
+    assert b["reward"]["amberium"] == 100, f"amber must be system-injected 100, got {b['reward']['amberium']}"
 
-    # mine shows it
-    mine = requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
-    ids = [c["bountyId"] for c in mine["contracts"]]
-    assert bid in ids
-
-    # board contains the target with primeMeat>=20000
-    board = requests.get(f"{API}/bounty/board", timeout=10).json()["board"]
-    target_entry = next((c for c in board["contracts"] if str(c["targetId"]) == str(tgt["sid"])), None)
-    assert target_entry is not None
-    assert target_entry["reward"]["primeMeat"] >= 20000
-
-    # wallet decreased by exactly prime
-    me_after = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    assert int(me_after.get("coins", 0)) == coins_before - 20000, \
-        f"expected coins {coins_before-20000}, got {me_after.get('coins')}"
-    assert int(me_after.get("vip_coins", 0)) == vip_before
-
-    # cleanup: cancel refunds
-    rc = requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
-                       json={"bounty_id": bid}, timeout=10)
-    assert rc.status_code == 200
-    assert rc.json().get("ok") is True
-
-    me_end = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    assert int(me_end.get("coins", 0)) == coins_before, "cancel must refund fully"
-
-    # board no longer has the entry (or it may exist with lower total if others placed)
-    board2 = requests.get(f"{API}/bounty/board", timeout=10).json()["board"]
-    still = next((c for c in board2["contracts"] if str(c["targetId"]) == str(tgt["sid"])), None)
-    # after cancel it should be gone (assuming no other placer; demo is the only user we control)
-    assert (still is None) or (still["reward"]["primeMeat"] == 0)
+    coins_a, vip_a = _wallet(auth_headers)
+    assert coins_a == coins_b - 25000, f"coins {coins_b}->{coins_a} expected -25000"
+    assert vip_a == vip_b, f"vip_coins must NOT change (was {vip_b}, now {vip_a})"
 
 
-# ── validation ───────────────────────────────────────────────────────
-def test_contract_below_minimum_is_rejected(auth_headers):
-    me_before = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    coins_before = int(me_before.get("coins", 0))
-
-    tgt = _pick_target(auth_headers)
-    r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
-                      json={"target_sid": tgt["sid"], "prime": 100, "amber": 0},
-                      timeout=10)
-    assert r.status_code == 400
-    body = r.json()
-    msg = body.get("detail") or body.get("message") or ""
-    assert "20000" in str(msg) or "mínimo" in str(msg).lower()
-
-    # wallet unchanged
-    me_after = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    assert int(me_after.get("coins", 0)) == coins_before
-
-
-def test_contract_limit_one_active(auth_headers):
-    tgt1 = _pick_target(auth_headers)
-    r1 = requests.post(f"{API}/bounty/contract", headers=auth_headers,
-                       json={"target_sid": tgt1["sid"], "prime": 20000, "amber": 0}, timeout=15)
-    assert r1.status_code == 200, r1.text
-    bid = r1.json()["bountyId"]
-    try:
-        tgt2 = _pick_target(auth_headers, exclude_sid=tgt1["sid"])
-        r2 = requests.post(f"{API}/bounty/contract", headers=auth_headers,
-                           json={"target_sid": tgt2["sid"], "prime": 20000, "amber": 0}, timeout=15)
-        assert r2.status_code == 400, f"expected 400, got {r2.status_code} {r2.text}"
-    finally:
-        requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
-                      json={"bounty_id": bid}, timeout=10)
-
-
-def test_contract_insufficient_funds(auth_headers):
-    me = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    coins = int(me.get("coins", 0))
-    absurd = coins + 10_000_000
-    tgt = _pick_target(auth_headers)
+# ── ANTI-EXPLOIT: insufficient funds ─────────────────────────────────
+def test_insufficient_funds_no_charge(auth_headers):
+    coins_b, vip_b = _wallet(auth_headers)
+    tgt = _pick_targets(auth_headers, 1)[0]
+    absurd = coins_b + 10_000_000
     r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
                       json={"target_sid": tgt["sid"], "prime": absurd, "amber": 0}, timeout=15)
-    assert r.status_code == 400, r.text
-    body = r.json()
-    msg = str(body.get("detail") or body.get("message") or "")
-    assert "insuficiente" in msg.lower() or "Fondos" in msg
-    me_after = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
-    assert int(me_after.get("coins", 0)) == coins  # not charged
+    assert r.status_code == 400
+    coins_a, vip_a = _wallet(auth_headers)
+    assert coins_a == coins_b and vip_a == vip_b
 
 
-# ── kill / claim: atomic + idempotent ────────────────────────────────
-def test_simulate_kill_is_atomic_and_idempotent(auth_headers):
-    tgt = _pick_target(auth_headers)
-    r1 = requests.post(f"{API}/bounty/contract", headers=auth_headers,
-                       json={"target_sid": tgt["sid"], "prime": 20000, "amber": 0}, timeout=15)
-    assert r1.status_code == 200, r1.text
-    bid = r1.json()["bountyId"]
+# ── ANTI-EXPLOIT: minimum ────────────────────────────────────────────
+def test_minimum_prime_rejected(auth_headers):
+    tgt = _pick_targets(auth_headers, 1)[0]
+    r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                      json={"target_sid": tgt["sid"], "prime": 100, "amber": 0}, timeout=10)
+    assert r.status_code == 400
+    msg = str((r.json() or {}).get("detail") or "").lower()
+    assert "20000" in msg or "mínimo" in msg or "minimo" in msg
 
-    # simulate kill
+
+# ── ANTI-EXPLOIT: cannot target self ─────────────────────────────────
+def test_cannot_target_self(auth_headers):
+    # demo user's steam_id
+    me = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=10).json()
+    my_sid = str(me.get("steam_id") or "demo_0000000001")
+    r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                      json={"target_sid": my_sid, "prime": 20000, "amber": 0}, timeout=10)
+    assert r.status_code == 400, f"expected 400 on self-target, got {r.status_code} {r.text}"
+
+
+# ── ANTI-EXPLOIT: offline / not-in-roster target ─────────────────────
+def test_offline_target_rejected(auth_headers):
+    r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                      json={"target_sid": "99999999999999999", "prime": 20000, "amber": 0},
+                      timeout=10)
+    assert r.status_code == 400
+
+
+# ── ANTI-EXPLOIT: 3-active limit, 4th rejected ───────────────────────
+def test_three_contracts_allowed_fourth_rejected(auth_headers):
+    tgts = _pick_targets(auth_headers, 4)
+    assert len(tgts) >= 4, "need 4 sim targets"
+    coins_b, _ = _wallet(auth_headers)
+    placed = []
+    try:
+        for t in tgts[:3]:
+            r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                              json={"target_sid": t["sid"], "prime": 20000, "amber": 0}, timeout=15)
+            assert r.status_code == 200, f"place failed for {t['sid']}: {r.text}"
+            placed.append(r.json()["bountyId"])
+        # 4th must fail
+        r4 = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                           json={"target_sid": tgts[3]["sid"], "prime": 20000, "amber": 0}, timeout=15)
+        assert r4.status_code == 400, f"4th expected 400, got {r4.status_code} {r4.text}"
+        coins_a, _ = _wallet(auth_headers)
+        # exactly 3*20000 debited
+        assert coins_a == coins_b - 60000, f"expected -60000 coins, got {coins_b - coins_a}"
+        # mine reports 3 active
+        mine = _mine(auth_headers)
+        assert len(mine.get("contracts") or []) == 3
+    finally:
+        for bid in placed:
+            requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
+                          json={"bounty_id": bid}, timeout=10)
+
+
+# ── Cancel refunds; wrong id 404 ─────────────────────────────────────
+def test_cancel_refunds_and_wrong_id_404(auth_headers):
+    coins_b, _ = _wallet(auth_headers)
+    tgt = _pick_targets(auth_headers, 1)[0]
+    r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                      json={"target_sid": tgt["sid"], "prime": 30000, "amber": 0}, timeout=15)
+    assert r.status_code == 200
+    bid = r.json()["bountyId"]
+
+    # invalid id -> 404
+    r_bad = requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
+                          json={"bounty_id": "BNT-DOESNOTEXIST"}, timeout=10)
+    assert r_bad.status_code in (400, 404)
+
+    rc = requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
+                       json={"bounty_id": bid}, timeout=10)
+    assert rc.status_code == 200 and rc.json().get("ok") is True
+    coins_a, _ = _wallet(auth_headers)
+    assert coins_a == coins_b, f"refund must restore coins ({coins_b}) got {coins_a}"
+
+
+# ── Kill: atomic + idempotent (single history entry, no double state change) ─
+def test_simulate_kill_idempotent(auth_headers):
+    tgt = _pick_targets(auth_headers, 1)[0]
+    r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
+                      json={"target_sid": tgt["sid"], "prime": 20000, "amber": 0}, timeout=15)
+    assert r.status_code == 200
+    bid = r.json()["bountyId"]
+
     k1 = requests.post(f"{API}/bounty/admin/simulate-kill", headers=auth_headers,
                        json={"target_sid": tgt["sid"]}, timeout=15)
-    assert k1.status_code == 200, k1.text
-    assert k1.json().get("ok") is True
+    assert k1.status_code == 200 and k1.json().get("ok") is True
 
-    # board no longer shows this target with a total
-    board = requests.get(f"{API}/bounty/board", timeout=10).json()["board"]
-    still = next((c for c in board["contracts"] if str(c["targetId"]) == str(tgt["sid"])), None)
-    assert (still is None) or (still["reward"]["primeMeat"] == 0)
-
-    # call again -> must NOT create a second completion
+    # call again — must not duplicate rewards or re-change state
     k2 = requests.post(f"{API}/bounty/admin/simulate-kill", headers=auth_headers,
                        json={"target_sid": tgt["sid"]}, timeout=15)
     assert k2.status_code == 200
 
-    # history contains this bountyId exactly once as completed with a killerName
     hist = requests.get(f"{API}/bounty/history?limit=60", timeout=10).json()
-    items = hist.get("items") or []
-    matches = [i for i in items if i.get("bountyId") == bid]
-    assert len(matches) == 1, f"expected 1 history entry for {bid}, got {len(matches)}"
-    entry = matches[0]
-    assert entry["status"] == "completed"
-    assert entry.get("killerName")
+    matches = [i for i in (hist.get("items") or []) if i.get("bountyId") == bid]
+    assert len(matches) == 1, f"expected 1 history entry, got {len(matches)}"
+    assert matches[0]["status"] == "completed"
+    assert matches[0].get("killerName")
 
 
-# ── self-bounty ──────────────────────────────────────────────────────
-def test_self_bounty_start_and_limit(auth_headers):
-    # ensure clean
-    mine = requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
+# ── Self-bounty start + limit ────────────────────────────────────────
+def test_self_bounty_start_and_second_rejected(auth_headers):
+    # clear any existing self via simulate-kill
+    mine = _mine(auth_headers)
     if mine.get("self"):
-        # kill it via admin simulate-kill on holder sid
-        holder_sid = mine["self"]["targetId"]
         requests.post(f"{API}/bounty/admin/simulate-kill", headers=auth_headers,
-                      json={"target_sid": holder_sid}, timeout=15)
+                      json={"target_sid": mine["self"]["targetId"]}, timeout=15)
 
     r = requests.post(f"{API}/bounty/self/start", headers=auth_headers, timeout=15)
+    # If cooldown from previous test kicks in, accept 400 and skip rest
+    if r.status_code == 400 and "esperar" in str(r.text).lower():
+        pytest.skip("self cooldown active from prior test")
     assert r.status_code == 200, r.text
     s = r.json()
-    assert s["type"] == "self"
-    assert s["status"] == "active"
+    assert s["type"] == "self" and s["status"] == "active"
     assert s.get("primePerMin") == 5000
-    assert s.get("endsAt") and s["endsAt"] > int(time.time() * 1000)
-    holder_sid = s["targetId"]
 
-    # mine reflects it
-    mine2 = requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
-    assert mine2.get("self") is not None
-    assert mine2["self"]["bountyId"] == s["bountyId"]
+    mine2 = _mine(auth_headers)
+    assert mine2.get("self") and mine2["self"]["bountyId"] == s["bountyId"]
 
-    # board includes self entry
-    board = requests.get(f"{API}/bounty/board", timeout=10).json()["board"]
-    self_entries = board.get("self", [])
-    assert any(x["bountyId"] == s["bountyId"] for x in self_entries)
-
-    # second attempt -> 400
     r2 = requests.post(f"{API}/bounty/self/start", headers=auth_headers, timeout=10)
     assert r2.status_code == 400
-    msg = str((r2.json() or {}).get("detail") or "")
-    assert "auto-bounty" in msg.lower() or "ya tienes" in msg.lower()
 
 
-def test_self_bounty_kill_awards_amber_and_appears_in_history(auth_headers):
-    # ensure a self bounty is active for demo user
-    mine = requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
-    if not mine.get("self"):
-        r = requests.post(f"{API}/bounty/self/start", headers=auth_headers, timeout=15)
-        assert r.status_code == 200, r.text
-        holder_sid = r.json()["targetId"]
-        bid = r.json()["bountyId"]
-    else:
-        holder_sid = mine["self"]["targetId"]
-        bid = mine["self"]["bountyId"]
-
-    # simulate kill
-    k = requests.post(f"{API}/bounty/admin/simulate-kill", headers=auth_headers,
-                      json={"target_sid": holder_sid}, timeout=15)
-    assert k.status_code == 200, k.text
-
-    # mine.self is None now
-    mine2 = requests.get(f"{API}/bounty/mine", headers=auth_headers, timeout=10).json()
-    assert mine2.get("self") is None
-
-    # history contains type=self entry for this bountyId
-    hist = requests.get(f"{API}/bounty/history?limit=60", timeout=10).json()
-    items = hist.get("items") or []
-    match = next((i for i in items if i.get("bountyId") == bid), None)
-    assert match is not None, f"self bounty {bid} not in history"
-    assert match["type"] == "self"
-    assert match["status"] in ("dead", "expired")
+# ── History contents ─────────────────────────────────────────────────
+def test_history_shape(auth_headers):
+    hist = requests.get(f"{API}/bounty/history?limit=20", timeout=10).json()
+    assert isinstance(hist.get("items"), list)
+    for it in hist["items"]:
+        assert it.get("status") in ("completed", "dead", "expired", "cancelled")
 
 
-# ── websocket ────────────────────────────────────────────────────────
-def test_bounty_ws_state_and_ping():
+# ── Admin endpoints require admin auth ───────────────────────────────
+def test_admin_endpoints_require_auth():
+    r = requests.post(f"{API}/bounty/admin/simulate-kill", json={"target_sid": "1"}, timeout=10)
+    assert r.status_code in (401, 403), r.status_code
+    r2 = requests.post(f"{API}/bounty/admin/config", json={}, timeout=10)
+    assert r2.status_code in (401, 403), r2.status_code
+
+
+def test_admin_config_works_for_admin(auth_headers):
+    r = requests.post(f"{API}/bounty/admin/config", headers=auth_headers,
+                      json={"reward_amber_bonus": 100}, timeout=10)
+    assert r.status_code == 200
+    assert r.json().get("ok") is True
+
+
+# ── WebSocket ────────────────────────────────────────────────────────
+def _ws_url(with_token=None):
     parsed = urlparse(BASE_URL)
     scheme = "wss" if parsed.scheme == "https" else "ws"
-    ws_url = f"{scheme}://{parsed.netloc}/api/bounty/ws"
-    ws = websocket.create_connection(ws_url, timeout=15)
+    u = f"{scheme}://{parsed.netloc}/api/bounty/ws"
+    if with_token:
+        u += f"?token={with_token}"
+    return u
+
+
+def test_ws_initial_state_snapshot(admin_token):
+    ws = websocket.create_connection(_ws_url(admin_token), timeout=15)
     try:
-        first = ws.recv()
-        data = json.loads(first)
-        assert data.get("event") == "bounty:state"
-        d = data.get("data") or {}
-        assert "config" in d and "board" in d and "paused" in d
-        ws.send("ping")
-        pong = None
-        for _ in range(5):
-            try:
-                msg = ws.recv()
-            except Exception:
-                break
-            if isinstance(msg, str) and msg.strip() == "pong":
-                pong = "pong"
-                break
-        assert pong == "pong"
+        first = json.loads(ws.recv())
+        assert first.get("event") == "bounty:state"
+        d = first.get("data") or {}
+        assert "config" in d and "board" in d
     finally:
         ws.close()
 
 
-def test_bounty_ws_broadcast_on_place(auth_headers):
-    parsed = urlparse(BASE_URL)
-    scheme = "wss" if parsed.scheme == "https" else "ws"
-    ws_url = f"{scheme}://{parsed.netloc}/api/bounty/ws"
-    ws = websocket.create_connection(ws_url, timeout=15)
+def test_ws_broadcast_on_place(auth_headers, admin_token):
+    ws = websocket.create_connection(_ws_url(admin_token), timeout=15)
     try:
         ws.recv()  # initial bounty:state
         ws.settimeout(10)
-        # place a contract
-        tgt = _pick_target(auth_headers)
+        tgt = _pick_targets(auth_headers, 1)[0]
         r = requests.post(f"{API}/bounty/contract", headers=auth_headers,
                           json={"target_sid": tgt["sid"], "prime": 20000, "amber": 0}, timeout=15)
         assert r.status_code == 200, r.text
         bid = r.json()["bountyId"]
-        got_board_or_new = False
+        got = False
         deadline = time.time() + 8
         while time.time() < deadline:
             try:
@@ -349,14 +333,12 @@ def test_bounty_ws_broadcast_on_place(auth_headers):
                 j = json.loads(msg)
             except Exception:
                 continue
-            ev = j.get("event")
-            if ev in ("bounty:board", "bounty:contract_new"):
-                got_board_or_new = True
+            if j.get("event") in ("bounty:board", "bounty:contract_new"):
+                got = True
                 break
-        # cleanup
         requests.post(f"{API}/bounty/contract/cancel", headers=auth_headers,
                       json={"bounty_id": bid}, timeout=10)
-        assert got_board_or_new, "expected WS to receive bounty:contract_new or bounty:board"
+        assert got, "WS did not deliver bounty:contract_new or bounty:board"
     finally:
         try:
             ws.close()

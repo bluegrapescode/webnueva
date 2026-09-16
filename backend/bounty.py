@@ -803,7 +803,7 @@ def build_router(get_current_user, get_admin_user):
         """Simula una muerte válida del objetivo (para probar sin el juego real)."""
         roster = await _roster()
         killer = next((p for p in roster if str(p["sid"]) != str(data.target_sid)), None)
-        killer_sid = str(killer["sid"]) if killer else str(int(data.target_sid) + 1)
+        killer_sid = str(killer["sid"]) if killer else ("SIMKILL-" + uuid.uuid4().hex[:8])
         killer_name = (killer or {}).get("name")
         await on_kill(killer_sid, str(data.target_sid), killer_name)
         return {"ok": True, "killer": killer_name}
