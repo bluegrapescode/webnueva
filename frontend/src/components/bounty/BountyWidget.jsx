@@ -31,9 +31,9 @@ export function BountyWidget() {
       {show && (
         <motion.div
           key={key}
-          initial={{ opacity: 0, x: -30, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: -30, scale: 0.9 }}
+          initial={{ opacity: 0, x: 30, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: 30, scale: 0.9 }}
           transition={{ type: "spring", stiffness: 260, damping: 22 }}
-          className="fixed bottom-28 left-5 z-[70] w-[290px]"
+          className="fixed bottom-24 right-5 z-[80] w-[290px]"
           data-testid="bounty-widget"
         >
           <div

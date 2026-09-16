@@ -239,3 +239,10 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 ## Actualización (Jun 2026) — Layout del Tablón de recompensas
 - El usuario pidió restaurar las tarjetas WANTED ricas (BountyCard) y colocarlas en 2 columnas (izquierda-derecha, luego siguiente fila). Se descartó la variante de filas compactas (BoardRow).
 - Bounty.jsx reorganizado: fila superior [Objetivos en línea | Mis bounties] en 2 col; "Tablón de recompensas" ahora es sección de ancho completo con tarjetas en `grid grid-cols-1 md:grid-cols-2`; Historial de ancho completo (md:grid-cols-2). Verificado por screenshot (desktop + móvil), sin overflow.
+
+## Actualización 2 (Jun 2026) — Tablón a la derecha
+- Ajuste solicitado: Objetivos (lista) a la IZQUIERDA y Tablón de recompensas a la DERECHA, a la par (grid lg:grid-cols-2). Tarjetas WANTED (BountyCard) una debajo de la otra en la columna derecha. Mis bounties + Historial abajo en otra fila de 2 columnas. Verificado por screenshot.
+
+## Actualización 3 (Jun 2026) — Historial a la izquierda + reposición del widget
+- Layout: columna IZQUIERDA apila Objetivos en línea + Mis bounties + Historial (llena el espacio junto al Tablón alto); columna DERECHA = Tablón de recompensas. Un solo grid lg:grid-cols-2 items-start con div.space-y-6 a la izquierda.
+- BountyWidget.jsx reposicionado de `bottom-28 left-5 z-[70]` a `bottom-24 right-5 z-[80]` (entrada desde la derecha x:30) para no chocar con la burbuja de chat (ChatDock bottom-6 left-6). Verificado geométricamente sin solapes con FriendsDock (bottom-6 right-6).
