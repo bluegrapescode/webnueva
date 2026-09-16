@@ -250,3 +250,7 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 ## Actualización 4 (Jun 2026) — Tarjetas WANTED compactas
 - Queja: el tablón se extendía mucho hacia abajo (mucho scroll). Se compactó BountyCard.jsx (variante full) manteniendo el diseño: avatar w-16->w-12, texto nombre text-lg->text-base, threat chip movido en línea con dino/Adulto, StatChip px-2.5/py-1.5->px-2/py-1 y gap-2->gap-1.5, se eliminaron el banner "WANTED — Dead or Alive", la línea de telemetría (Radio) y el pie "Bounty ID"; caja de recompensa condensada (rounded-lg px-3 py-2). Import Radio removido.
 - Bounty.jsx: board gap-4->gap-3; page py-10->py-8, encabezado mb-8->mb-6, self panel mb-8->mb-6. Verificado por screenshot (tarjetas SURVIVOR_5964 self + BLUECITO/CAZADORNOCTURNO contratos, notablemente más cortas).
+
+## Actualización 5 (Jun 2026) — Layout final anti-scroll
+- Petición: tarjetas del Tablón en 2 columnas (1 izq, 2 der, 3 abajo-izq, 4 abajo-der) e Historial a la izquierda de Objetivos en línea.
+- Bounty.jsx: fila superior grid lg:grid-cols-2 -> [Historial (izq) | Objetivos en línea + Mis bounties (der)]. Tablón de recompensas ahora ancho completo abajo con tarjetas en grid grid-cols-1 md:grid-cols-2 gap-3. Historial y TargetList con max-h-[420px] overflow-y-auto para no alargar la página. Verificado por screenshot.
