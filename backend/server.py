@@ -8804,6 +8804,13 @@ async def _drain_kill_credits():
                                                k.get("victim_sid"))
             except Exception as e:
                 logger.warning("[bp] hook failed: %r", e)
+        # Sistema de Bounties: una muerte PVP validada por el log del juego puede
+        # completar el bounty activo (killer != target, atómico e idempotente).
+        try:
+            if k.get("killer_sid") and k.get("victim_sid"):
+                await bounty.on_kill(str(k["killer_sid"]), str(k["victim_sid"]))
+        except Exception as e:
+            logger.warning("[bounty] on_kill hook failed: %r", e)
     try:
         await battle_pass.periodic()
     except Exception as e:
@@ -18833,6 +18840,69 @@ app.include_router(
     live_trade.build_router(db, JWT_SECRET, get_current_user, add_log, JWT_ALGO),
     prefix="/api")
 
+# Sistema Global de Bounties (bounty.py): selección server-side, validación de
+# muerte atómica/idempotente, desconexión con gracia, ciclo automático, WS + Discord.
+import bounty
+
+
+async def _bounty_online_players():
+    """Roster de jugadores online para el motor de bounties. Devuelve None cuando
+    NO hay servidor de juego real conectado (RCON/mod offline) -> bounty.py entra
+    en modo simulación para el preview."""
+    if not (rcon_client.is_configured() or game_ipc.mod_alive()):
+        return None
+    ids, _names = await _rcon_online_players()
+    _counts, _unknown, details = await asyncio.to_thread(game_tele.population, ids)
+    return [{"sid": str(d.get("steam_id")), "name": d.get("name"),
+             "species": d.get("species"), "slug": d.get("slug"), "alive": True}
+            for d in details if d.get("steam_id")]
+
+
+async def _bounty_resolve_user_id(sid: str):
+    if not sid:
+        return None
+    u = await db.users.find_one({"steam_id": str(sid)}, {"_id": 0, "id": 1})
+    return u["id"] if u else None
+
+
+async def _bounty_award_reward(user_id: str, prime: int, amber: int, xp: int, bounty_id: str):
+    """Entrega la recompensa del bounty a la billetera web del cazador. PrimeMeat ->
+    coins, Amberium -> vip_coins, EXP -> XP del Pase de Batalla."""
+    inc = {}
+    if prime:
+        inc["coins"] = int(prime)
+    if amber:
+        inc["vip_coins"] = int(amber)
+    if inc:
+        await db.users.update_one({"id": user_id}, {"$inc": inc})
+    if prime:
+        await add_transaction(user_id, "normal", int(prime), "reward", f"Bounty {bounty_id} — PrimeMeat")
+    if amber:
+        await add_transaction(user_id, "vip", int(amber), "reward", f"Bounty {bounty_id} — Amberium")
+    if xp:
+        try:
+            await battle_pass._add_xp(user_id, int(xp), f"bounty {bounty_id}")
+        except Exception as e:
+            logger.warning("[bounty] xp grant failed: %r", e)
+
+
+def _bounty_ingame_grant(sid: str, prime: int, amber: int, xp: int):
+    """Intento best-effort de entregar los items dentro del juego vía comando al
+    mod. Se ignora silenciosamente cuando el servidor de juego está offline."""
+    try:
+        game_ipc.write_game_command({
+            "action": "bounty_reward", "steamid": str(sid),
+            "prime_meat": int(prime), "amberium": int(amber), "experience": int(xp)})
+    except Exception:
+        pass
+
+
+bounty.configure(
+    db, admin_ids=ADMIN_STEAM_IDS, online_provider=_bounty_online_players,
+    award_reward=_bounty_award_reward, resolve_user_id=_bounty_resolve_user_id,
+    ingame_grant=_bounty_ingame_grant, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
+app.include_router(bounty.build_router(get_current_user, get_admin_user), prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19445,6 +19515,12 @@ async def on_startup():
         await live_trade.ensure_indexes()
     except Exception:
         logger.warning("[trade] startup init skipped", exc_info=True)
+    # Sistema Global de Bounties (☠️): índices + arranque del ciclo automático.
+    try:
+        await bounty.ensure_indexes()
+        bounty.start_loops()
+    except Exception:
+        logger.warning("[bounty] startup init skipped", exc_info=True)
 
 
 @app.on_event("shutdown")

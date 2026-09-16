@@ -38,8 +38,11 @@ const RefRedirect = React.lazy(() => import("@/pages/RefRedirect"));
 const Cementerio = React.lazy(() => import("@/pages/Cementerio"));
 const TiendaSkins = React.lazy(() => import("@/pages/TiendaSkins"));
 const PaymentSuccess = React.lazy(() => import("@/pages/PaymentSuccess"));
+const Bounty = React.lazy(() => import("@/pages/Bounty"));
+const BountyOverlay = React.lazy(() => import("@/pages/BountyOverlay"));
 import CreatorNotifier from "@/components/creator/CreatorNotifier";
 import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
+import { BountyWidget } from "@/components/bounty/BountyWidget";
 
 function PageFallback() {
   return (
@@ -92,6 +95,8 @@ function AnimatedRoutes() {
         <Route path="/my-dino" element={<PageWrap><MyDino /></PageWrap>} />
         <Route path="/cementerio" element={<PageWrap><Cementerio /></PageWrap>} />
         <Route path="/tienda-skins" element={<PageWrap><TiendaSkins /></PageWrap>} />
+        <Route path="/bounty" element={<PageWrap><Bounty /></PageWrap>} />
+        <Route path="/bounty/overlay" element={<BountyOverlay />} />
         <Route path="/payment/success" element={<PageWrap><PaymentSuccess /></PageWrap>} />
         <Route path="/payment/cancel" element={<Navigate to="/tienda-skins?canceled=1" replace />} />
         <Route path="/skin-editor" element={<PageWrap><SkinEditor /></PageWrap>} />
@@ -153,6 +158,7 @@ function App() {
                 a referral/rank/skin event surfaces no matter which page is open. */}
             <CreatorNotifier />
             <CelebrationOverlay />
+            <BountyWidget />
             <LiveTicker />
             <Toaster
               position="bottom-right"

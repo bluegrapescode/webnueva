@@ -252,6 +252,33 @@ export const SOUNDS = {
   notification: () => { bell({ freq: 1046, dur: 0.5, gain: 0.06, ratio: 2.0, index: 160 }); bell({ freq: 1568, dur: 0.6, gain: 0.045, delay: 0.11, ratio: 1.5, index: 120 }); },
   message: () => { bell({ freq: 784, dur: 0.35, gain: 0.055, ratio: 2.5, index: 140 }); bell({ freq: 1175, dur: 0.45, gain: 0.045, delay: 0.09, ratio: 2, index: 100 }); },
 
+  // ── Sistema Global de Bounty (☠️) — tenso, cinemático, rojo peligro ──
+  // Alerta de NUEVO bounty: riser grave que sube + doble blip de alarma + impacto.
+  bountyAlert: () => {
+    voice({ freq: 70, type: "sawtooth", dur: 0.9, gain: 0.05, slideTo: 240, attack: 0.05, release: 0.3, filterType: "lowpass", filterFreq: 900, filterQ: 1.2 });
+    voice({ freq: 880, type: "square", dur: 0.12, gain: 0.03, delay: 0.5, attack: 0.002, release: 0.08, filterType: "bandpass", filterFreq: 1600, filterQ: 4 });
+    voice({ freq: 880, type: "square", dur: 0.12, gain: 0.03, delay: 0.72, attack: 0.002, release: 0.08, filterType: "bandpass", filterFreq: 1600, filterQ: 4 });
+    voice({ freq: 130, type: "sine", dur: 0.5, gain: 0.09, slideTo: 46, delay: 0.9, filterType: "lowpass", filterFreq: 700 });
+    noise({ dur: 0.3, gain: 0.05, delay: 0.9, filterType: "lowpass", filterFreq: 520, filterQ: 0.6 });
+  },
+  // Lock de mira (usado en la intro): tick metálico agudo y seco.
+  bountyLock: () => {
+    noise({ dur: 0.02, gain: 0.06, filterType: "highpass", filterFreq: 4200, filterQ: 0.8 });
+    voice({ freq: 1500, type: "square", dur: 0.05, gain: 0.03, slideTo: 2200, attack: 0.001, release: 0.03, filterType: "bandpass", filterFreq: 3000, filterQ: 6 });
+  },
+  // Bounty COMPLETADO: acorde oscuro triunfal descendente + sub thud + destello.
+  bountyComplete: () => {
+    [1046, 784, 659, 523].forEach((f, i) => bell({ freq: f, dur: 0.55, gain: 0.055, delay: i * 0.08, ratio: 2, index: 130 }));
+    voice({ freq: 120, type: "sine", dur: 0.7, gain: 0.09, slideTo: 44, delay: 0.05, filterType: "lowpass", filterFreq: 760 });
+    bell({ freq: 1568, dur: 0.9, gain: 0.045, delay: 0.34, ratio: 1.5, index: 90 });
+    noise({ dur: 0.14, gain: 0.035, filterType: "highpass", filterFreq: 5000 });
+  },
+  // Objetivo DESCONECTADO: dos tonos de advertencia ámbar (descendente).
+  bountyDisconnect: () => {
+    voice({ freq: 620, type: "triangle", dur: 0.16, gain: 0.05, slideTo: 520, attack: 0.004, release: 0.1, filterType: "lowpass", filterFreq: 3000 });
+    voice({ freq: 460, type: "triangle", dur: 0.22, gain: 0.05, slideTo: 360, delay: 0.16, attack: 0.004, release: 0.14, filterType: "lowpass", filterFreq: 2600 });
+  },
+
   // ── Rewards / economy ──
   purchase: () => { [523, 659, 784, 1046].forEach((f, i) => bell({ freq: f, dur: 0.4, gain: 0.05, delay: i * 0.06, ratio: 2, index: 100 })); },
   coins: () => { for (let i = 0; i < 4; i++) voice({ freq: 1400 + i * 220, type: "triangle", dur: 0.07, gain: 0.03, delay: i * 0.045, filterType: "bandpass", filterFreq: 2600, filterQ: 3 }); },

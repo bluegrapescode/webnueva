@@ -247,3 +247,20 @@ body {
   clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
 }
 
+
+
+/* ── Sistema Global de Bounty ── */
+@keyframes bountyScan {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.bounty-scan {
+  background: linear-gradient(180deg, transparent 0%, rgba(225,29,42,0.10) 45%, rgba(225,29,42,0.22) 50%, rgba(225,29,42,0.10) 55%, transparent 100%);
+  height: 100%;
+  animation: bountyScan 3.4s linear infinite;
+}
+.bounty-grain {
+  background-image: radial-gradient(rgba(255,255,255,0.35) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+}

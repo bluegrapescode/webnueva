@@ -72,6 +72,13 @@ export function tradeWsUrl() {
   return `${base}/api/trade/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Sistema Global de Bounties — WebSocket público para /api/bounty/ws (nuevo,
+// activo, desconectado, completado, cancelado, espera).
+export function bountyWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  return `${base}/api/bounty/ws`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -491,6 +498,17 @@ export const api = {
   tradeCancel:      (session_id) => client.post("/trade/cancel", { session_id }),
   tradeHistory:     () => client.get("/trade/history"),
   tradePeerInventory: (session_id) => client.get(`/trade/peer/${session_id}`),
+  // Sistema Global de Bounties
+  bountyWsUrl,
+  bountyCurrent:    () => client.get("/bounty/current"),
+  bountyConfig:     () => client.get("/bounty/config"),
+  bountyHistory:    (limit = 15) => client.get(`/bounty/history?limit=${limit}`),
+  bountyForceNew:   () => client.post("/bounty/admin/force-new"),
+  bountyPause:      () => client.post("/bounty/admin/pause"),
+  bountyResume:     () => client.post("/bounty/admin/resume"),
+  bountyCancel:     () => client.post("/bounty/admin/cancel"),
+  bountySetConfig:  (cfg) => client.post("/bounty/admin/config", cfg),
+  bountySimulateKill: (killer_sid) => client.post("/bounty/admin/simulate-kill", { killer_sid: killer_sid || null }),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).
