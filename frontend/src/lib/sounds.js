@@ -252,31 +252,29 @@ export const SOUNDS = {
   notification: () => { bell({ freq: 1046, dur: 0.5, gain: 0.06, ratio: 2.0, index: 160 }); bell({ freq: 1568, dur: 0.6, gain: 0.045, delay: 0.11, ratio: 1.5, index: 120 }); },
   message: () => { bell({ freq: 784, dur: 0.35, gain: 0.055, ratio: 2.5, index: 140 }); bell({ freq: 1175, dur: 0.45, gain: 0.045, delay: 0.09, ratio: 2, index: 100 }); },
 
-  // ── Sistema Global de Bounty (☠️) — tenso, cinemático, rojo peligro ──
-  // Alerta de NUEVO bounty: riser grave que sube + doble blip de alarma + impacto.
+  // ── Sistema Global de Bounty (☠️) — limpios, cinemáticos y discretos ──
+  // Alerta de NUEVO bounty: swell grave suave + campana clara + shimmer alto.
   bountyAlert: () => {
-    voice({ freq: 70, type: "sawtooth", dur: 0.9, gain: 0.05, slideTo: 240, attack: 0.05, release: 0.3, filterType: "lowpass", filterFreq: 900, filterQ: 1.2 });
-    voice({ freq: 880, type: "square", dur: 0.12, gain: 0.03, delay: 0.5, attack: 0.002, release: 0.08, filterType: "bandpass", filterFreq: 1600, filterQ: 4 });
-    voice({ freq: 880, type: "square", dur: 0.12, gain: 0.03, delay: 0.72, attack: 0.002, release: 0.08, filterType: "bandpass", filterFreq: 1600, filterQ: 4 });
-    voice({ freq: 130, type: "sine", dur: 0.5, gain: 0.09, slideTo: 46, delay: 0.9, filterType: "lowpass", filterFreq: 700 });
-    noise({ dur: 0.3, gain: 0.05, delay: 0.9, filterType: "lowpass", filterFreq: 520, filterQ: 0.6 });
+    voice({ freq: 110, type: "sine", dur: 0.55, gain: 0.05, slideTo: 150, attack: 0.08, release: 0.3, filterType: "lowpass", filterFreq: 700 });
+    bell({ freq: 587.33, dur: 0.6, gain: 0.05, delay: 0.06, ratio: 2, index: 110 });
+    bell({ freq: 880, dur: 0.7, gain: 0.035, delay: 0.16, ratio: 1.5, index: 80 });
+    bell({ freq: 1760, dur: 0.5, gain: 0.014, delay: 0.24, ratio: 3, index: 60 });
   },
-  // Lock de mira (usado en la intro): tick metálico agudo y seco.
+  // Lock de mira (intro): tick suave y breve (no áspero).
   bountyLock: () => {
-    noise({ dur: 0.02, gain: 0.06, filterType: "highpass", filterFreq: 4200, filterQ: 0.8 });
-    voice({ freq: 1500, type: "square", dur: 0.05, gain: 0.03, slideTo: 2200, attack: 0.001, release: 0.03, filterType: "bandpass", filterFreq: 3000, filterQ: 6 });
+    voice({ freq: 1320, type: "sine", dur: 0.05, gain: 0.02, slideTo: 1760, attack: 0.001, release: 0.035, filterType: "bandpass", filterFreq: 2600, filterQ: 3 });
+    bell({ freq: 2093, dur: 0.14, gain: 0.012, ratio: 2, index: 50 });
   },
-  // Bounty COMPLETADO: acorde oscuro triunfal descendente + sub thud + destello.
+  // Bounty COMPLETADO: campanas ascendentes elegantes + sub cálido tenue.
   bountyComplete: () => {
-    [1046, 784, 659, 523].forEach((f, i) => bell({ freq: f, dur: 0.55, gain: 0.055, delay: i * 0.08, ratio: 2, index: 130 }));
-    voice({ freq: 120, type: "sine", dur: 0.7, gain: 0.09, slideTo: 44, delay: 0.05, filterType: "lowpass", filterFreq: 760 });
-    bell({ freq: 1568, dur: 0.9, gain: 0.045, delay: 0.34, ratio: 1.5, index: 90 });
-    noise({ dur: 0.14, gain: 0.035, filterType: "highpass", filterFreq: 5000 });
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => bell({ freq: f, dur: 0.5, gain: 0.05, delay: i * 0.07, ratio: 2, index: 100 }));
+    voice({ freq: 130, type: "sine", dur: 0.5, gain: 0.045, slideTo: 90, delay: 0.05, filterType: "lowpass", filterFreq: 700 });
+    bell({ freq: 1568, dur: 0.7, gain: 0.03, delay: 0.28, ratio: 1.5, index: 80 });
   },
-  // Objetivo DESCONECTADO: dos tonos de advertencia ámbar (descendente).
+  // Objetivo DESCONECTADO: dos tonos de advertencia ámbar suaves (descendente).
   bountyDisconnect: () => {
-    voice({ freq: 620, type: "triangle", dur: 0.16, gain: 0.05, slideTo: 520, attack: 0.004, release: 0.1, filterType: "lowpass", filterFreq: 3000 });
-    voice({ freq: 460, type: "triangle", dur: 0.22, gain: 0.05, slideTo: 360, delay: 0.16, attack: 0.004, release: 0.14, filterType: "lowpass", filterFreq: 2600 });
+    voice({ freq: 560, type: "sine", dur: 0.16, gain: 0.035, slideTo: 470, attack: 0.006, release: 0.11, filterType: "lowpass", filterFreq: 2600 });
+    voice({ freq: 420, type: "sine", dur: 0.22, gain: 0.035, slideTo: 340, delay: 0.15, attack: 0.006, release: 0.15, filterType: "lowpass", filterFreq: 2200 });
   },
 
   // ── Rewards / economy ──
