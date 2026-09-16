@@ -246,3 +246,7 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 ## Actualización 3 (Jun 2026) — Historial a la izquierda + reposición del widget
 - Layout: columna IZQUIERDA apila Objetivos en línea + Mis bounties + Historial (llena el espacio junto al Tablón alto); columna DERECHA = Tablón de recompensas. Un solo grid lg:grid-cols-2 items-start con div.space-y-6 a la izquierda.
 - BountyWidget.jsx reposicionado de `bottom-28 left-5 z-[70]` a `bottom-24 right-5 z-[80]` (entrada desde la derecha x:30) para no chocar con la burbuja de chat (ChatDock bottom-6 left-6). Verificado geométricamente sin solapes con FriendsDock (bottom-6 right-6).
+
+## Actualización 4 (Jun 2026) — Tarjetas WANTED compactas
+- Queja: el tablón se extendía mucho hacia abajo (mucho scroll). Se compactó BountyCard.jsx (variante full) manteniendo el diseño: avatar w-16->w-12, texto nombre text-lg->text-base, threat chip movido en línea con dino/Adulto, StatChip px-2.5/py-1.5->px-2/py-1 y gap-2->gap-1.5, se eliminaron el banner "WANTED — Dead or Alive", la línea de telemetría (Radio) y el pie "Bounty ID"; caja de recompensa condensada (rounded-lg px-3 py-2). Import Radio removido.
+- Bounty.jsx: board gap-4->gap-3; page py-10->py-8, encabezado mb-8->mb-6, self panel mb-8->mb-6. Verificado por screenshot (tarjetas SURVIVOR_5964 self + BLUECITO/CAZADORNOCTURNO contratos, notablemente más cortas).

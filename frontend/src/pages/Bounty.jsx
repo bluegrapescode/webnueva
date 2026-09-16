@@ -162,15 +162,15 @@ export default function Bounty() {
   const isAdmin = user && user.role === "admin";
 
   return (
-    <div className="min-h-screen px-4 sm:px-6 py-10" style={{ background: "radial-gradient(1200px 600px at 50% -10%, rgba(225,29,42,0.06), transparent 60%)" }}>
+    <div className="min-h-screen px-4 sm:px-6 py-8" style={{ background: "radial-gradient(1200px 600px at 50% -10%, rgba(225,29,42,0.06), transparent 60%)" }}>
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 mb-3"><Skull className="w-6 h-6" style={{ color: "#E11D2A" }} /><h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">LA <span style={{ color: "#E11D2A" }}>CACERÍA</span></h1></div>
           <p className="text-sm text-white/50 max-w-lg mx-auto">Elige a quién cazar y pon precio a su cabeza, o pon precio a la tuya y gana PrimeMeat por sobrevivir.</p>
           <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest"><span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-green-400" : "bg-white/30"}`} /><span className="text-white/40">{connected ? "En vivo" : "Reconectando…"}</span>{simulated && <span className="text-white/30 ml-2">· jugadores simulados (preview)</span>}</div>
         </div>
 
-        {user && <div className="mb-8"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
+        {user && <div className="mb-6"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
 
         {/* Izquierda (objetivos + mis bounties + historial) | Tablón a la derecha */}
         <div className="grid lg:grid-cols-2 gap-6 items-start">
@@ -234,7 +234,7 @@ export default function Bounty() {
             {allBoard.length === 0 ? (
               <p className="text-sm text-white/30 py-8 text-center" data-testid="bounty-board-empty">No hay bounties activos. Elige un objetivo o pon precio a tu cabeza.</p>
             ) : (
-              <div className="grid gap-4" data-testid="bounty-board">
+              <div className="grid gap-3" data-testid="bounty-board">
                 <AnimatePresence>
                   {allBoard.map((b, i) => (
                     <motion.div key={(b.bountyId || b.targetId) + (b.type || "")} layout
