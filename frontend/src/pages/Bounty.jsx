@@ -75,7 +75,7 @@ function AdminPanel({ config, targets, refresh }) {
   const [killSid, setKillSid] = useState("");
   useEffect(() => { if (config && !form) setForm({ ...config }); }, [config, form]);
   const act = async (fn, msg) => { setBusy(true); try { await fn(); play("click"); msg && toast.success(msg); refresh && refresh(); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } finally { setBusy(false); } };
-  const fields = [["min_contract_prime", "Min PrimeMeat"], ["self_prime_per_min", "Self /min"], ["self_max_seconds", "Self máx (s)"], ["self_killer_amber", "Amber al cazador"], ["self_cooldown", "Cooldown (s)"], ["invite_interval", "Invitar cada (s)"]];
+  const fields = [["min_contract_prime", "Min PrimeMeat"], ["reward_amber_bonus", "Amber recompensa"], ["self_prime_per_min", "Self /min"], ["self_max_seconds", "Self máx (s)"], ["self_killer_amber", "Amber al cazador"], ["self_cooldown", "Cooldown (s)"]];
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5" data-testid="bounty-admin-panel">
       <div className="flex items-center gap-2 mb-4"><Zap className="w-4 h-4 text-[#F0B429]" /><h3 className="text-sm font-bold uppercase tracking-widest text-white/80">Control de Admin</h3></div>
@@ -144,9 +144,9 @@ export default function Bounty() {
   const hasContract = mine && mine.contracts && mine.contracts.length > 0;
 
   const onHunt = (t) => { if (hasContract) { toast.error("Ya tienes un bounty activo. Cancélalo primero."); return; } setModalTarget(t); };
-  const confirmContract = async (prime, amber) => {
+  const confirmContract = async (prime) => {
     setBusy(true);
-    try { await api.bountyPlaceContract(modalTarget.sid, prime, amber); play("bountyAlert"); toast.success("¡Bounty publicado! La cacería ha comenzado."); setModalTarget(null); loadMine(); loadTargets(); }
+    try { await api.bountyPlaceContract(modalTarget.sid, prime); play("bountyAlert"); toast.success("¡Bounty publicado! La cacería ha comenzado."); setModalTarget(null); loadMine(); loadTargets(); }
     catch (e) { toast.error(e?.response?.data?.detail || "No se pudo publicar"); }
     finally { setBusy(false); }
   };

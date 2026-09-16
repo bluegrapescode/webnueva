@@ -4,21 +4,18 @@ import { X, Crosshair, Skull, AlertTriangle } from "lucide-react";
 import { MEDIA } from "@/lib/media";
 import { fmtNum, dinoGlyph } from "@/lib/bountyMeta";
 
-// Modal para poner precio a la cabeza de un objetivo elegido.
+// Modal para poner precio a la cabeza de un objetivo. Se paga SOLO con PrimeMeat;
+// la recompensa lleva además un mínimo de Amberium que aporta el sistema.
 export function ContractModal({ target, config, wallet, onConfirm, onClose, busy }) {
   const minPrime = (config && config.min_contract_prime) || 20000;
-  const minAmber = (config && config.min_contract_amber) || 0;
+  const amberBonus = (config && config.reward_amber_bonus) || 0;
   const [prime, setPrime] = useState(minPrime);
-  const [amber, setAmber] = useState(minAmber);
 
   const coins = (wallet && wallet.coins) || 0;
-  const vip = (wallet && wallet.vip_coins) || 0;
   const p = Math.max(0, Number(prime) || 0);
-  const a = Math.max(0, Number(amber) || 0);
   const errPrime = p < minPrime;
-  const errAmber = a < minAmber;
-  const noFunds = p > coins || a > vip;
-  const invalid = errPrime || errAmber || noFunds || busy;
+  const noFunds = p > coins;
+  const invalid = errPrime || noFunds || busy;
 
   return (
     <AnimatePresence>
@@ -35,9 +32,7 @@ export function ContractModal({ target, config, wallet, onConfirm, onClose, busy
           onClick={(e) => e.stopPropagation()}
         >
           <div className="absolute inset-0 pointer-events-none bounty-scan opacity-20" />
-          <button data-testid="bounty-contract-close" onClick={onClose} className="absolute top-3 right-3 z-10 p-1.5 rounded text-white/40 hover:text-white/80">
-            <X className="w-4 h-4" />
-          </button>
+          <button data-testid="bounty-contract-close" onClick={onClose} className="absolute top-3 right-3 z-10 p-1.5 rounded text-white/40 hover:text-white/80"><X className="w-4 h-4" /></button>
 
           <div className="relative p-6">
             <div className="flex items-center gap-3 mb-5">
@@ -53,36 +48,32 @@ export function ContractModal({ target, config, wallet, onConfirm, onClose, busy
 
             <label className="block mb-4">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs uppercase tracking-wider text-white/50">🥩 Prime Meat</span>
+                <span className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1"><img src={MEDIA.coinNormal} alt="" className="w-3.5 h-3.5" /> Pagas en Prime Meat</span>
                 <span className="text-[10px] text-white/35">tienes {fmtNum(coins)}</span>
               </div>
               <input data-testid="bounty-contract-prime" type="number" min={minPrime} value={prime} onChange={(e) => setPrime(e.target.value)}
-                className={`w-full bg-black/40 border rounded-lg px-3 py-2.5 text-white outline-none transition-colors ${errPrime || p > coins ? "border-[#E11D2A]/70" : "border-white/10 focus:border-[#E11D2A]/50"}`} />
+                className={`w-full bg-black/40 border rounded-lg px-3 py-2.5 text-white outline-none transition-colors ${errPrime || noFunds ? "border-[#E11D2A]/70" : "border-white/10 focus:border-[#22C55E]/50"}`} />
               {errPrime && <p className="text-[11px] text-[#ff6b74] mt-1">Mínimo {fmtNum(minPrime)} PrimeMeat</p>}
-            </label>
-
-            <label className="block mb-5">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1"><img src={MEDIA.coinVip} alt="" className="w-3.5 h-3.5" /> Amberium (opcional)</span>
-                <span className="text-[10px] text-white/35">tienes {fmtNum(vip)}</span>
-              </div>
-              <input data-testid="bounty-contract-amber" type="number" min={0} value={amber} onChange={(e) => setAmber(e.target.value)}
-                className={`w-full bg-black/40 border rounded-lg px-3 py-2.5 text-white outline-none transition-colors ${a > vip ? "border-[#E11D2A]/70" : "border-white/10 focus:border-[#F0B429]/50"}`} />
             </label>
 
             {noFunds && (
               <div className="flex items-center gap-2 text-[#ff6b74] text-xs mb-4" data-testid="bounty-contract-nofunds">
-                <AlertTriangle className="w-4 h-4" /> No tienes fondos suficientes.
+                <AlertTriangle className="w-4 h-4" /> No tienes suficiente PrimeMeat.
               </div>
             )}
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/8 mb-5">
-              <span className="text-xs uppercase tracking-wider text-white/40">Se descontará de tu billetera</span>
-              <span className="text-sm font-bold text-white flex items-center gap-2">🥩 {fmtNum(p)}{a > 0 && <><img src={MEDIA.coinVip} alt="" className="w-4 h-4" />{fmtNum(a)}</>}</span>
+            <div className="rounded-lg bg-white/[0.03] border border-white/8 p-3.5 mb-5">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">El cazador recibirá</p>
+              <div className="flex items-center gap-4">
+                <span className="text-lg font-black flex items-center gap-1.5" style={{ color: "#22C55E" }}><img src={MEDIA.coinNormal} alt="" className="w-5 h-5" />{fmtNum(p)}</span>
+                <span className="text-white/30">+</span>
+                <span className="text-lg font-black flex items-center gap-1.5" style={{ color: "#F0B429" }} data-testid="bounty-contract-amberbonus"><img src={MEDIA.coinVip} alt="" className="w-5 h-5" />{fmtNum(amberBonus)}</span>
+              </div>
+              <p className="text-[10px] text-white/35 mt-2">Se descontarán 🥩 {fmtNum(p)} de tu billetera. Los {fmtNum(amberBonus)} Amberium los aporta el sistema.</p>
             </div>
 
             <button
-              data-testid="bounty-contract-confirm" disabled={invalid} onClick={() => onConfirm(p, a)}
+              data-testid="bounty-contract-confirm" disabled={invalid} onClick={() => onConfirm(p)}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "linear-gradient(180deg, #E11D2A, #a10f1a)", color: "#fff", boxShadow: "0 10px 30px -10px rgba(225,29,42,0.8)" }}
             >

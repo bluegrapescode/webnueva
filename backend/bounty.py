@@ -43,8 +43,8 @@ logger = logging.getLogger("bounty")
 DARK_RED = 0x8B0000
 
 DEFAULT_CONFIG = {
-    "min_contract_prime": 20000,     # mínimo de PrimeMeat para un contrato
-    "min_contract_amber": 0,         # mínimo de Amberium (opcional)
+    "min_contract_prime": 20000,     # mínimo de PrimeMeat para poner un contrato
+    "reward_amber_bonus": 100,       # Amberium mínimo que el sistema añade a la recompensa
     "contract_duration": 30 * 60,    # tiempo para reclamar el contrato (s)
     "self_prime_per_min": 5000,      # PrimeMeat/minuto del auto-bounty
     "self_max_seconds": 15 * 60,     # duración máxima del auto-bounty (s)
@@ -313,14 +313,14 @@ async def _same_group(sid_a: str, sid_b: str) -> bool:
 
 
 # ─────────────────────────── Contratos ───────────────────────────
-async def place_contract(uid: str, target_sid: str, prime: int, amber: int) -> dict:
+async def place_contract(uid: str, target_sid: str, prime: int, amber: int = 0) -> dict:
+    """El que pone el contrato paga SOLO con PrimeMeat. La recompensa que recibe el
+    cazador es ese PrimeMeat + un mínimo de Amberium que aporta el sistema."""
     cfg = await get_config()
     prime = max(0, int(prime or 0))
-    amber = max(0, int(amber or 0))
     if prime < cfg["min_contract_prime"]:
         raise HTTPException(400, f"El mínimo es {cfg['min_contract_prime']} PrimeMeat")
-    if amber < cfg["min_contract_amber"]:
-        raise HTTPException(400, f"El mínimo es {cfg['min_contract_amber']} Amberium")
+    amber_bonus = int(cfg["reward_amber_bonus"])
     info = await _user_info(uid) if _user_info else None
     if not info:
         raise HTTPException(400, "Usuario inválido")
@@ -339,8 +339,8 @@ async def place_contract(uid: str, target_sid: str, prime: int, amber: int) -> d
         {"type": "contract", "status": "active", "placer_user_id": uid})
     if active_mine >= cfg["max_contracts_per_user"]:
         raise HTTPException(400, "Ya tienes un bounty activo. Cancélalo antes de poner otro")
-    # Cobro atómico de la billetera.
-    ok = await _charge_wallet(uid, prime, amber, "Bounty: fondeo de contrato")
+    # Cobro atómico: SOLO PrimeMeat.
+    ok = await _charge_wallet(uid, prime, 0, "Bounty: fondeo de contrato")
     if not ok:
         raise HTTPException(400, "Fondos insuficientes")
     c = {
@@ -349,7 +349,8 @@ async def place_contract(uid: str, target_sid: str, prime: int, amber: int) -> d
         "target_sid": str(target_sid), "target_name": tgt.get("name"),
         "target_species": tgt.get("species"), "target_slug": tgt.get("slug"),
         "target_user_id": await _resolve_user_id(str(target_sid)) if _resolve_user_id else None,
-        "reward": {"prime": prime, "amber": amber},
+        "reward": {"prime": prime, "amber": amber_bonus},
+        "paid_prime": prime,  # lo que realmente pagó el que puso el contrato (para reembolso)
         "created_at": _iso(), "created_at_ms": _ms(),
         "expires_at_ms": _ms() + cfg["contract_duration"] * 1000,
         "killer_sid": None, "killer_name": None, "killer_user_id": None,
@@ -372,10 +373,10 @@ async def cancel_contract(uid: str, bounty_id: str) -> dict:
         {"$set": {"status": "cancelled", "cancelled_at": _iso()}})
     if res.modified_count != 1:
         raise HTTPException(400, "El bounty ya no está activo")
-    r = c["reward"]
-    await _refund_wallet(uid, r["prime"], r["amber"], "Bounty: reembolso por cancelación")
+    refund = int(c.get("paid_prime", c["reward"]["prime"]))
+    await _refund_wallet(uid, refund, 0, "Bounty: reembolso por cancelación")
     await _push_board()
-    return {"ok": True, "refunded": r}
+    return {"ok": True, "refunded": {"prime": refund}}
 
 
 # ─────────────────────────── Auto-bounty ───────────────────────────
@@ -461,7 +462,7 @@ async def _resolve_death(killer_sid, victim_sid, killer_name):
         r = c["reward"]
         # Anti-exploit: si el que puso el contrato es quien mata, se reembolsa (no cobra).
         if c["placer_sid"] and c["placer_sid"] == killer_sid:
-            await _refund_wallet(c["placer_user_id"], r["prime"], r["amber"], "Bounty: te reembolsamos (mataste a tu propio objetivo)")
+            await _refund_wallet(c["placer_user_id"], int(c.get("paid_prime", r["prime"])), 0, "Bounty: te reembolsamos (mataste a tu propio objetivo)")
             await _db.bounties.update_one({"id": c["id"]}, {"$set": {"status": "cancelled", "cancel_reason": "self_kill"}})
         else:
             total_prime += r["prime"]
@@ -526,7 +527,7 @@ async def _accrual_tick():
                                             {"$set": {"status": "expired", "ended_at": _iso()}})
         if res.modified_count == 1:
             r = c["reward"]
-            await _refund_wallet(c["placer_user_id"], r["prime"], r["amber"], "Bounty: reembolso por expiración")
+            await _refund_wallet(c["placer_user_id"], int(c.get("paid_prime", r["prime"])), 0, "Bounty: reembolso por expiración")
     if expired:
         await _push_board()
 
@@ -693,7 +694,7 @@ class CancelIn(BaseModel):
 
 class ConfigIn(BaseModel):
     min_contract_prime: int | None = None
-    min_contract_amber: int | None = None
+    reward_amber_bonus: int | None = None
     contract_duration: int | None = None
     self_prime_per_min: int | None = None
     self_max_seconds: int | None = None
