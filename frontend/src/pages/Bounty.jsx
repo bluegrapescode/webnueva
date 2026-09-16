@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Skull, Droplet, Clock, History, Trophy, X, Zap, Target } from "lucide-react";
+import { Skull, Droplet, History, Trophy, X, Zap, Target } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
@@ -10,7 +10,6 @@ import { BountyCard } from "@/components/bounty/BountyCard";
 import { TargetList } from "@/components/bounty/TargetList";
 import { ContractModal } from "@/components/bounty/ContractModal";
 import { fmtNum, fmtCountdown } from "@/lib/bountyMeta";
-import { MEDIA } from "@/lib/media";
 
 function SelfBountyPanel({ mine, config, onStart, busy }) {
   const [, tick] = useState(0);
@@ -120,6 +119,8 @@ export default function Bounty() {
   const [history, setHistory] = useState([]);
   const [modalTarget, setModalTarget] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [, tickNow] = useState(0);
+  useEffect(() => { const t = setInterval(() => tickNow((n) => n + 1), 1000); return () => clearInterval(t); }, []);
 
   const loadTargets = useCallback(async () => {
     if (!user) return;
@@ -171,8 +172,8 @@ export default function Bounty() {
 
         {user && <div className="mb-8"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
 
+        {/* Objetivos en línea + Mis bounties */}
         <div className="grid lg:grid-cols-2 gap-6 items-start">
-          {/* Objetivos en línea */}
           <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2"><Target className="w-4 h-4 text-[#E11D2A]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Objetivos en línea</h2></div>
@@ -182,27 +183,6 @@ export default function Bounty() {
               : <p className="text-sm text-white/40 py-8 text-center">Inicia sesión para cazar.</p>}
           </section>
 
-          {/* Tablón WANTED */}
-          <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-4"><Trophy className="w-4 h-4 text-[#F0B429]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Tablón de recompensas</h2><span className="ml-auto text-[10px] uppercase tracking-wider text-white/40 font-mono">{allBoard.length}</span></div>
-            {allBoard.length === 0 ? <BountyCard bounty={null} /> : (
-              <div className="grid gap-4" data-testid="bounty-board">
-                <AnimatePresence>
-                  {allBoard.map((b, i) => (
-                    <motion.div key={(b.bountyId || b.targetId) + (b.type || "")} layout
-                      initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.35 }}>
-                      <BountyCard bounty={b} rank={i} variant="full" />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* Mis bounties + Historial (simétrico) */}
-        <div className="grid lg:grid-cols-2 gap-6 items-start mt-6">
           {user && (
             <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
               <div className="flex items-center justify-between mb-4">
@@ -224,28 +204,48 @@ export default function Bounty() {
               ) : <p className="text-sm text-white/30 py-6 text-center">No tienes bounties activos. Elige un objetivo para empezar.</p>}
             </section>
           )}
-
-          {/* Historial */}
-          <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-4"><History className="w-4 h-4 text-white/50" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Historial de cacerías</h2></div>
-            {history.length === 0 ? <p className="text-sm text-white/30 py-6 text-center" data-testid="bounty-history-empty">Aún no hay cacerías registradas.</p> : (
-              <div className="grid gap-2" data-testid="bounty-history-list">
-                {history.map((b) => {
-                  const done = b.status === "completed" || b.status === "dead";
-                  return (
-                    <div key={b.bountyId} className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-md border border-white/8 bg-white/[0.02]" data-testid={`bounty-history-${b.bountyId}`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        {b.type === "self" ? <Droplet className="w-4 h-4 shrink-0" style={{ color: done ? "#F0B429" : "#5b5b62" }} /> : <Skull className="w-4 h-4 shrink-0" style={{ color: done ? "#F0B429" : "#5b5b62" }} />}
-                        <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{b.targetName}</p><p className="text-[11px] text-white/40 truncate">{done ? (b.killerName ? <>eliminado por <span className="text-white/70">{b.killerName}</span></> : "eliminado") : b.status === "expired" ? "expiró" : "cancelado"}</p></div>
-                      </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${done ? "text-[#F0B429]" : "text-white/30"}`}>{done ? "Completado" : b.status === "expired" ? "Expiró" : "Cancelado"}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
         </div>
+
+        {/* Tablón WANTED — tarjetas en 2 columnas (izquierda/derecha) */}
+        <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5 mt-6">
+          <div className="flex items-center gap-2 mb-4"><Trophy className="w-4 h-4 text-[#F0B429]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Tablón de recompensas</h2><span className="ml-auto text-[10px] uppercase tracking-wider text-white/40 font-mono">{allBoard.length}</span></div>
+          {allBoard.length === 0 ? (
+            <p className="text-sm text-white/30 py-8 text-center" data-testid="bounty-board-empty">No hay bounties activos. Elige un objetivo o pon precio a tu cabeza.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start" data-testid="bounty-board">
+              <AnimatePresence>
+                {allBoard.map((b, i) => (
+                  <motion.div key={(b.bountyId || b.targetId) + (b.type || "")} layout
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: Math.min(i * 0.06, 0.3), duration: 0.35 }}>
+                    <BountyCard bounty={b} rank={i} variant="full" />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </section>
+
+        {/* Historial */}
+        <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5 mt-6">
+          <div className="flex items-center gap-2 mb-4"><History className="w-4 h-4 text-white/50" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Historial de cacerías</h2></div>
+          {history.length === 0 ? <p className="text-sm text-white/30 py-6 text-center" data-testid="bounty-history-empty">Aún no hay cacerías registradas.</p> : (
+            <div className="grid gap-2 md:grid-cols-2" data-testid="bounty-history-list">
+              {history.map((b) => {
+                const done = b.status === "completed" || b.status === "dead";
+                return (
+                  <div key={b.bountyId} className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-md border border-white/8 bg-white/[0.02]" data-testid={`bounty-history-${b.bountyId}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {b.type === "self" ? <Droplet className="w-4 h-4 shrink-0" style={{ color: done ? "#F0B429" : "#5b5b62" }} /> : <Skull className="w-4 h-4 shrink-0" style={{ color: done ? "#F0B429" : "#5b5b62" }} />}
+                      <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{b.targetName}</p><p className="text-[11px] text-white/40 truncate">{done ? (b.killerName ? <>eliminado por <span className="text-white/70">{b.killerName}</span></> : "eliminado") : b.status === "expired" ? "expiró" : "cancelado"}</p></div>
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${done ? "text-[#F0B429]" : "text-white/30"}`}>{done ? "Completado" : b.status === "expired" ? "Expiró" : "Cancelado"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {isAdmin && <div className="mt-6"><AdminPanel config={config} targets={targets} refresh={() => { loadTargets(); loadMine(); loadHistory(); }} /></div>}
       </div>

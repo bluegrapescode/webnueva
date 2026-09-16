@@ -235,3 +235,7 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - Diseño: guiado por design_agent -> /app/design_guidelines.json (Cinematic Carbon & Blood Amber). PrimeMeat en verde #22C55E, Amberium en dorado #F0B429, rojo peligro #E11D2A. Sonidos bountyAlert/bountyComplete/bountyLock/bountyDisconnect (versión limpia).
 - Economía confirmada por el usuario: recompensa = PrimeMeat + mínimo de Amberium (bonus del sistema); poner bounty se paga SOLO con PrimeMeat. Verificado por curl (cobro -40k coins, vip intacto; reembolso solo prime) + UI.
 - Discord: DISCORD_BOUNTY_WEBHOOK_URL en backend/.env (inactivo hasta configurarlo). Recompensa a billetera web solo si el killer mapea a un usuario web por steam_id.
+
+## Actualización (Jun 2026) — Layout del Tablón de recompensas
+- El usuario pidió restaurar las tarjetas WANTED ricas (BountyCard) y colocarlas en 2 columnas (izquierda-derecha, luego siguiente fila). Se descartó la variante de filas compactas (BoardRow).
+- Bounty.jsx reorganizado: fila superior [Objetivos en línea | Mis bounties] en 2 col; "Tablón de recompensas" ahora es sección de ancho completo con tarjetas en `grid grid-cols-1 md:grid-cols-2`; Historial de ancho completo (md:grid-cols-2). Verificado por screenshot (desktop + móvil), sin overflow.
