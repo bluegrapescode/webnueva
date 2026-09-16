@@ -72,11 +72,12 @@ export function tradeWsUrl() {
   return `${base}/api/trade/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
-// Sistema Global de Bounties — WebSocket público para /api/bounty/ws (nuevo,
-// activo, desconectado, completado, cancelado, espera).
+// Sistema de Cacería — WebSocket para /api/bounty/ws. Manda el token (si existe)
+// para registrar la presencia del usuario web (invitaciones de auto-bounty).
 export function bountyWsUrl() {
   const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
-  return `${base}/api/bounty/ws`;
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/bounty/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
@@ -498,17 +499,21 @@ export const api = {
   tradeCancel:      (session_id) => client.post("/trade/cancel", { session_id }),
   tradeHistory:     () => client.get("/trade/history"),
   tradePeerInventory: (session_id) => client.get(`/trade/peer/${session_id}`),
-  // Sistema Global de Bounties
+  // Sistema de Cacería / Bounties puestos por jugadores
   bountyWsUrl,
-  bountyCurrent:    () => client.get("/bounty/current"),
   bountyConfig:     () => client.get("/bounty/config"),
-  bountyHistory:    (limit = 15) => client.get(`/bounty/history?limit=${limit}`),
-  bountyForceNew:   () => client.post("/bounty/admin/force-new"),
+  bountyBoard:      () => client.get("/bounty/board"),
+  bountyTargets:    () => client.get("/bounty/targets"),
+  bountyMine:       () => client.get("/bounty/mine"),
+  bountyHistory:    (limit = 20) => client.get(`/bounty/history?limit=${limit}`),
+  bountyPlaceContract: (target_sid, prime, amber = 0) => client.post("/bounty/contract", { target_sid, prime, amber }),
+  bountyCancelContract: (bounty_id) => client.post("/bounty/contract/cancel", { bounty_id }),
+  bountySelfStart:  () => client.post("/bounty/self/start"),
+  bountySelfAcceptInvite: () => client.post("/bounty/self/accept-invite"),
+  bountySetConfig:  (cfg) => client.post("/bounty/admin/config", cfg),
+  bountySimulateKill: (target_sid) => client.post("/bounty/admin/simulate-kill", { target_sid }),
   bountyPause:      () => client.post("/bounty/admin/pause"),
   bountyResume:     () => client.post("/bounty/admin/resume"),
-  bountyCancel:     () => client.post("/bounty/admin/cancel"),
-  bountySetConfig:  (cfg) => client.post("/bounty/admin/config", cfg),
-  bountySimulateKill: (killer_sid) => client.post("/bounty/admin/simulate-kill", { killer_sid: killer_sid || null }),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

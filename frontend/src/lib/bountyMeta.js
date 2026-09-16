@@ -43,3 +43,16 @@ export function isoMs(iso) {
   const t = Date.parse(iso);
   return Number.isNaN(t) ? 0 : t;
 }
+
+// Elige el bounty más "jugoso" del tablón para destacarlo (widget / overlay).
+export function featuredBounty(board) {
+  if (!board) return null;
+  const contracts = board.contracts || [];
+  const selfs = board.self || [];
+  const score = (b) => (b.type === "self"
+    ? (b.accrued || 0) + (b.primePerMin || 0) + (b.killerAmber || 0)
+    : (b.reward ? b.reward.primeMeat : 0));
+  const all = [...contracts, ...selfs];
+  if (!all.length) return null;
+  return all.reduce((best, b) => (score(b) > score(best) ? b : best), all[0]);
+}

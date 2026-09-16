@@ -1,79 +1,47 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
-// Estado en vivo del Sistema de Bounties. Un solo WebSocket público (sin polling)
-// con reconexión exponencial. Expone { snapshot, lastEvent } y refresca el
-// snapshot ante cada evento del servidor.
+// Estado en vivo del Sistema de Cacería. Un WebSocket (autenticado si hay token)
+// con reconexión. Mantiene { board, config } y reenvía cada evento a onEvent
+// (contract_new, completed, self_started, self_tick, self_ended, self_expired,
+// self_invite, self_mine, board, config).
 export function useBountySocket(onEvent) {
-  const [snapshot, setSnapshot] = useState(null);
-  const [lastEvent, setLastEvent] = useState(null);
+  const [board, setBoard] = useState({ contracts: [], self: [] });
+  const [config, setConfig] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [lastEvent, setLastEvent] = useState(null);
   const cbRef = useRef(onEvent);
   cbRef.current = onEvent;
 
-  const applyEvent = useCallback((event, data) => {
+  const apply = useCallback((event, data) => {
     setLastEvent({ event, data, at: Date.now() });
     if (event === "bounty:state") {
-      setSnapshot(data);
-      return;
+      if (data.board) setBoard(data.board);
+      if (data.config) setConfig(data.config);
+    } else if (event === "bounty:board") {
+      setBoard(data);
+    } else if (event === "bounty:config") {
+      setConfig(data);
     }
-    setSnapshot((prev) => {
-      const cfg = (prev && prev.config) || (data && data.config) || null;
-      if (event === "bounty:new" || event === "bounty:active" || event === "bounty:target_returned") {
-        return { ...(prev || {}), phase: "active", paused: false, bounty: data.bountyId ? data : (prev && prev.bounty) };
-      }
-      if (event === "bounty:target_disconnected") {
-        const b = prev && prev.bounty ? { ...prev.bounty, status: "suspended", suspendUntil: data.suspendUntil } : prev?.bounty;
-        return { ...(prev || {}), phase: "active", bounty: b };
-      }
-      if (event === "bounty:completed") {
-        return { ...(prev || {}), phase: "waiting", bounty: data, nextAt: data.nextAt, config: cfg };
-      }
-      if (event === "bounty:cancelled") {
-        return { ...(prev || {}), phase: "waiting", bounty: null, config: cfg };
-      }
-      if (event === "bounty:waiting") {
-        return { ...(prev || {}), phase: "waiting", bounty: null, nextAt: data.nextAt, config: cfg };
-      }
-      if (event === "bounty:paused") {
-        return { ...(prev || {}), paused: !!data.paused };
-      }
-      if (event === "bounty:config") {
-        return { ...(prev || {}), config: data };
-      }
-      return prev;
-    });
     cbRef.current && cbRef.current(event, data);
   }, []);
 
   useEffect(() => {
-    let ws = null, closed = false, retry = 0, pingTimer = null;
-
+    let ws = null, closed = false, retry = 0, ping = null;
     const connect = () => {
       if (closed) return;
       let url;
-      try { url = api.bountyWsUrl(); } catch (e) { scheduleReconnect(); return; }
-      try { ws = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
-      ws.onopen = () => {
-        retry = 0; setConnected(true);
-        pingTimer = setInterval(() => { try { ws.readyState === 1 && ws.send("ping"); } catch (e) {} }, 25000);
-      };
-      ws.onmessage = (ev) => {
-        if (ev.data === "pong") return;
-        try { const m = JSON.parse(ev.data); applyEvent(m.event, m.data); } catch (e) {}
-      };
-      ws.onclose = () => { setConnected(false); pingTimer && clearInterval(pingTimer); scheduleReconnect(); };
+      try { url = api.bountyWsUrl(); } catch (e) { schedule(); return; }
+      try { ws = new WebSocket(url); } catch (e) { schedule(); return; }
+      ws.onopen = () => { retry = 0; setConnected(true); ping = setInterval(() => { try { ws.readyState === 1 && ws.send("ping"); } catch (e) {} }, 25000); };
+      ws.onmessage = (ev) => { if (ev.data === "pong") return; try { const m = JSON.parse(ev.data); apply(m.event, m.data); } catch (e) {} };
+      ws.onclose = () => { setConnected(false); ping && clearInterval(ping); schedule(); };
       ws.onerror = () => { try { ws.close(); } catch (e) {} };
     };
-    const scheduleReconnect = () => {
-      if (closed) return;
-      retry += 1;
-      setTimeout(connect, Math.min(15000, 1000 * Math.pow(1.6, retry)));
-    };
-
+    const schedule = () => { if (closed) return; retry += 1; setTimeout(connect, Math.min(15000, 1000 * Math.pow(1.6, retry))); };
     connect();
-    return () => { closed = true; pingTimer && clearInterval(pingTimer); try { ws && ws.close(); } catch (e) {} };
-  }, [applyEvent]);
+    return () => { closed = true; ping && clearInterval(ping); try { ws && ws.close(); } catch (e) {} };
+  }, [apply]);
 
-  return { snapshot, lastEvent, connected };
+  return { board, config, connected, lastEvent };
 }

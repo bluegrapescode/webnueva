@@ -1,23 +1,27 @@
-"""Sistema Global de Bounties (☠️) — server-side, seguro, automático y en vivo.
+"""Sistema de Cacería / Bounties puestos por jugadores (☠️).
 
-Self-contained como skin_shop.py / live_trade.py: server.py inyecta el handle de
-Mongo, las dependencias de auth, el proveedor de jugadores online (RCON + log del
-juego) y los callbacks de recompensa vía configure(...).
+Rediseño: ya NO hay bounty aleatorio automático. Ahora los bounties los ponen
+los propios jugadores:
 
-Modelo en una línea:
-  - El backend elige ALEATORIAMENTE a un jugador ONLINE, VIVO, con SteamID válido,
-    con >= minimum_online_time conectado, que no sea el bounty anterior ni de los
-    últimos N, y que no sea administrador. Ese jugador queda WANTED.
-  - El primer jugador que lo ELIMINE (kill PVP validado por el servidor, killer !=
-    target, bounty ACTIVO y no procesado) recibe la recompensa. La entrega es
-    ATÓMICA e IDEMPOTENTE (nunca doble cobro).
-  - Suicidio, muerte ambiental, admin-kill, desconexión o eventos duplicados NO
-    pagan. Si el objetivo se desconecta, el bounty se SUSPENDE 5 min; si vuelve,
-    continúa; si no, se cancela sin recompensa y se elige uno nuevo.
-  - Tras completarse, cooldown de next_bounty_delay y nuevo bounty automático.
-  - Todo el estado se empuja por WebSocket (sin polling). Discord recibe embeds.
+  1) CONTRATO — un jugador elige a QUIÉN cazar de la lista de jugadores online y
+     pone precio a su cabeza pagándolo de SU billetera (mínimo configurable). El
+     primero que mate a ese objetivo (kill PVP validado por el servidor, distinto
+     del que puso el contrato y de su grupo) cobra la recompensa. Varios contratos
+     sobre el mismo objetivo SE ACUMULAN. Límite: 1 contrato activo por persona.
 
-Colecciones: bounties, bounty_state (singleton), bounty_dodge_log.
+  2) AUTO-BOUNTY — un jugador pone precio a SU PROPIA cabeza y gana PrimeMeat por
+     minuto mientras siga vivo, hasta que muera o se acabe el tiempo. Si lo matan,
+     el cazador recibe Amberium y el jugador CONSERVA lo ya acumulado. Gratis, con
+     cooldown. Además, cada cierto tiempo el servidor ENVÍA una invitación aleatoria
+     a un jugador online de la web ("¿pones precio a tu cabeza?"), con fuerte
+     protección para que sea muy raro que le toque a la misma persona.
+
+Seguridad / anti-exploit: selección y validación 100% server-side; fondeo de
+billetera atómico; compleción de muerte atómica e idempotente (nunca doble cobro);
+no puedes cazarte a ti mismo ni a tu grupo; reembolso al expirar sin muerte.
+Todo se empuja por WebSocket (sin polling). Discord recibe embeds.
+
+Colecciones: bounties (type: contract|self), bounty_invite_log.
 """
 from __future__ import annotations
 
@@ -26,43 +30,49 @@ import logging
 import os
 import random
 import time
-from datetime import datetime, timezone, timedelta
+from collections import deque
+from datetime import datetime, timezone
 
 import httpx
 import jwt
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 logger = logging.getLogger("bounty")
 
 DARK_RED = 0x8B0000
 
-# ── Config por defecto (tuneable en runtime desde el panel admin, guardado en
-# settings/bounty). Estructura pensada para cambiar cantidades sin tocar código.
 DEFAULT_CONFIG = {
-    "prime_meat": 60000,
-    "experience": 2500,
-    "amberium": 500,
-    "next_bounty_delay": 20 * 60,     # cooldown tras completar (segundos)
-    "minimum_online_time": 15 * 60,   # tiempo mínimo conectado para ser elegible
-    "recent_target_protection": 3,    # no repetir en los últimos N bounties
-    "disconnect_grace": 5 * 60,       # suspensión por desconexión (segundos)
-    "empty_retry": 30,                # reintento de selección si no hay elegibles
+    "min_contract_prime": 20000,     # mínimo de PrimeMeat para un contrato
+    "min_contract_amber": 0,         # mínimo de Amberium (opcional)
+    "contract_duration": 30 * 60,    # tiempo para reclamar el contrato (s)
+    "self_prime_per_min": 5000,      # PrimeMeat/minuto del auto-bounty
+    "self_max_seconds": 15 * 60,     # duración máxima del auto-bounty (s)
+    "self_killer_amber": 300,        # Amberium para quien mata a un auto-bounty
+    "self_cooldown": 10 * 60,        # cooldown para reponerte auto-bounty (s)
+    "invite_interval": 5 * 60,       # cada cuánto se ofrece a alguien (s)
+    "invite_recent_protection": 25,  # no repetir invitado entre los últimos N
+    "invite_ttl": 90,                # segundos para aceptar la invitación
+    "max_contracts_per_user": 1,     # contratos activos por persona
 }
 
 # Inyectado por server.py
 _db = None
 _admin_ids: set = set()
-_online_provider = None            # async () -> list[{sid,name,species,slug}] | None
-_award_reward = None               # async (user_id, prime, amber, xp, bounty_id) -> None
-_resolve_user_id = None            # async (sid) -> user_id | None
-_ingame_grant = None               # (sid, prime, amber, xp) -> None   (best effort)
+_online_provider = None      # async () -> [{sid,name,species,slug,alive}] | None (sim)
+_resolve_user_id = None      # async (sid) -> uid | None
+_user_info = None            # async (uid) -> {steam_id,name,avatar,coins,vip_coins} | None
+_charge_wallet = None        # async (uid, prime, amber, ref) -> bool
+_refund_wallet = None        # async (uid, prime, amber, ref) -> None
+_award_reward = None         # async (uid, prime, amber, xp, ref) -> None
+_ingame_grant = None         # (sid, prime, amber, xp) -> None (best effort)
 _jwt_secret = ""
 _jwt_algo = "HS256"
 
-# Tiempo de primera vista por SteamID (para exigir minimum_online_time). El módulo
-# lleva su propio reloj de conexión — funciona igual con el juego real o en sim.
-_seen_since: dict = {}
+# Estado en memoria
+_invite_recent = deque(maxlen=64)     # uids invitados recientemente
+_self_cooldown_until: dict = {}       # uid -> ts hasta cuándo no puede reponerse
+_paused = False
 
 
 def _now() -> datetime:
@@ -73,7 +83,7 @@ def _iso() -> str:
     return _now().isoformat()
 
 
-def _ts_ms() -> int:
+def _ms() -> int:
     return int(time.time() * 1000)
 
 
@@ -81,20 +91,37 @@ def _bid() -> str:
     return "BNT-" + str(random.randint(10000, 99999))
 
 
-def _fmt(n: int) -> str:
-    return f"{int(n):,}".replace(",", ".")
+def _fmt(n) -> str:
+    return f"{int(n or 0):,}".replace(",", ".")
 
 
-# ─────────────────────────── Hub WebSocket (público) ───────────────────────────
+# ─────────────────────────── Hub WebSocket ───────────────────────────
 class BountyHub:
     def __init__(self):
-        self.conns: set = set()
+        self.conns: set = set()            # todas las conexiones (público)
+        self.by_uid: dict = {}             # uid -> set(ws) (usuarios web logueados)
+        self.uid_of: dict = {}             # ws -> uid
+        self.info: dict = {}               # uid -> {name, steam_id, avatar}
 
-    async def add(self, ws):
+    async def add(self, ws, uid=None, info=None):
         self.conns.add(ws)
+        if uid:
+            self.by_uid.setdefault(uid, set()).add(ws)
+            self.uid_of[ws] = uid
+            if info:
+                self.info[uid] = info
 
     def remove(self, ws):
         self.conns.discard(ws)
+        uid = self.uid_of.pop(ws, None)
+        if uid and uid in self.by_uid:
+            self.by_uid[uid].discard(ws)
+            if not self.by_uid[uid]:
+                self.by_uid.pop(uid, None)
+                self.info.pop(uid, None)
+
+    def online_web_uids(self) -> list:
+        return list(self.by_uid.keys())
 
     async def broadcast(self, event: str, data: dict):
         payload = {"event": event, "data": data}
@@ -105,14 +132,22 @@ class BountyHub:
             except Exception:
                 dead.append(ws)
         for ws in dead:
-            self.conns.discard(ws)
+            self.remove(ws)
+
+    async def send_to(self, uid: str, event: str, data: dict):
+        payload = {"event": event, "data": data}
+        for ws in list(self.by_uid.get(uid, [])):
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                self.remove(ws)
 
 
 hub = BountyHub()
-_loop_lock = asyncio.Lock()
+_lock = asyncio.Lock()
 
 
-# ─────────────────────────── Config / estado ───────────────────────────
+# ─────────────────────────── Config ───────────────────────────
 async def get_config() -> dict:
     cfg = dict(DEFAULT_CONFIG)
     try:
@@ -126,110 +161,84 @@ async def get_config() -> dict:
     return cfg
 
 
-async def _get_state() -> dict:
-    st = await _db.bounty_state.find_one({"_id": "state"})
-    if not st:
-        st = {"_id": "state", "phase": "waiting", "current_bounty_id": None,
-              "next_at": _iso(), "paused": False, "recent_targets": [],
-              "updated_at": _iso()}
-        await _db.bounty_state.insert_one(dict(st))
-    return st
+# ─────────────────────────── Roster online ───────────────────────────
+async def _roster() -> list:
+    if _online_provider:
+        try:
+            r = await _online_provider()
+            if r is not None:
+                _roster._last_sim = False
+                return r
+        except Exception as e:
+            logger.warning("[bounty] online provider: %r", e)
+    return _sim_roster()
 
 
-async def _set_state(**fields):
-    fields["updated_at"] = _iso()
-    await _db.bounty_state.update_one({"_id": "state"}, {"$set": fields}, upsert=True)
+def _is_sim() -> bool:
+    return getattr(_roster, "_last_sim", False)
 
 
-def _public_bounty(b: dict, cfg: dict, next_at: str | None = None) -> dict:
+# ─────────────────────────── Serializers ───────────────────────────
+def _pub_contract(c: dict) -> dict:
     return {
-        "bountyId": b.get("id"),
-        "status": b.get("status"),
-        "targetId": b.get("target_sid"),
-        "targetName": b.get("target_name"),
-        "dinosaur": b.get("target_species"),
-        "slug": b.get("target_slug"),
-        "killerId": b.get("killer_sid"),
-        "killerName": b.get("killer_name"),
-        "rewards": {
-            "primeMeat": b.get("rewards", {}).get("prime_meat", cfg["prime_meat"]),
-            "experience": b.get("rewards", {}).get("experience", cfg["experience"]),
-            "amberium": b.get("rewards", {}).get("amberium", cfg["amberium"]),
-        },
-        "startedAt": b.get("started_at_ms"),
-        "completedAt": b.get("completed_at_ms"),
-        "suspendUntil": b.get("suspend_until_ms"),
-        "nextAt": next_at,
-        "rewardProcessed": b.get("reward_processed", False),
-        "rewardDelivered": b.get("reward_delivered", False),
+        "type": "contract", "bountyId": c["id"], "status": c["status"],
+        "targetId": c.get("target_sid"), "targetName": c.get("target_name"),
+        "dinosaur": c.get("target_species"), "slug": c.get("target_slug"),
+        "placerName": c.get("placer_name"),
+        "reward": {"primeMeat": c.get("reward", {}).get("prime", 0),
+                   "amberium": c.get("reward", {}).get("amber", 0)},
+        "createdAt": c.get("created_at_ms"), "expiresAt": c.get("expires_at_ms"),
+        "killerName": c.get("killer_name"),
     }
 
 
+def _pub_self(s: dict) -> dict:
+    return {
+        "type": "self", "bountyId": s["id"], "status": s["status"],
+        "targetId": s.get("holder_sid"), "targetName": s.get("holder_name"),
+        "dinosaur": s.get("holder_species"), "slug": s.get("holder_slug"),
+        "primePerMin": s.get("prime_per_min"), "accrued": s.get("accrued_prime", 0),
+        "startedAt": s.get("started_at_ms"), "endsAt": s.get("ends_at_ms"),
+        "killerAmber": s.get("killer_amber"), "killerName": s.get("killer_name"),
+    }
+
+
+async def _build_board() -> dict:
+    contracts = await _db.bounties.find(
+        {"type": "contract", "status": "active"}, {"_id": 0}).to_list(500)
+    # Acumular por objetivo.
+    by_target = {}
+    for c in contracts:
+        sid = c["target_sid"]
+        acc = by_target.get(sid)
+        if not acc:
+            acc = {"type": "contract", "targetId": sid, "targetName": c["target_name"],
+                   "dinosaur": c.get("target_species"), "slug": c.get("target_slug"),
+                   "reward": {"primeMeat": 0, "amberium": 0}, "count": 0,
+                   "placerName": c.get("placer_name"), "createdAt": c.get("created_at_ms"),
+                   "expiresAt": c.get("expires_at_ms")}
+            by_target[sid] = acc
+        acc["reward"]["primeMeat"] += c.get("reward", {}).get("prime", 0)
+        acc["reward"]["amberium"] += c.get("reward", {}).get("amber", 0)
+        acc["count"] += 1
+        if c.get("created_at_ms") and (not acc.get("createdAt") or c["created_at_ms"] < acc["createdAt"]):
+            acc["createdAt"] = c["created_at_ms"]
+            acc["placerName"] = c.get("placer_name")
+        if c.get("expires_at_ms") and (not acc["expiresAt"] or c["expires_at_ms"] > acc["expiresAt"]):
+            acc["expiresAt"] = c["expires_at_ms"]
+    selfs = await _db.bounties.find(
+        {"type": "self", "status": "active"}, {"_id": 0}).to_list(200)
+    board_contracts = sorted(by_target.values(), key=lambda x: x["reward"]["primeMeat"], reverse=True)
+    board_self = [_pub_self(s) for s in selfs]
+    return {"contracts": board_contracts, "self": board_self}
+
+
 async def snapshot() -> dict:
-    """Estado completo para un cliente que acaba de conectar (o el REST /current)."""
-    cfg = await get_config()
-    st = await _get_state()
-    b = None
-    if st.get("current_bounty_id"):
-        b = await _db.bounties.find_one({"id": st["current_bounty_id"]}, {"_id": 0})
-    if b:
-        return {"phase": st["phase"], "paused": st.get("paused", False),
-                "bounty": _public_bounty(b, cfg, st.get("next_at")), "config": cfg}
-    return {"phase": st["phase"], "paused": st.get("paused", False),
-            "bounty": None, "nextAt": st.get("next_at"), "config": cfg}
+    return {"config": await get_config(), "board": await _build_board(), "paused": _paused}
 
 
-# ─────────────────────────── Roster / elegibilidad ───────────────────────────
-async def _observe_roster() -> list:
-    """Lista de jugadores online (real o simulada). Actualiza el reloj de conexión."""
-    roster = None
-    if _online_provider:
-        try:
-            roster = await _online_provider()
-        except Exception as e:
-            logger.warning("[bounty] online provider failed: %r", e)
-            roster = None
-    if roster is None:
-        roster = _sim_roster()
-        sim = True
-    else:
-        sim = False
-    now = time.time()
-    seen_now = set()
-    for p in roster:
-        sid = str(p.get("sid") or "").strip()
-        if not sid:
-            continue
-        seen_now.add(sid)
-        if sid not in _seen_since:
-            # Los jugadores simulados nacen con antigüedad para poder probar el flujo
-            # sin esperar 15 min reales; los reales empiezan su reloj ahora.
-            _seen_since[sid] = now - (25 * 60 if sim else 0)
-    # Limpia relojes de quienes ya no están (para que reconectar reinicie el reloj).
-    for sid in list(_seen_since.keys()):
-        if sid not in seen_now:
-            _seen_since.pop(sid, None)
-    return roster
-
-
-def _eligible(roster: list, cfg: dict, recent: list) -> list:
-    now = time.time()
-    out = []
-    for p in roster:
-        sid = str(p.get("sid") or "").strip()
-        if not sid or not sid.isdigit() or len(sid) < 17:
-            continue                                   # SteamID válido
-        if not p.get("alive", True):
-            continue                                   # vivo
-        if sid in _admin_ids:
-            continue                                   # no admins
-        if sid in recent:
-            continue                                   # ni el anterior ni últimos N
-        since = _seen_since.get(sid)
-        if since is None or (now - since) < cfg["minimum_online_time"]:
-            continue                                   # tiempo mínimo conectado
-        out.append(p)
-    return out
+async def _push_board():
+    await hub.broadcast("bounty:board", await _build_board())
 
 
 # ─────────────────────────── Discord ───────────────────────────
@@ -237,331 +246,419 @@ _http = httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=2.0),
                           limits=httpx.Limits(max_connections=10, max_keepalive_connections=5))
 
 
-async def _discord(embed: dict, max_retries: int = 2) -> None:
+async def _discord(embed: dict, retries: int = 2):
     url = os.environ.get("DISCORD_BOUNTY_WEBHOOK_URL", "").strip()
     if not url:
         return
     payload = {"embeds": [embed], "allowed_mentions": {"parse": []}}
-    for attempt in range(max_retries + 1):
+    for a in range(retries + 1):
         try:
             r = await _http.post(url, json=payload)
             if 200 <= r.status_code < 300:
                 return
-            if r.status_code == 429 and attempt < max_retries:
+            if r.status_code == 429 and a < retries:
                 try:
                     ra = float(r.json().get("retry_after", 1.0))
                 except Exception:
                     ra = 1.0
-                await asyncio.sleep(min(ra + random.uniform(0, 0.25), 30.0))
+                await asyncio.sleep(min(ra + random.uniform(0, 0.25), 30))
                 continue
-            if r.status_code in {500, 502, 503, 504} and attempt < max_retries:
-                await asyncio.sleep(min((2 ** attempt) + random.random(), 10.0))
+            if r.status_code in {500, 502, 503, 504} and a < retries:
+                await asyncio.sleep(min((2 ** a) + random.random(), 10))
                 continue
-            logger.error("[bounty] discord HTTP %s", r.status_code)
             return
         except Exception:
-            logger.warning("[bounty] discord send failed", exc_info=False)
             return
 
 
-def _discord_new_embed(b: dict) -> dict:
-    r = b["rewards"]
+def _discord_contract(c: dict) -> dict:
+    r = c["reward"]
     return {
         "title": "☠️ NUEVO BOUNTY DETECTADO",
         "color": DARK_RED,
-        "description": ("La cacería ha comenzado.\n\n"
-                        "☠️ El jugador que elimine al objetivo recibirá "
-                        "automáticamente la recompensa."),
+        "description": (f"**{c.get('placer_name','Alguien')}** puso precio a la cabeza de un jugador.\n\n"
+                        "☠️ El primero que lo elimine se lleva la recompensa."),
         "fields": [
-            {"name": "🎯 OBJETIVO", "value": b.get("target_name") or "—", "inline": True},
-            {"name": "🦖 DINOSAURIO", "value": b.get("target_species") or "—", "inline": True},
+            {"name": "🎯 OBJETIVO", "value": c.get("target_name") or "—", "inline": True},
+            {"name": "🦖 DINOSAURIO", "value": c.get("target_species") or "—", "inline": True},
             {"name": "💰 RECOMPENSA",
-             "value": (f"🥩 {_fmt(r['prime_meat'])} Prime Meat\n"
-                       f"✨ {_fmt(r['experience'])} EXP\n"
-                       f"🟠 {_fmt(r['amberium'])} Amberiums"),
+             "value": f"🥩 {_fmt(r['prime'])} Prime Meat" + (f"\n🟠 {_fmt(r['amber'])} Amberium" if r.get("amber") else ""),
              "inline": False},
         ],
-        "footer": {"text": f"BOUNTY ID • {b['id']}"},
-        "timestamp": _iso(),
+        "footer": {"text": f"BOUNTY ID • {c['id']}"}, "timestamp": _iso(),
     }
 
 
-def _discord_done_embed(b: dict) -> dict:
-    r = b["rewards"]
+def _discord_completed(target_name, killer_name, prime, amber, bid) -> dict:
     return {
         "title": "💀 BOUNTY COMPLETADO",
         "color": DARK_RED,
-        "description": "☠️ La cacería ha terminado.\n\nNuevo objetivo en 20 minutos.",
+        "description": "☠️ La cacería ha terminado.",
         "fields": [
-            {"name": "🎯 OBJETIVO ELIMINADO", "value": b.get("target_name") or "—", "inline": True},
-            {"name": "⚔️ CAZADOR", "value": b.get("killer_name") or "—", "inline": True},
+            {"name": "🎯 OBJETIVO ELIMINADO", "value": target_name or "—", "inline": True},
+            {"name": "⚔️ CAZADOR", "value": killer_name or "—", "inline": True},
             {"name": "💰 RECOMPENSA ENTREGADA",
-             "value": (f"🥩 {_fmt(r['prime_meat'])} Prime Meat\n"
-                       f"✨ {_fmt(r['experience'])} EXP\n"
-                       f"🟠 {_fmt(r['amberium'])} Amberiums"),
+             "value": f"🥩 {_fmt(prime)} Prime Meat" + (f"\n🟠 {_fmt(amber)} Amberium" if amber else ""),
              "inline": False},
         ],
-        "footer": {"text": f"BOUNTY ID • {b['id']}"},
-        "timestamp": _iso(),
+        "footer": {"text": f"BOUNTY ID • {bid}"}, "timestamp": _iso(),
     }
 
 
-# ─────────────────────────── Motor ───────────────────────────
-async def _select_target(cfg: dict, st: dict) -> dict | None:
-    roster = await _observe_roster()
-    recent = st.get("recent_targets", [])
-    elig = _eligible(roster, cfg, recent)
-    if not elig:
-        next_at = (_now() + timedelta(seconds=cfg["empty_retry"])).isoformat()
-        await _set_state(phase="waiting", current_bounty_id=None, next_at=next_at)
-        await hub.broadcast("bounty:waiting", {"reason": "no_eligible_players",
-                                               "nextAt": next_at})
-        return None
-    pick = random.choice(elig)
-    now_ms = _ts_ms()
-    b = {
-        "id": _bid(),
-        "status": "active",
-        "target_sid": str(pick["sid"]),
-        "target_name": pick.get("name") or "Jugador",
-        "target_species": pick.get("species") or "Dinosaurio",
-        "target_slug": pick.get("slug"),
-        "target_user_id": await _resolve_user_id(str(pick["sid"])) if _resolve_user_id else None,
+# ─────────────────────────── Grupo / anti-exploit ───────────────────────────
+async def _same_group(sid_a: str, sid_b: str) -> bool:
+    """Best-effort: sin datos de tribu/grupo en el roster actual devuelve False.
+    Cuando el mod exponga tribu se puede completar aquí."""
+    return False
+
+
+# ─────────────────────────── Contratos ───────────────────────────
+async def place_contract(uid: str, target_sid: str, prime: int, amber: int) -> dict:
+    cfg = await get_config()
+    prime = max(0, int(prime or 0))
+    amber = max(0, int(amber or 0))
+    if prime < cfg["min_contract_prime"]:
+        raise HTTPException(400, f"El mínimo es {cfg['min_contract_prime']} PrimeMeat")
+    if amber < cfg["min_contract_amber"]:
+        raise HTTPException(400, f"El mínimo es {cfg['min_contract_amber']} Amberium")
+    info = await _user_info(uid) if _user_info else None
+    if not info:
+        raise HTTPException(400, "Usuario inválido")
+    placer_sid = str(info.get("steam_id") or "")
+    if placer_sid and str(target_sid) == placer_sid:
+        raise HTTPException(400, "No puedes ponerte precio a ti mismo (usa auto-bounty)")
+    # Objetivo debe estar online.
+    roster = await _roster()
+    tgt = next((p for p in roster if str(p.get("sid")) == str(target_sid)), None)
+    if not tgt or not tgt.get("alive", True):
+        raise HTTPException(400, "El objetivo no está disponible")
+    if placer_sid and await _same_group(placer_sid, str(target_sid)):
+        raise HTTPException(400, "No puedes cazar a alguien de tu grupo")
+    # Límite de contratos activos por persona.
+    active_mine = await _db.bounties.count_documents(
+        {"type": "contract", "status": "active", "placer_user_id": uid})
+    if active_mine >= cfg["max_contracts_per_user"]:
+        raise HTTPException(400, "Ya tienes un bounty activo. Cancélalo antes de poner otro")
+    # Cobro atómico de la billetera.
+    ok = await _charge_wallet(uid, prime, amber, "Bounty: fondeo de contrato")
+    if not ok:
+        raise HTTPException(400, "Fondos insuficientes")
+    c = {
+        "id": _bid(), "type": "contract", "status": "active",
+        "placer_user_id": uid, "placer_sid": placer_sid, "placer_name": info.get("name"),
+        "target_sid": str(target_sid), "target_name": tgt.get("name"),
+        "target_species": tgt.get("species"), "target_slug": tgt.get("slug"),
+        "target_user_id": await _resolve_user_id(str(target_sid)) if _resolve_user_id else None,
+        "reward": {"prime": prime, "amber": amber},
+        "created_at": _iso(), "created_at_ms": _ms(),
+        "expires_at_ms": _ms() + cfg["contract_duration"] * 1000,
         "killer_sid": None, "killer_name": None, "killer_user_id": None,
-        "rewards": {"prime_meat": cfg["prime_meat"], "experience": cfg["experience"],
-                    "amberium": cfg["amberium"]},
-        "started_at": _iso(), "started_at_ms": now_ms,
-        "completed_at": None, "completed_at_ms": None,
-        "suspended_at": None, "suspend_until_ms": None,
-        "reward_processed": False, "reward_delivered": False,
-        "created_at": _iso(),
+        "reward_processed": False,
     }
-    await _db.bounties.insert_one(dict(b))
-    new_recent = ([b["target_sid"]] + recent)[: max(1, cfg["recent_target_protection"])]
-    await _set_state(phase="active", current_bounty_id=b["id"], next_at=None,
-                     recent_targets=new_recent)
-    global _sim_next_kill
-    _sim_next_kill = time.time() + random.uniform(90, 150)  # ventana visible en sim
-    pub = _public_bounty(b, cfg)
-    await hub.broadcast("bounty:new", pub)
-    await hub.broadcast("bounty:active", pub)
-    asyncio.create_task(_discord(_discord_new_embed(b)))
-    logger.info("[bounty] NEW %s target=%s (%s)", b["id"], b["target_name"], b["target_sid"])
-    return b
+    await _db.bounties.insert_one(dict(c))
+    await hub.broadcast("bounty:contract_new", _pub_contract(c))
+    await _push_board()
+    asyncio.create_task(_discord(_discord_contract(c)))
+    logger.info("[bounty] CONTRACT %s by=%s target=%s prime=%s", c["id"], uid, target_sid, prime)
+    return _pub_contract(c)
 
 
-async def _cancel(b: dict, reason: str, cfg: dict, dodge: bool = False):
-    await _db.bounties.update_one(
-        {"id": b["id"], "status": {"$in": ["active", "suspended"]}},
-        {"$set": {"status": "cancelled", "cancelled_at": _iso(),
-                  "cancel_reason": reason}})
-    if dodge:
-        try:
-            await _db.bounty_dodge_log.insert_one({
-                "id": _bid(), "bounty_id": b["id"], "target_sid": b["target_sid"],
-                "target_name": b["target_name"], "at": _iso()})
-        except Exception:
-            pass
-    await _set_state(phase="waiting", current_bounty_id=None, next_at=_iso())
-    await hub.broadcast("bounty:cancelled", {"bountyId": b["id"], "reason": reason,
-                                             "targetName": b["target_name"]})
+async def cancel_contract(uid: str, bounty_id: str) -> dict:
+    c = await _db.bounties.find_one({"id": bounty_id, "type": "contract"}, {"_id": 0})
+    if not c or c["placer_user_id"] != uid:
+        raise HTTPException(404, "Bounty no encontrado")
+    res = await _db.bounties.update_one(
+        {"id": bounty_id, "status": "active"},
+        {"$set": {"status": "cancelled", "cancelled_at": _iso()}})
+    if res.modified_count != 1:
+        raise HTTPException(400, "El bounty ya no está activo")
+    r = c["reward"]
+    await _refund_wallet(uid, r["prime"], r["amber"], "Bounty: reembolso por cancelación")
+    await _push_board()
+    return {"ok": True, "refunded": r}
 
 
-async def _tick():
-    """Un paso del ciclo. Serializado con _loop_lock."""
-    async with _loop_lock:
-        cfg = await get_config()
-        st = await _get_state()
-        if st.get("paused"):
-            return
-        await _observe_roster()
-        bid = st.get("current_bounty_id")
-        b = await _db.bounties.find_one({"id": bid}, {"_id": 0}) if bid else None
-
-        if b and b["status"] == "active":
-            online = b["target_sid"] in _seen_since
-            if not online:
-                until_ms = _ts_ms() + cfg["disconnect_grace"] * 1000
-                await _db.bounties.update_one(
-                    {"id": b["id"], "status": "active"},
-                    {"$set": {"status": "suspended", "suspended_at": _iso(),
-                              "suspend_until_ms": until_ms}})
-                await hub.broadcast("bounty:target_disconnected", {
-                    "bountyId": b["id"], "targetName": b["target_name"],
-                    "suspendUntil": until_ms})
-                logger.info("[bounty] %s target disconnected -> suspended", b["id"])
-            return
-
-        if b and b["status"] == "suspended":
-            online = b["target_sid"] in _seen_since
-            if online:
-                await _db.bounties.update_one(
-                    {"id": b["id"], "status": "suspended"},
-                    {"$set": {"status": "active", "suspend_until_ms": None}})
-                await hub.broadcast("bounty:target_returned", {
-                    "bountyId": b["id"], "targetName": b["target_name"]})
-                logger.info("[bounty] %s target returned -> active", b["id"])
-            elif _ts_ms() >= (b.get("suspend_until_ms") or 0):
-                await _cancel(b, "target_disconnect_timeout", cfg, dodge=True)
-                logger.info("[bounty] %s cancelled (dodge)", b["id"])
-            return
-
-        # Sin bounty vivo: esperar cooldown y seleccionar.
-        if st["phase"] == "waiting":
-            next_at = st.get("next_at")
-            if next_at:
-                try:
-                    due = datetime.fromisoformat(next_at)
-                    if due.tzinfo is None:
-                        due = due.replace(tzinfo=timezone.utc)
-                    if _now() < due:
-                        return
-                except Exception:
-                    pass
-            await _select_target(cfg, st)
-        else:
-            await _set_state(phase="waiting", current_bounty_id=None, next_at=_iso())
+# ─────────────────────────── Auto-bounty ───────────────────────────
+async def start_self(uid: str, from_invite: bool = False) -> dict:
+    cfg = await get_config()
+    now = time.time()
+    if _self_cooldown_until.get(uid, 0) > now:
+        left = int(_self_cooldown_until[uid] - now)
+        raise HTTPException(400, f"Debes esperar {left // 60}m {left % 60}s para volver a ponerte precio")
+    existing = await _db.bounties.find_one({"type": "self", "status": "active", "holder_user_id": uid})
+    if existing:
+        raise HTTPException(400, "Ya tienes un auto-bounty activo")
+    info = await _user_info(uid) if _user_info else None
+    if not info:
+        raise HTTPException(400, "Usuario inválido")
+    holder_sid = str(info.get("steam_id") or "")
+    roster = await _roster()
+    tgt = next((p for p in roster if str(p.get("sid")) == holder_sid), None)
+    s = {
+        "id": _bid(), "type": "self", "status": "active",
+        "holder_user_id": uid, "holder_sid": holder_sid, "holder_name": info.get("name"),
+        "holder_species": (tgt or {}).get("species") or "Dinosaurio",
+        "holder_slug": (tgt or {}).get("slug"),
+        "prime_per_min": cfg["self_prime_per_min"], "killer_amber": cfg["self_killer_amber"],
+        "accrued_prime": 0, "from_invite": from_invite,
+        "started_at": _iso(), "started_at_ms": _ms(), "last_accrual_ms": _ms(),
+        "ends_at_ms": _ms() + cfg["self_max_seconds"] * 1000,
+        "killer_sid": None, "killer_name": None, "reward_processed": False,
+    }
+    await _db.bounties.insert_one(dict(s))
+    await hub.broadcast("bounty:self_started", _pub_self(s))
+    await hub.send_to(uid, "bounty:self_mine", _pub_self(s))
+    await _push_board()
+    asyncio.create_task(_discord({
+        "title": "🩸 PRECIO A SU PROPIA CABEZA",
+        "color": DARK_RED,
+        "description": (f"**{info.get('name')}** puso precio a su propia cabeza.\n\n"
+                        f"Gana 🥩 {_fmt(cfg['self_prime_per_min'])} PrimeMeat/min mientras siga vivo. "
+                        f"¡Quien lo elimine se lleva 🟠 {_fmt(cfg['self_killer_amber'])} Amberium!"),
+        "footer": {"text": f"BOUNTY ID • {s['id']}"}, "timestamp": _iso(),
+    }))
+    logger.info("[bounty] SELF %s uid=%s", s["id"], uid)
+    return _pub_self(s)
 
 
-async def on_kill(killer_sid: str, victim_sid: str, killer_name: str | None = None):
-    """Hook desde el drenaje de kills PVP del servidor. Solo llega aquí una muerte
-    PVP validada por el log del juego (nunca suicidio/natural/admin). La compleción
-    y la entrega de recompensa son ATÓMICAS e IDEMPOTENTES."""
+# ─────────────────────────── Validación de muerte ───────────────────────────
+async def on_kill(killer_sid: str, victim_sid: str, killer_name: str = None):
+    """Hook desde el drenaje de kills PVP. Completa contratos + auto-bounty del
+    objetivo muerto de forma atómica e idempotente."""
     killer_sid = str(killer_sid or "").strip()
     victim_sid = str(victim_sid or "").strip()
     if not killer_sid or not victim_sid or killer_sid == victim_sid:
         return
-    await _complete(victim_sid, killer_sid, killer_name)
+    async with _lock:
+        await _resolve_death(killer_sid, victim_sid, killer_name)
 
 
-async def _complete(victim_sid: str, killer_sid: str, killer_name: str | None) -> bool:
-    cfg = await get_config()
-    st = await _get_state()
-    bid = st.get("current_bounty_id")
-    if not bid:
-        return False
-    # Match atómico: solo si ESTE bounty está activo, es el objetivo, y NO fue
-    # procesado. reward_processed pasa a True en el MISMO update -> nadie más puede
-    # entrar (idempotencia contra eventos duplicados / concurrencia).
-    res = await _db.bounties.update_one(
-        {"id": bid, "status": "active", "target_sid": victim_sid,
-         "reward_processed": False},
-        {"$set": {"status": "completed", "reward_processed": True,
-                  "killer_sid": killer_sid, "killer_name": killer_name,
-                  "completed_at": _iso(), "completed_at_ms": _ts_ms()}})
-    if res.modified_count != 1:
-        return False
-    b = await _db.bounties.find_one({"id": bid}, {"_id": 0})
-    if killer_name is None:
-        killer_name = b.get("killer_name")
-    # Resolver killer -> usuario web y entregar recompensa (idempotente por el match).
+async def _resolve_death(killer_sid, victim_sid, killer_name):
     killer_uid = await _resolve_user_id(killer_sid) if _resolve_user_id else None
-    r = b["rewards"]
-    delivered = False
-    if killer_uid and _award_reward:
+    if killer_name is None and killer_uid and _user_info:
+        ki = await _user_info(killer_uid)
+        killer_name = (ki or {}).get("name")
+    if not killer_name:
+        killer_name = "Cazador"
+    changed = False
+    total_prime = total_amber = 0
+    target_name = None
+
+    # 1) Contratos sobre la víctima.
+    contracts = await _db.bounties.find(
+        {"type": "contract", "status": "active", "target_sid": victim_sid}, {"_id": 0}).to_list(500)
+    for c in contracts:
+        res = await _db.bounties.update_one(
+            {"id": c["id"], "status": "active", "reward_processed": False},
+            {"$set": {"status": "completed", "reward_processed": True,
+                      "killer_sid": killer_sid, "killer_name": killer_name,
+                      "killer_user_id": killer_uid, "completed_at": _iso(),
+                      "completed_at_ms": _ms()}})
+        if res.modified_count != 1:
+            continue
+        changed = True
+        target_name = c["target_name"]
+        r = c["reward"]
+        # Anti-exploit: si el que puso el contrato es quien mata, se reembolsa (no cobra).
+        if c["placer_sid"] and c["placer_sid"] == killer_sid:
+            await _refund_wallet(c["placer_user_id"], r["prime"], r["amber"], "Bounty: te reembolsamos (mataste a tu propio objetivo)")
+            await _db.bounties.update_one({"id": c["id"]}, {"$set": {"status": "cancelled", "cancel_reason": "self_kill"}})
+        else:
+            total_prime += r["prime"]
+            total_amber += r["amber"]
+    if killer_uid and (total_prime or total_amber):
+        await _award_reward(killer_uid, total_prime, total_amber, 0, "Bounty: contrato reclamado")
+    if _ingame_grant and (total_prime or total_amber):
         try:
-            await _award_reward(killer_uid, r["prime_meat"], r["amberium"],
-                                r["experience"], b["id"])
-            delivered = True
-        except Exception as e:
-            logger.warning("[bounty] award failed: %r", e)
-    # Intento in-game (best effort; se ignora si el mod está offline).
-    if _ingame_grant:
-        try:
-            _ingame_grant(killer_sid, r["prime_meat"], r["amberium"], r["experience"])
+            _ingame_grant(killer_sid, total_prime, total_amber, 0)
         except Exception:
             pass
-    await _db.bounties.update_one({"id": b["id"]},
-                                  {"$set": {"killer_user_id": killer_uid,
-                                            "reward_delivered": delivered}})
-    next_at = (_now() + timedelta(seconds=cfg["next_bounty_delay"])).isoformat()
-    await _set_state(phase="waiting", current_bounty_id=None, next_at=next_at)
-    b["killer_user_id"] = killer_uid
-    b["reward_delivered"] = delivered
-    pub = _public_bounty(b, cfg, next_at)
-    await hub.broadcast("bounty:completed", pub)
-    asyncio.create_task(_discord(_discord_done_embed(b)))
-    logger.info("[bounty] COMPLETED %s killer=%s delivered=%s", b["id"], killer_sid, delivered)
-    return True
+
+    # 2) Auto-bounty de la víctima.
+    self_b = await _db.bounties.find_one({"type": "self", "status": "active", "holder_sid": victim_sid}, {"_id": 0})
+    if self_b:
+        res = await _db.bounties.update_one(
+            {"id": self_b["id"], "status": "active", "reward_processed": False},
+            {"$set": {"status": "dead", "reward_processed": True, "killer_sid": killer_sid,
+                      "killer_name": killer_name, "killer_user_id": killer_uid,
+                      "ended_at": _iso(), "ended_at_ms": _ms()}})
+        if res.modified_count == 1:
+            changed = True
+            target_name = target_name or self_b["holder_name"]
+            _self_cooldown_until[self_b["holder_user_id"]] = time.time() + (await get_config())["self_cooldown"]
+            amber = self_b.get("killer_amber", 0)
+            if killer_uid and amber:
+                await _award_reward(killer_uid, 0, amber, 0, "Bounty: auto-bounty eliminado")
+                total_amber += amber
+            if _ingame_grant and amber:
+                try:
+                    _ingame_grant(killer_sid, 0, amber, 0)
+                except Exception:
+                    pass
+            await hub.send_to(self_b["holder_user_id"], "bounty:self_ended",
+                              {**_pub_self(self_b), "reason": "killed", "killerName": killer_name})
+
+    if changed:
+        await hub.broadcast("bounty:completed", {
+            "targetName": target_name, "killerName": killer_name,
+            "reward": {"primeMeat": total_prime, "amberium": total_amber}})
+        await _push_board()
+        asyncio.create_task(_discord(_discord_completed(
+            target_name, killer_name, total_prime, total_amber, "múltiple")))
+        logger.info("[bounty] KILL victim=%s killer=%s prime=%s amber=%s",
+                    victim_sid, killer_sid, total_prime, total_amber)
 
 
-# ─────────────────────────── Simulación (preview) ───────────────────────────
-_SIM_DINOS = [
-    ("Tyrannosaurus", "trex"), ("Spinosaurus", "spino"), ("Allosaurus", "allo"),
-    ("Carnotaurus", "carno"), ("Austroraptor", "austro"), ("Ceratosaurus", "cerato"),
-    ("Deinosuchus", "deino"), ("Triceratops", "trike"), ("Dilophosaurus", "dilo"),
-    ("Herrerasaurus", "herrera"),
-]
-_SIM_NAMES = ["YonduSkywalker", "Bluecito", "RaptorKing", "DonDino", "ElCarnicero",
-              "LaBestia", "NubladoMX", "TorvoLATAM", "AlfaMacho", "ReinaRex",
-              "CazadorNocturno", "GarraVeloz"]
-_sim_players: list = []
-_sim_next_kill = 0.0
+# ─────────────────────────── Loops ───────────────────────────
+async def _accrual_tick():
+    """Acredita PrimeMeat por minuto a los auto-bounties vivos y expira los vencidos
+    o los contratos vencidos (reembolsando al que los puso)."""
+    now = _ms()
+    roster = await _roster()
+    online_sids = {str(p.get("sid")) for p in roster if p.get("alive", True)}
+    sim = getattr(_roster, "_last_sim", False)
+
+    # Contratos vencidos -> reembolso.
+    expired = await _db.bounties.find(
+        {"type": "contract", "status": "active", "expires_at_ms": {"$lte": now}}, {"_id": 0}).to_list(500)
+    for c in expired:
+        res = await _db.bounties.update_one({"id": c["id"], "status": "active"},
+                                            {"$set": {"status": "expired", "ended_at": _iso()}})
+        if res.modified_count == 1:
+            r = c["reward"]
+            await _refund_wallet(c["placer_user_id"], r["prime"], r["amber"], "Bounty: reembolso por expiración")
+    if expired:
+        await _push_board()
+
+    # Auto-bounties: acreditar por minuto / expirar.
+    selfs = await _db.bounties.find({"type": "self", "status": "active"}, {"_id": 0}).to_list(200)
+    for s in selfs:
+        if now >= s.get("ends_at_ms", 0):
+            res = await _db.bounties.update_one({"id": s["id"], "status": "active"},
+                                                {"$set": {"status": "expired", "ended_at": _iso(), "ended_at_ms": now}})
+            if res.modified_count == 1:
+                _self_cooldown_until[s["holder_user_id"]] = time.time() + (await get_config())["self_cooldown"]
+                await hub.send_to(s["holder_user_id"], "bounty:self_ended", {**_pub_self(s), "reason": "expired"})
+                await hub.broadcast("bounty:self_expired", {"bountyId": s["id"], "holderName": s["holder_name"]})
+                await _push_board()
+            continue
+        alive = sim or (s.get("holder_sid") in online_sids)
+        if not alive:
+            # Pausar acumulación mientras esté offline (no acredita tiempo ausente).
+            await _db.bounties.update_one({"id": s["id"]}, {"$set": {"last_accrual_ms": now}})
+            continue
+        minutes = int((now - s.get("last_accrual_ms", now)) // 60000)
+        if minutes >= 1:
+            gain = minutes * s["prime_per_min"]
+            new_last = s["last_accrual_ms"] + minutes * 60000
+            r2 = await _db.bounties.update_one(
+                {"id": s["id"], "status": "active"},
+                {"$inc": {"accrued_prime": gain}, "$set": {"last_accrual_ms": new_last}})
+            if r2.modified_count == 1:
+                await _award_reward(s["holder_user_id"], gain, 0, 0, "Bounty: supervivencia con precio a tu cabeza")
+                if _ingame_grant:
+                    try:
+                        _ingame_grant(s["holder_sid"], gain, 0, 0)
+                    except Exception:
+                        pass
+                s2 = await _db.bounties.find_one({"id": s["id"]}, {"_id": 0})
+                await hub.send_to(s["holder_user_id"], "bounty:self_tick", _pub_self(s2))
 
 
-def _sim_roster() -> list:
-    global _sim_players, _sim_next_kill
-    if not _sim_players:
-        rng = random.Random(4207)
-        picks = rng.sample(range(len(_SIM_NAMES)), 9)
-        for i, idx in enumerate(picks):
-            dino, slug = _SIM_DINOS[i % len(_SIM_DINOS)]
-            _sim_players.append({
-                "sid": str(76561190000000000 + idx * 1337 + 11),
-                "name": _SIM_NAMES[idx], "species": dino, "slug": slug, "alive": True})
-        _sim_next_kill = time.time() + random.uniform(35, 70)
-    return [dict(p) for p in _sim_players]
-
-
-async def _sim_autokill_loop():
-    """Solo en modo simulación: completa el bounty activo tras un rato para que el
-    flujo completo (nuevo -> activo -> completado -> espera) se vea en el preview."""
-    global _sim_next_kill
-    while True:
-        await asyncio.sleep(6)
-        try:
-            if _online_provider:
-                real = await _online_provider()
-                if real is not None:
-                    continue  # juego real conectado -> no auto-kill
-            st = await _get_state()
-            if st.get("paused") or not st.get("current_bounty_id"):
-                continue
-            b = await _db.bounties.find_one({"id": st["current_bounty_id"]}, {"_id": 0})
-            if not b or b["status"] != "active":
-                continue
-            if time.time() < _sim_next_kill:
-                continue
-            roster = _sim_roster()
-            killers = [p for p in roster if str(p["sid"]) != b["target_sid"]]
-            if not killers:
-                continue
-            k = random.choice(killers)
-            _sim_next_kill = time.time() + random.uniform(40, 75)
-            await _complete(b["target_sid"], str(k["sid"]), k["name"])
-        except Exception as e:
-            logger.warning("[bounty] sim autokill: %r", e)
+async def _invite_tick():
+    """Ofrece aleatoriamente a un jugador online de la web ponerse precio. Fuerte
+    protección para que sea muy raro que le toque a la misma persona."""
+    if _paused:
+        return
+    cfg = await get_config()
+    online = hub.online_web_uids()
+    if not online:
+        return
+    now = time.time()
+    # Excluir a quien ya tiene auto-bounty activo o está en cooldown.
+    busy = set()
+    active_selfs = await _db.bounties.find({"type": "self", "status": "active"}, {"holder_user_id": 1}).to_list(200)
+    busy.update(x["holder_user_id"] for x in active_selfs)
+    for uid in list(_self_cooldown_until):
+        if _self_cooldown_until[uid] > now:
+            busy.add(uid)
+    recent = set(list(_invite_recent)[-cfg["invite_recent_protection"]:])
+    fresh = [u for u in online if u not in busy and u not in recent]
+    pool = fresh if fresh else [u for u in online if u not in busy]
+    if not pool:
+        return
+    uid = random.choice(pool)
+    _invite_recent.append(uid)
+    payload = {"primePerMin": cfg["self_prime_per_min"], "durationMin": cfg["self_max_seconds"] // 60,
+               "killerAmber": cfg["self_killer_amber"], "ttl": cfg["invite_ttl"],
+               "expiresAt": _ms() + cfg["invite_ttl"] * 1000}
+    await hub.send_to(uid, "bounty:self_invite", payload)
+    try:
+        await _db.bounty_invite_log.insert_one({"id": _bid(), "uid": uid, "at": _iso()})
+    except Exception:
+        pass
+    logger.info("[bounty] self-invite -> %s", uid)
 
 
 async def _main_loop():
     while True:
         try:
-            await _tick()
+            if not _paused:
+                async with _lock:
+                    await _accrual_tick()
         except Exception as e:
-            logger.warning("[bounty] tick: %r", e)
-        await asyncio.sleep(6)
+            logger.warning("[bounty] accrual tick: %r", e)
+        await asyncio.sleep(10)
+
+
+async def _invite_loop():
+    await asyncio.sleep(30)
+    while True:
+        try:
+            await _invite_tick()
+        except Exception as e:
+            logger.warning("[bounty] invite tick: %r", e)
+        cfg = await get_config()
+        await asyncio.sleep(max(30, cfg["invite_interval"]))
+
+
+# ─────────────────────────── Simulación (preview) ───────────────────────────
+_SIM_DINOS = [("Tyrannosaurus", "trex"), ("Spinosaurus", "spino"), ("Allosaurus", "allo"),
+              ("Carnotaurus", "carno"), ("Austroraptor", "austro"), ("Ceratosaurus", "cerato"),
+              ("Deinosuchus", "deino"), ("Triceratops", "trike"), ("Dilophosaurus", "dilo"),
+              ("Herrerasaurus", "herrera")]
+_SIM_NAMES = ["YonduSkywalker", "Bluecito", "RaptorKing", "DonDino", "ElCarnicero", "LaBestia",
+              "NubladoMX", "TorvoLATAM", "AlfaMacho", "ReinaRex", "CazadorNocturno", "GarraVeloz"]
+_sim_players: list = []
+
+
+def _sim_roster() -> list:
+    global _sim_players
+    _roster._last_sim = True
+    if not _sim_players:
+        rng = random.Random(4207)
+        idxs = rng.sample(range(len(_SIM_NAMES)), 10)
+        for i, idx in enumerate(idxs):
+            dino, slug = _SIM_DINOS[i % len(_SIM_DINOS)]
+            _sim_players.append({"sid": str(76561190000000000 + idx * 1337 + 11),
+                                 "name": _SIM_NAMES[idx], "species": dino, "slug": slug, "alive": True})
+    return [dict(p) for p in _sim_players]
 
 
 # ─────────────────────────── Wiring ───────────────────────────
-def configure(db, *, admin_ids, online_provider, award_reward, resolve_user_id,
-              ingame_grant=None, jwt_secret="", jwt_algo="HS256"):
-    global _db, _admin_ids, _online_provider, _award_reward, _resolve_user_id
-    global _ingame_grant, _jwt_secret, _jwt_algo
+def configure(db, *, admin_ids, online_provider, resolve_user_id, user_info,
+              charge_wallet, refund_wallet, award_reward, ingame_grant=None,
+              jwt_secret="", jwt_algo="HS256"):
+    global _db, _admin_ids, _online_provider, _resolve_user_id, _user_info
+    global _charge_wallet, _refund_wallet, _award_reward, _ingame_grant, _jwt_secret, _jwt_algo
     _db = db
     _admin_ids = set(admin_ids or [])
     _online_provider = online_provider
-    _award_reward = award_reward
     _resolve_user_id = resolve_user_id
+    _user_info = user_info
+    _charge_wallet = charge_wallet
+    _refund_wallet = refund_wallet
+    _award_reward = award_reward
     _ingame_grant = ingame_grant
     _jwt_secret = jwt_secret
     _jwt_algo = jwt_algo
@@ -570,92 +667,138 @@ def configure(db, *, admin_ids, online_provider, award_reward, resolve_user_id,
 async def ensure_indexes():
     try:
         await _db.bounties.create_index("id", unique=True)
-        await _db.bounties.create_index([("status", 1)])
+        await _db.bounties.create_index([("type", 1), ("status", 1)])
+        await _db.bounties.create_index([("target_sid", 1), ("status", 1)])
+        await _db.bounties.create_index([("holder_user_id", 1), ("status", 1)])
+        await _db.bounties.create_index([("placer_user_id", 1), ("status", 1)])
         await _db.bounties.create_index([("created_at", -1)])
-        await _db.bounty_dodge_log.create_index([("at", -1)])
-        await _get_state()
     except Exception:
         logger.warning("[bounty] index init skipped", exc_info=True)
 
 
 def start_loops():
     asyncio.create_task(_main_loop())
-    asyncio.create_task(_sim_autokill_loop())
+    asyncio.create_task(_invite_loop())
+
+
+class ContractIn(BaseModel):
+    target_sid: str
+    prime: int
+    amber: int = 0
+
+
+class CancelIn(BaseModel):
+    bounty_id: str
 
 
 class ConfigIn(BaseModel):
-    prime_meat: int | None = None
-    experience: int | None = None
-    amberium: int | None = None
-    next_bounty_delay: int | None = None
-    minimum_online_time: int | None = None
-    recent_target_protection: int | None = None
-    disconnect_grace: int | None = None
+    min_contract_prime: int | None = None
+    min_contract_amber: int | None = None
+    contract_duration: int | None = None
+    self_prime_per_min: int | None = None
+    self_max_seconds: int | None = None
+    self_killer_amber: int | None = None
+    self_cooldown: int | None = None
+    invite_interval: int | None = None
+    invite_recent_protection: int | None = None
+    invite_ttl: int | None = None
+    max_contracts_per_user: int | None = None
 
 
 class SimKillIn(BaseModel):
-    killer_sid: str | None = None
+    target_sid: str
 
 
 def build_router(get_current_user, get_admin_user):
     router = APIRouter()
 
-    @router.get("/bounty/current")
-    async def current():
-        return await snapshot()
-
     @router.get("/bounty/config")
     async def config():
         return await get_config()
 
+    @router.get("/bounty/board")
+    async def board():
+        return await snapshot()
+
+    @router.get("/bounty/targets")
+    async def targets(user=Depends(get_current_user)):
+        roster = await _roster()
+        my_sid = str((user or {}).get("steam_id") or "")
+        contracts = await _db.bounties.find({"type": "contract", "status": "active"}, {"_id": 0}).to_list(500)
+        totals = {}
+        for c in contracts:
+            t = totals.setdefault(c["target_sid"], {"prime": 0, "amber": 0, "count": 0})
+            t["prime"] += c["reward"]["prime"]
+            t["amber"] += c["reward"]["amber"]
+            t["count"] += 1
+        out = []
+        for p in roster:
+            sid = str(p.get("sid"))
+            t = totals.get(sid, {"prime": 0, "amber": 0, "count": 0})
+            out.append({
+                "sid": sid, "name": p.get("name"), "species": p.get("species"),
+                "slug": p.get("slug"), "alive": p.get("alive", True),
+                "isMe": bool(my_sid) and sid == my_sid,
+                "bounty": {"primeMeat": t["prime"], "amberium": t["amber"], "count": t["count"]},
+            })
+        # Los que ya tienen bounty primero, luego alfabético.
+        out.sort(key=lambda x: (-x["bounty"]["primeMeat"], x["name"] or ""))
+        return {"targets": out, "simulated": getattr(_roster, "_last_sim", False)}
+
+    @router.get("/bounty/mine")
+    async def mine(user=Depends(get_current_user)):
+        uid = user["id"]
+        contracts = await _db.bounties.find(
+            {"type": "contract", "placer_user_id": uid, "status": "active"}, {"_id": 0}
+        ).sort("created_at", -1).to_list(50)
+        self_b = await _db.bounties.find_one({"type": "self", "holder_user_id": uid, "status": "active"}, {"_id": 0})
+        now = time.time()
+        cd = _self_cooldown_until.get(uid, 0)
+        return {
+            "contracts": [_pub_contract(c) for c in contracts],
+            "self": _pub_self(self_b) if self_b else None,
+            "selfCooldownLeft": max(0, int(cd - now)),
+            "wallet": {"coins": user.get("coins", 0), "vip_coins": user.get("vip_coins", 0)},
+        }
+
     @router.get("/bounty/history")
-    async def history(limit: int = 15):
-        limit = max(1, min(50, int(limit)))
+    async def history(limit: int = 20):
+        limit = max(1, min(60, int(limit)))
         rows = await _db.bounties.find(
-            {"status": {"$in": ["completed", "cancelled"]}}, {"_id": 0}
+            {"type": {"$in": ["contract", "self"]},
+             "status": {"$in": ["completed", "dead", "expired", "cancelled"]}}, {"_id": 0}
         ).sort("created_at", -1).limit(limit).to_list(limit)
-        cfg = await get_config()
-        return {"items": [_public_bounty(r, cfg) for r in rows]}
+        out = []
+        for r in rows:
+            out.append(_pub_self(r) if r["type"] == "self" else _pub_contract(r))
+        return {"items": out}
+
+    @router.post("/bounty/contract")
+    async def contract(data: ContractIn, user=Depends(get_current_user)):
+        return await place_contract(user["id"], data.target_sid, data.prime, data.amber)
+
+    @router.post("/bounty/contract/cancel")
+    async def contract_cancel(data: CancelIn, user=Depends(get_current_user)):
+        return await cancel_contract(user["id"], data.bounty_id)
+
+    @router.post("/bounty/self/start")
+    async def self_start(user=Depends(get_current_user)):
+        return await start_self(user["id"], from_invite=False)
+
+    @router.post("/bounty/self/accept-invite")
+    async def self_accept(user=Depends(get_current_user)):
+        return await start_self(user["id"], from_invite=True)
 
     # ── Admin ──
-    @router.post("/bounty/admin/force-new")
-    async def force_new(admin=Depends(get_admin_user)):
-        async with _loop_lock:
-            cfg = await get_config()
-            st = await _get_state()
-            bid = st.get("current_bounty_id")
-            if bid:
-                b = await _db.bounties.find_one({"id": bid}, {"_id": 0})
-                if b and b["status"] in ("active", "suspended"):
-                    await _cancel(b, "admin_force_new", cfg)
-                    st = await _get_state()
-            b = await _select_target(cfg, st)
-        return {"ok": True, "bounty": _public_bounty(b, cfg) if b else None}
-
-    @router.post("/bounty/admin/pause")
-    async def pause(admin=Depends(get_admin_user)):
-        await _set_state(paused=True)
-        await hub.broadcast("bounty:paused", {"paused": True})
-        return {"ok": True, "paused": True}
-
-    @router.post("/bounty/admin/resume")
-    async def resume(admin=Depends(get_admin_user)):
-        await _set_state(paused=False, phase="waiting", next_at=_iso())
-        await hub.broadcast("bounty:paused", {"paused": False})
-        return {"ok": True, "paused": False}
-
-    @router.post("/bounty/admin/cancel")
-    async def cancel(admin=Depends(get_admin_user)):
-        cfg = await get_config()
-        st = await _get_state()
-        bid = st.get("current_bounty_id")
-        if not bid:
-            return {"ok": True, "cancelled": False}
-        b = await _db.bounties.find_one({"id": bid}, {"_id": 0})
-        if b and b["status"] in ("active", "suspended"):
-            await _cancel(b, "admin_cancel", cfg)
-            return {"ok": True, "cancelled": True}
-        return {"ok": True, "cancelled": False}
+    @router.post("/bounty/admin/simulate-kill")
+    async def simulate_kill(data: SimKillIn, admin=Depends(get_admin_user)):
+        """Simula una muerte válida del objetivo (para probar sin el juego real)."""
+        roster = await _roster()
+        killer = next((p for p in roster if str(p["sid"]) != str(data.target_sid)), None)
+        killer_sid = str(killer["sid"]) if killer else str(int(data.target_sid) + 1)
+        killer_name = (killer or {}).get("name")
+        await on_kill(killer_sid, str(data.target_sid), killer_name)
+        return {"ok": True, "killer": killer_name}
 
     @router.post("/bounty/admin/config")
     async def set_config(data: ConfigIn, admin=Depends(get_admin_user)):
@@ -666,39 +809,41 @@ def build_router(get_current_user, get_admin_user):
         await hub.broadcast("bounty:config", cfg)
         return {"ok": True, "config": cfg}
 
-    @router.post("/bounty/admin/simulate-kill")
-    async def simulate_kill(data: SimKillIn, admin=Depends(get_admin_user)):
-        """Completa el bounty activo simulando una muerte válida (para probar el
-        flujo end-to-end sin el servidor de juego real)."""
-        st = await _get_state()
-        bid = st.get("current_bounty_id")
-        if not bid:
-            return {"ok": False, "detail": "No hay bounty activo"}
-        b = await _db.bounties.find_one({"id": bid}, {"_id": 0})
-        if not b or b["status"] != "active":
-            return {"ok": False, "detail": "El bounty no está activo"}
-        killer_sid = (data.killer_sid or "").strip()
-        killer_name = None
-        if not killer_sid:
-            roster = await _observe_roster()
-            cand = [p for p in roster if str(p["sid"]) != b["target_sid"]]
-            if cand:
-                pick = random.choice(cand)
-                killer_sid, killer_name = str(pick["sid"]), pick.get("name")
-            else:
-                killer_sid = str(int(b["target_sid"]) + 1)
-                killer_name = "Cazador"
-        ok = await _complete(b["target_sid"], killer_sid, killer_name)
-        return {"ok": ok}
+    @router.post("/bounty/admin/pause")
+    async def pause(admin=Depends(get_admin_user)):
+        global _paused
+        _paused = True
+        return {"ok": True, "paused": True}
 
-    # ── WebSocket público (sin polling) ──
+    @router.post("/bounty/admin/resume")
+    async def resume(admin=Depends(get_admin_user)):
+        global _paused
+        _paused = False
+        return {"ok": True, "paused": False}
+
     @router.websocket("/bounty/ws")
     async def bounty_ws(ws: WebSocket):
         await ws.accept()
+        uid = None
+        info = None
+        token = ws.query_params.get("token")
+        if token:
+            try:
+                uid = jwt.decode(token, _jwt_secret, algorithms=[_jwt_algo]).get("sub")
+            except Exception:
+                uid = None
+        if uid:
+            try:
+                u = await _db.users.find_one({"id": uid}, {"_id": 0, "persona_name": 1, "avatar": 1, "steam_id": 1})
+                if u:
+                    info = {"name": u.get("persona_name"), "avatar": u.get("avatar"), "steam_id": u.get("steam_id")}
+                else:
+                    uid = None
+            except Exception:
+                uid = None
         try:
-            await hub.add(ws)
-            snap = await snapshot()
-            await ws.send_json({"event": "bounty:state", "data": snap})
+            await hub.add(ws, uid, info)
+            await ws.send_json({"event": "bounty:state", "data": await snapshot()})
             while True:
                 msg = await ws.receive_text()
                 if msg == "ping":

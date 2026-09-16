@@ -43,6 +43,8 @@ const BountyOverlay = React.lazy(() => import("@/pages/BountyOverlay"));
 import CreatorNotifier from "@/components/creator/CreatorNotifier";
 import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
 import { BountyWidget } from "@/components/bounty/BountyWidget";
+import { BountySelfInvite } from "@/components/bounty/BountySelfInvite";
+import { BountyProvider } from "@/context/BountyContext";
 
 function PageFallback() {
   return (
@@ -150,6 +152,7 @@ function App() {
         <CartProvider>
           <LiveSimProvider>
           <BrowserRouter>
+            <BountyProvider>
             <ScrollToTop />
             <Layout>
               <AnimatedRoutes />
@@ -159,6 +162,7 @@ function App() {
             <CreatorNotifier />
             <CelebrationOverlay />
             <BountyWidget />
+            <BountySelfInvite />
             <LiveTicker />
             <Toaster
               position="bottom-right"
@@ -173,6 +177,7 @@ function App() {
                 },
               }}
             />
+            </BountyProvider>
           </BrowserRouter>
           </LiveSimProvider>
         </CartProvider>

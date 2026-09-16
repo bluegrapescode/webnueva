@@ -1,115 +1,164 @@
 {
-  "page_target": "/app/frontend/src/pages/ProximityVoice.jsx",
-  "brand_identity": {
-    "community": "The Isle: Evrima LATAM",
-    "theme_description": "Dark, tactical military radio rack & pro audio comms console. Blends military comms hardware (tactical keycaps, dark olive anodized aluminum plates, LCD telemetry, LED signal meters) with pro audio mixing interfaces.",
-    "anti_patterns": [
-      "DO NOT re-introduce any radar, sonar, or circular map sweep visual",
-      "No generic centered card layouts or plain light forms",
-      "No transparent dropdown/modal overlays without solid/glass backgrounds",
-      "No missing data-testid attributes on interactive elements"
-    ]
+  "theme": {
+    "mode": "dark",
+    "name": "Cinematic Carbon & Blood Amber (La Isla Nublar)",
+    "description": "Dark, cinematic, tactical gaming atmosphere inspired by Fortnite shop depth and high-risk dinosaur survival bounties."
   },
-  "color_palette": {
-    "background_primary": "#0B0D09",
-    "background_shell": "linear-gradient(180deg, #1C2016 0%, #11140D 100%)",
-    "plate_dark": "#070A05",
-    "border_tactical": "rgba(124, 168, 66, 0.28)",
-    "olive_primary": "#7CA842",
-    "lime_soft": "#A3C96B",
-    "olive_deep": "#3A4B20",
-    "amber_gold": "#F0B429",
-    "amber_soft": "#DCE7C4",
-    "crimson_danger": "#E24A4A",
-    "text_primary": "#E2E8F0",
-    "text_muted": "#8C967A",
-    "lcd_glow": "0 0 12px rgba(163, 201, 107, 0.45)"
+  "colors": {
+    "background_primary": "#0A0A0C",
+    "background_secondary": "#12131A",
+    "background_card": "#161822",
+    "background_card_elevated": "#1E202E",
+    "border_subtle": "rgba(255, 255, 255, 0.08)",
+    "border_danger": "rgba(225, 29, 42, 0.4)",
+    "border_amber": "rgba(240, 180, 41, 0.4)",
+    "accent_danger_red": "#E11D2A",
+    "accent_danger_red_glow": "rgba(225, 29, 42, 0.25)",
+    "accent_amberium_gold": "#F0B429",
+    "accent_amberium_amber": "#FF9F1C",
+    "accent_primemeat_green": "#22C55E",
+    "accent_primemeat_emerald": "#10B981",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#94A3B8",
+    "text_muted": "#64748B",
+    "text_danger": "#FF4D4D",
+    "text_amber": "#FBBF24"
   },
   "typography": {
-    "font_display": "'Cabinet Grotesk', 'Clash Display', sans-serif",
-    "font_body": "'Manrope', system-ui, sans-serif",
-    "font_mono": "'JetBrains Mono', ui-monospace, monospace",
+    "font_heading": "'Montserrat', 'Barlow Condensed', sans-serif",
+    "font_body": "'Inter', system-ui, sans-serif",
+    "font_mono": "'JetBrains Mono', monospace",
     "scale": {
-      "page_title": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight font-display",
-      "section_header": "text-lg sm:text-xl font-extrabold tracking-wide font-display text-amber_soft",
-      "overline": "text-[11px] font-bold tracking-[0.2em] uppercase font-mono text-lime_soft",
-      "lcd_value": "text-2xl sm:text-3xl font-extrabold tracking-wider font-mono text-lime_soft",
-      "player_name": "text-sm font-bold tracking-tight text-foreground font-sans",
-      "telemetry_text": "text-[11px] font-mono text-muted-foreground"
+      "hero_title": "text-3xl md:text-5xl font-black uppercase tracking-wider",
+      "section_title": "text-xl md:text-3xl font-bold uppercase tracking-wide",
+      "card_title": "text-lg md:text-xl font-extrabold uppercase tracking-tight",
+      "stat_value": "text-base md:text-lg font-bold font-mono",
+      "stat_label": "text-xs uppercase font-semibold text-slate-400 tracking-widest",
+      "badge": "text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded"
     }
   },
-  "layout_architecture": {
-    "grid_structure": "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-7xl mx-auto px-4 sm:px-6 py-10",
-    "column_left_console": "lg:col-span-5 space-y-5",
-    "column_right_roster": "lg:col-span-7 space-y-5",
-    "sections": {
-      "header_hero": {
-        "title": "Radio de Proximidad",
-        "subtitle": "Canal de voz espacial en tiempo real · The Isle: Evrima LATAM",
-        "quick_actions": ["Power Switch (Encender/Apagar)", "Live Connection Telemetry Chip", "Quick Mute All Trigger"]
+  "layout_and_grids": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8",
+    "hero_spotlight": "w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch",
+    "main_board_layout": "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start",
+    "bounty_grid_area": "lg:col-span-8 space-y-6",
+    "online_targets_sidebar": "lg:col-span-4 space-y-6 sticky top-20",
+    "bounty_cards_grid": "grid grid-cols-1 sm:grid-cols-2 gap-5",
+    "fortnite_style_card_aspect": "flex flex-col h-full rounded-xl border border-white/10 bg-slate-900/80 backdrop-blur-md overflow-hidden hover:border-red-500/50 transition-all duration-300 shadow-xl relative"
+  },
+  "visual_enhancers": {
+    "card_glassmorphism": "bg-slate-950/70 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)]",
+    "wanted_stamp": "uppercase tracking-widest border-2 border-red-600/80 text-red-500 bg-red-950/40 px-3 py-1 font-black text-xs transform -rotate-2 rounded shadow-inner",
+    "contract_bounty_glow": "shadow-[0_0_25px_rgba(225,29,42,0.15)] hover:shadow-[0_0_35px_rgba(225,29,42,0.35)] border-red-600/30 hover:border-red-500/80",
+    "self_bounty_glow": "shadow-[0_0_25px_rgba(240,180,41,0.15)] hover:shadow-[0_0_35px_rgba(240,180,41,0.35)] border-amber-500/30 hover:border-amber-400/80",
+    "scanline_overlay": "pointer-events-none absolute inset-0 bg-[radial-gradient(#e11d2a_1px,transparent_1px)] [background-size:16px_16px] opacity-10",
+    "animated_pulse": "animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+  },
+  "bounty_card_blueprint": {
+    "card_types": [
+      {
+        "type": "CONTRACT_BOUNTY",
+        "visual_archetype": "Wanted Poster Tactical Holo Card",
+        "badge_label": "☠️ CONTRATO GLOBAL",
+        "badge_style": "bg-red-950/80 text-red-400 border border-red-600/40",
+        "key_elements": [
+          "Header banner: Wanted Stamp + Bounty ID + Threat Rank Badge (#1 MOST WANTED, AMENAZA ALTA)",
+          "Dinosaur Avatar Visual: High-res render of target dino (T-Rex, Deino, Spino, Carno) with species badge & growth stage progress bar (e.g., 'Adult • 100% Growth')",
+          "Target Player Info: Player Name, Steam/Server ID, Last Known Location/Region (e.g., 'Spiro Jungle / Swamp')",
+          "Bounty Pool Breakdown: Dual currency display - Total Amberium (💎 Gold) + PrimeMeat (🥩 Green)",
+          "Crowdfund/Funders Indicator: Number of contractors who contributed (e.g., '👥 6 Contratistas')",
+          "Countdown Timer: Expiration timer with pulsating warning under 1 hour",
+          "Issuer Info: 'Contrato iniciado por [Name]'",
+          "Action Button: 'RECLAMAR CACERÍA' / 'APOYAR BOUNTY' with amber glow on hover"
+        ]
       },
-      "left_transceiver_panel": {
-        "lcd_display_deck": "Dark olive anodized bevel container containing frequency status, live status (EN LÍNEA / FUERA DE LÍNEA), range in meters, active speakers count, and precision multi-segment LED VU meter",
-        "mic_mode_deck": "Tactical dual selector (Pulsar para hablar vs Micrófono abierto) with keycap indicator",
-        "ptt_key_binding_row": "Interactive key binding selector chips (Espacio, V, T, C)",
-        "master_ptt_keycap_button": "Heavyweight military grade PTT keycap trigger button with hold state animations and glowing border",
-        "master_volume_dock": "Master output Gain Fader / Slider + (-/+) step adjustment buttons + 'Silenciar a todos' emergency switch",
-        "spatial_dials_deck": "Dual rotary precision dials for 'Nitidez' (spatial falloff exponent) and 'Alcance' (hearing distance in meters)"
-      },
-      "right_spatial_roster": {
-        "header_bar": "Roster telemetry header showing active transmitters in spatial range vs out-of-range signal count",
-        "in_range_section": "Interactive channel cards for each nearby player with signal strength meter, speaker icon with pulse effect when talking, dino species & live distance, per-player volume slider, and per-player mute toggle",
-        "out_of_range_section": "Dimmed telemetry rows for players beyond hearing radius showing distance and out-of-reach status",
-        "empty_states": "Tactical placeholder for offline state and empty in-range state with helpful adjustment hints"
+      {
+        "type": "SELF_BOUNTY",
+        "visual_archetype": "Survival Golden Challenger Card",
+        "badge_label": "🔥 AUTODESAFÍO SOBREVIVIENTE",
+        "badge_style": "bg-amber-950/80 text-amber-300 border border-amber-500/40",
+        "key_elements": [
+          "Header banner: GOLDEN TARGET STAMP + Live Earnings Counter",
+          "Dinosaur Avatar Visual: Target player's active dinosaur render with Golden Aura filter",
+          "Live Meter: '🥩 PrimeMeat Acumulado: +120 🥩 (+15 🥩/min)'",
+          "Bounty Reward for Killer: 'Recompensa para el cazador: 2,500 Amberium'",
+          "Timer survived: 'Tiempo Sobrevivido: 48m / 60m' with active animated progress bar",
+          "Live Telemetry Status: '📍 Coordenadas Transmitidas en Vivo'",
+          "Action Buttons: 'AUMENTAR RECOMPENSA' or 'DESAFÍAR'"
+        ]
       }
+    ]
+  },
+  "media": {
+    "dino_renders": {
+      "trex": "/renders/trex.png",
+      "allo": "/renders/allo.png",
+      "carno": "/renders/carno.png",
+      "deino": "/renders/deino.png",
+      "cerato": "/renders/cerato.png",
+      "raptor": "/renders/raptor.png",
+      "stego": "/renders/stego.png",
+      "diablo": "/renders/diablo.png"
+    },
+    "currency_icons": {
+      "amber": "/coins/amber.png",
+      "meat": "/coins/meat.png",
+      "fossil": "/fossil.png"
     }
   },
-  "key_components_and_testids": {
-    "voice_connect": "data-testid=\"voice-connect\"",
-    "voice_disconnect": "data-testid=\"voice-disconnect\"",
-    "voice_inrange_count": "data-testid=\"voice-inrange-count\"",
-    "voice_participant_count": "data-testid=\"voice-participant-count\"",
-    "voice_panel": "data-testid=\"voice-panel\"",
-    "voice_mic_meter": "data-testid=\"voice-mic-meter\"",
-    "voice_mic_mode_ptt": "data-testid=\"voice-mic-mode-ptt\"",
-    "voice_mic_mode_open": "data-testid=\"voice-mic-mode-open\"",
-    "voice_ptt_key_row": "data-testid=\"voice-ptt-key-row\"",
-    "voice_ptt_keys": "data-testid=\"voice-ptt-key-{code}\"",
-    "voice_ptt_button": "data-testid=\"voice-ptt-button\"",
-    "voice_mute_toggle": "data-testid=\"voice-mute-toggle\"",
-    "voice_mic_mute_ptt": "data-testid=\"voice-mic-mute-ptt\"",
-    "voice_master_control": "data-testid=\"voice-master-control\"",
-    "voice_master_value": "data-testid=\"voice-master-value\"",
-    "voice_master_minus": "data-testid=\"voice-master-minus\"",
-    "voice_master_plus": "data-testid=\"voice-master-plus\"",
-    "voice_set_master": "data-testid=\"voice-set-master\"",
-    "voice_mute_all": "data-testid=\"voice-mute-all\"",
-    "voice_set_exponent": "data-testid=\"voice-set-exponent\"",
-    "voice_set_exponent_value": "data-testid=\"voice-set-exponent-value\"",
-    "voice_set_hearing": "data-testid=\"voice-set-hearing\"",
-    "voice_set_hearing_value": "data-testid=\"voice-set-hearing-value\"",
-    "voice_participants_list": "data-testid=\"voice-participants-list\"",
-    "voice_participant_card": "data-testid=\"voice-participant-{id}\"",
-    "voice_persona_name": "data-testid=\"voice-persona-{id}\"",
-    "voice_range_telemetry": "data-testid=\"voice-range-{id}\"",
-    "voice_speaking_indicator": "data-testid=\"voice-speaking-{id}\"",
-    "voice_signal_meter": "data-testid=\"voice-signal\"",
-    "voice_speaker_vol": "data-testid=\"voice-speaker-vol-{id}\"",
-    "voice_speaker_mute": "data-testid=\"voice-speaker-mute-{id}\""
+  "motion": {
+    "card_entrance": {
+      "initial": { "opacity": 0, "y": 20, "scale": 0.95 },
+      "animate": { "opacity": 1, "y": 0, "scale": 1 },
+      "transition": { "duration": 0.35, "ease": [0.16, 1, 0.3, 1] }
+    },
+    "hover_effect": {
+      "whileHover": { "y": -4, "scale": 1.02 },
+      "transition": { "duration": 0.2 }
+    },
+    "stagger_children": 0.08
   },
-  "visual_enhancements": [
-    "Textured tactical plates with bevel borders and inner glow",
-    "Anodized aluminum bevel cuts on key panels",
-    "Dynamic LED VU meter with peak amber/crimson segments",
-    "Micro-animations on speak state (pinging gold rings and active channel highlight)",
-    "Custom styled volume sliders with olive/gold accent thumbs",
-    "Tactical keycap styling for PTT button with active press down state"
+  "accessibility": {
+    "contrast": "APCA high contrast dark mode compliance. Text on overlays backed by solid/glass dark panels.",
+    "focus_states": "focus:ring-2 focus:ring-red-500 focus:outline-none",
+    "reduced_motion": "Honor prefers-reduced-motion CSS query by disabling framer-motion layout transforms."
+  },
+  "testing_conventions": {
+    "data_testid_rules": "All interactive elements and data fields must carry data-testid in kebab-case format.",
+    "examples": [
+      "data-testid=\"bounty-board-container\"",
+      "data-testid=\"bounty-card-contract-{bountyId}\"",
+      "data-testid=\"bounty-card-self-{bountyId}\"",
+      "data-testid=\"bounty-target-name\"",
+      "data-testid=\"bounty-dino-species\"",
+      "data-testid=\"bounty-reward-amberium\"",
+      "data-testid=\"bounty-reward-primemeat\"",
+      "data-testid=\"bounty-contractors-count\"",
+      "data-testid=\"bounty-timer-countdown\"",
+      "data-testid=\"bounty-action-button\"",
+      "data-testid=\"online-target-row-{playerId}\"",
+      "data-testid=\"online-target-hunt-button\"",
+      "data-testid=\"self-bounty-widget-panel\"",
+      "data-testid=\"bounty-filter-tabs\""
+    ]
+  },
+  "instructions_to_main_agent": [
+    "1. Replace the plain/sparse bounty cards with the new information-rich Fortnite-style visual architecture specified here.",
+    "2. Ensure both Contract Bounty and Self Bounty cards have distinct headers, badges, and metric displays.",
+    "3. Display dinosaur render images from /renders/{dino}.png alongside dino species name, growth stage progress bar, and server region location.",
+    "4. Highlight currency values using /coins/amber.png and /coins/meat.png icons with bold typography.",
+    "5. Ensure the sidebar 'Objetivos en Línea' has clear row cards with 'Cazar' action buttons that open the Contract Modal with pre-selected target.",
+    "6. Include Framer Motion staggered entrance and lift micro-interactions on hover.",
+    "7. Include all specified data-testid attributes across cards, lists, tabs, and action buttons."
   ],
   "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Must preserve all logic, state, and hooks (useProximitySim, useMicLevel, useSound)",
-    "Must preserve all exact data-testid attributes",
-    "Do not import or render any radar or sonar visual component",
-    "Ensure all contrast ratios meet WCAG AA standards over dark panels",
-    "Use framer-motion for smooth entrance and list transitions"
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g. transition: all). Always add transitions for specific interactive elements.",
+    "You MUST NOT center align the app container.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "All interactive and key informational elements MUST include a data-testid attribute."
   ]
 }
