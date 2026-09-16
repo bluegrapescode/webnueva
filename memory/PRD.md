@@ -263,3 +263,8 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - grid lg:grid-cols-12: Historial (col-span-3) | Tablón + Mis bounties (col-span-6) | Objetivos (col-span-3). min-w-0 en cada columna y overflow-x-hidden en contenedores con scroll para evitar scroll horizontal.
 - Mis bounties movido al centro, DEBAJO del Tablón (grid sm:grid-cols-2 cuando hay varios).
 - TargetList.jsx compactado: se eliminó el bloque de recompensa de ancho fijo (min-w-[74px]); la recompensa ahora va en línea bajo el nombre; botón "Cazar"/"Subir" (antes "Subir bote"); tags con shrink-0. Esto elimina el desborde lateral en columnas estrechas.
+
+## Actualización 8 (Jun 2026) — Fix botón "Cazar" oculto
+- Bug: en la columna estrecha de Objetivos (col-span-3 con overflow-x-hidden) el botón "Cazar" (al final de una fila horizontal, shrink-0) se recortaba/ocultaba.
+- Fix TargetList.jsx: la fila ahora es flex-col -> arriba avatar+info (nombre/especie/recompensa en línea), y abajo el botón "Cazar"/"Subir bote" a w-full (ancho completo). Garantiza que el botón siempre sea visible sin importar el ancho de la columna.
+- NO verificado visualmente logueado en preview (auth demo no propaga al frontend en headless; login real es Steam). Verificado por compilación (webpack sin errores) y por lógica del patrón w-full.
