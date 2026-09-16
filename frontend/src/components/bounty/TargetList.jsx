@@ -46,38 +46,28 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold text-white truncate">{t.name}</p>
-                    {t.isMe && <span className="text-[9px] uppercase tracking-wider text-white/40 border border-white/15 rounded px-1.5 py-0.5">Tú</span>}
-                    {has && !t.isMe && <span className="text-[9px] uppercase tracking-wider font-bold text-[#ff6b74] border border-[#E11D2A]/40 rounded px-1.5 py-0.5">En la mira</span>}
+                    {t.isMe && <span className="text-[9px] uppercase tracking-wider text-white/40 border border-white/15 rounded px-1.5 py-0.5 shrink-0">Tú</span>}
+                    {has && !t.isMe && <span className="text-[9px] uppercase tracking-wider font-bold text-[#ff6b74] border border-[#E11D2A]/40 rounded px-1.5 py-0.5 shrink-0">En la mira</span>}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 min-w-0">
                     <p className="text-[11px] text-white/45 truncate">{t.species} • Adulto</p>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-white/35"><Users className="w-2.5 h-2.5" /> {has ? `${t.bounty.count}` : "0"}</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-white/35 shrink-0"><Users className="w-2.5 h-2.5" /> {has ? `${t.bounty.count}` : "0"}</span>
                   </div>
-                </div>
-                <div className="text-right shrink-0 hidden sm:block min-w-[74px]">
-                  {has ? (
-                    <>
-                      <div className="flex items-center gap-1 justify-end text-[#22C55E] text-sm font-bold font-mono">
-                        <img src={MEDIA.coinNormal} alt="" className="w-3.5 h-3.5" /> {fmtNum(t.bounty.primeMeat)}
-                      </div>
-                      {t.bounty.amberium > 0 && (
-                        <div className="flex items-center gap-1 justify-end text-[#F0B429] text-xs font-semibold font-mono">
-                          <img src={MEDIA.coinVip} alt="" className="w-3 h-3" /> {fmtNum(t.bounty.amberium)}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-[10px] uppercase tracking-wider text-white/30">Sin recompensa</span>
+                  {has && (
+                    <div className="flex items-center gap-2 mt-1 text-xs font-mono font-bold">
+                      <span className="inline-flex items-center gap-1 text-[#22C55E]"><img src={MEDIA.coinNormal} alt="" className="w-3 h-3" />{fmtNum(t.bounty.primeMeat)}</span>
+                      {t.bounty.amberium > 0 && <span className="inline-flex items-center gap-1 text-[#F0B429]"><img src={MEDIA.coinVip} alt="" className="w-3 h-3" />{fmtNum(t.bounty.amberium)}</span>}
+                    </div>
                   )}
                 </div>
                 <button
                   data-testid={`bounty-hunt-${t.sid}`}
                   disabled={t.isMe || disabledHunt || !t.alive}
                   onClick={() => onHunt(t)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
                   style={{ background: "linear-gradient(180deg, #E11D2A, #a10f1a)", color: "#fff", boxShadow: "0 6px 20px -8px rgba(225,29,42,0.8)" }}
                 >
-                  <Crosshair className="w-3.5 h-3.5" /> {has ? "Subir bote" : "Cazar"}
+                  <Crosshair className="w-3.5 h-3.5" /> {has ? "Subir" : "Cazar"}
                 </button>
               </motion.div>
             );

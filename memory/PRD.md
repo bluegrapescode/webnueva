@@ -258,3 +258,8 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 ## Actualización 6 (Jun 2026) — Layout 3 columnas (Tablón central)
 - Petición: Tablón de recompensas es la atracción principal -> debe ir arriba y al centro; Historial a la izquierda, Objetivos a la derecha.
 - Bounty.jsx: grid lg:grid-cols-5 items-start -> Historial (lg:col-span-1) | Tablón (lg:col-span-3, tarjetas grid grid-cols-1 md:grid-cols-2) | Objetivos+Mis bounties (lg:col-span-1). Historial y TargetList con max-h-[560px] overflow-y-auto. Filas de Historial/Mis bounties compactadas para las columnas estrechas. Verificado por screenshot.
+
+## Actualización 7 (Jun 2026) — Diseño sólido 3 columnas + fixes de overflow
+- grid lg:grid-cols-12: Historial (col-span-3) | Tablón + Mis bounties (col-span-6) | Objetivos (col-span-3). min-w-0 en cada columna y overflow-x-hidden en contenedores con scroll para evitar scroll horizontal.
+- Mis bounties movido al centro, DEBAJO del Tablón (grid sm:grid-cols-2 cuando hay varios).
+- TargetList.jsx compactado: se eliminó el bloque de recompensa de ancho fijo (min-w-[74px]); la recompensa ahora va en línea bajo el nombre; botón "Cazar"/"Subir" (antes "Subir bote"); tags con shrink-0. Esto elimina el desborde lateral en columnas estrechas.
