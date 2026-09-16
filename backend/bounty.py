@@ -53,7 +53,7 @@ DEFAULT_CONFIG = {
     "invite_interval": 5 * 60,       # cada cuánto se ofrece a alguien (s)
     "invite_recent_protection": 25,  # no repetir invitado entre los últimos N
     "invite_ttl": 90,                # segundos para aceptar la invitación
-    "max_contracts_per_user": 1,     # contratos activos por persona
+    "max_contracts_per_user": 3,     # contratos activos por persona
 }
 
 # Inyectado por server.py
@@ -338,7 +338,7 @@ async def place_contract(uid: str, target_sid: str, prime: int, amber: int = 0) 
     active_mine = await _db.bounties.count_documents(
         {"type": "contract", "status": "active", "placer_user_id": uid})
     if active_mine >= cfg["max_contracts_per_user"]:
-        raise HTTPException(400, "Ya tienes un bounty activo. Cancélalo antes de poner otro")
+        raise HTTPException(400, f"Alcanzaste el máximo de {cfg['max_contracts_per_user']} bounties activos. Cancela uno para poner otro")
     # Cobro atómico: SOLO PrimeMeat.
     ok = await _charge_wallet(uid, prime, 0, "Bounty: fondeo de contrato")
     if not ok:
