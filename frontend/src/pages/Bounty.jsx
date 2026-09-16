@@ -168,8 +168,8 @@ export default function Bounty() {
 
         {user && <div className="mb-8"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Objetivos */}
+        <div className="grid gap-10">
+          {/* Objetivos en línea */}
           <div>
             <div className="flex items-center gap-2 mb-4"><Target className="w-4 h-4 text-[#E11D2A]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Objetivos en línea</h2></div>
             {user ? <TargetList targets={targets} onHunt={onHunt} disabledHunt={hasContract} />
@@ -180,13 +180,13 @@ export default function Bounty() {
           <div>
             <div className="flex items-center gap-2 mb-4"><Trophy className="w-4 h-4 text-[#F0B429]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Tablón de recompensas</h2></div>
             {allBoard.length === 0 ? <BountyCard bounty={null} /> : (
-              <div className="grid sm:grid-cols-2 gap-4" data-testid="bounty-board">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="bounty-board">
                 <AnimatePresence>
                   {allBoard.map((b, i) => (
                     <motion.div key={(b.bountyId || b.targetId) + (b.type || "")} layout
                       initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.35 }}
-                      className={i === 0 ? "sm:col-span-2" : ""}>
+                      className={i === 0 ? "sm:col-span-2 lg:col-span-1" : ""}>
                       <BountyCard bounty={b} rank={i} variant={i === 0 ? "hero" : "full"} />
                     </motion.div>
                   ))}
