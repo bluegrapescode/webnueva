@@ -30,6 +30,7 @@ import logging
 import os
 import random
 import time
+import uuid
 from collections import deque
 from datetime import datetime, timezone
 
@@ -88,7 +89,7 @@ def _ms() -> int:
 
 
 def _bid() -> str:
-    return "BNT-" + str(random.randint(10000, 99999))
+    return "BNT-" + uuid.uuid4().hex[:10].upper()
 
 
 def _fmt(n) -> str:
@@ -356,7 +357,13 @@ async def place_contract(uid: str, target_sid: str, prime: int, amber: int = 0) 
         "killer_sid": None, "killer_name": None, "killer_user_id": None,
         "reward_processed": False,
     }
-    await _db.bounties.insert_one(dict(c))
+    try:
+        await _db.bounties.insert_one(dict(c))
+    except Exception as e:
+        # Nunca dejar al usuario cobrado sin bounty: reembolsar y abortar.
+        await _refund_wallet(uid, prime, 0, "Bounty: reembolso (fallo al crear el contrato)")
+        logger.warning("[bounty] insert contract failed, refunded uid=%s: %r", uid, e)
+        raise HTTPException(500, "No se pudo crear el bounty; te reembolsamos tu PrimeMeat")
     await hub.broadcast("bounty:contract_new", _pub_contract(c))
     await _push_board()
     asyncio.create_task(_discord(_discord_contract(c)))
