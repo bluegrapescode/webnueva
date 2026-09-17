@@ -648,8 +648,13 @@ def _sim_roster() -> list:
         idxs = rng.sample(range(len(_SIM_NAMES)), 10)
         for i, idx in enumerate(idxs):
             dino, slug = _SIM_DINOS[i % len(_SIM_DINOS)]
-            _sim_players.append({"sid": str(76561190000000000 + idx * 1337 + 11),
-                                 "name": _SIM_NAMES[idx], "species": dino, "slug": slug, "alive": True})
+            sid = str(76561190000000000 + idx * 1337 + 11)
+            p = {"sid": sid, "name": _SIM_NAMES[idx], "species": dino, "slug": slug,
+                 "alive": True, "kills": random.Random("simkills:" + sid).randint(0, 14)}
+            # En preview, marca a los herbívoros como "traidores" para demostrar ese motivo.
+            if _diet_of(slug, dino) == "herbivoro":
+                p["herb_on_herb"] = True
+            _sim_players.append(p)
     return [dict(p) for p in _sim_players]
 
 
@@ -691,7 +696,7 @@ def _target_profile(p: dict) -> dict:
     elif kills >= 4:
         reasons.append({"code": "aggressive", "label": f"Agresivo · {kills} cazas", "tone": "warn"})
     elif kills >= 1:
-        reasons.append({"code": "hunter", "label": f"{kills} caza{'s' if kills != 1 else ''} recientes", "tone": "muted"})
+        reasons.append({"code": "hunter", "label": f"{kills} caza{'s' if kills != 1 else ''} reciente{'s' if kills != 1 else ''}", "tone": "muted"})
     if herb:
         reasons.append({"code": "traitor", "label": "Traidor: atacó a un herbívoro", "tone": "danger"})
     if diet == "carnivoro" and kills >= 10:

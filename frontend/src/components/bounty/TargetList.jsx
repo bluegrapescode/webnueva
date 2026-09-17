@@ -47,29 +47,29 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
                 data-testid={`bounty-target-${t.sid}`}
               >
                 <div className="flex items-center gap-3 w-full min-w-0">
-                  <div className="relative w-11 h-11 shrink-0 rounded-md flex items-center justify-center overflow-hidden"
+                  <div className="relative w-12 h-12 shrink-0 rounded-md flex items-center justify-center overflow-hidden"
                     style={{ background: "radial-gradient(circle, rgba(225,29,42,0.14), transparent 70%)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <span className="text-2xl">{dinoGlyph(t.slug)}</span>
+                    <span className="text-3xl">{dinoGlyph(t.slug)}</span>
                     {has && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#E11D2A] animate-pulse ring-2 ring-[#0b0b0d]" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-white truncate">{t.name}</p>
+                      <p className="text-[15px] font-bold text-white truncate">{t.name}</p>
                       {t.isMe && <span className="text-[9px] uppercase tracking-wider text-white/40 border border-white/15 rounded px-1.5 py-0.5 shrink-0">Tú</span>}
                       {has && !t.isMe && <span className="text-[9px] uppercase tracking-wider font-bold text-[#ff6b74] border border-[#E11D2A]/40 rounded px-1.5 py-0.5 shrink-0">En la mira</span>}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                      <p className="text-[11px] text-white/45 truncate">{t.species} • Adulto</p>
-                      <span className={`inline-flex items-center gap-1 text-[10px] shrink-0 ${isHerb ? "text-[#4ade80]" : "text-[#ff8a5c]"}`}>
-                        {isHerb ? <Leaf className="w-2.5 h-2.5" /> : <Drumstick className="w-2.5 h-2.5" />}
+                    <div className="flex items-center gap-2 mt-1 min-w-0">
+                      <p className="text-xs text-white/45 truncate">{t.species} • Adulto</p>
+                      <span className={`inline-flex items-center gap-1 text-[11px] shrink-0 ${isHerb ? "text-[#4ade80]" : "text-[#ff8a5c]"}`}>
+                        {isHerb ? <Leaf className="w-3 h-3" /> : <Drumstick className="w-3 h-3" />}
                         {isHerb ? "Herbívoro" : "Carnívoro"}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[10px] text-white/35 shrink-0"><Users className="w-2.5 h-2.5" /> {has ? `${t.bounty.count}` : "0"}</span>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-white/35 shrink-0"><Users className="w-3 h-3" /> {has ? `${t.bounty.count}` : "0"}</span>
                     </div>
                     {reasons.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`bounty-reasons-${t.sid}`}>
                         {reasons.map((r, ri) => (
-                          <span key={ri} className={`inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 border ${toneCls[r.tone] || toneCls.muted}`}>
+                          <span key={ri} className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 border ${toneCls[r.tone] || toneCls.muted}`}>
                             {r.tone === "danger" && <AlertTriangle className="w-2.5 h-2.5" />}
                             {r.label}
                           </span>
@@ -77,9 +77,9 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
                       </div>
                     )}
                     {has && (
-                      <div className="flex items-center gap-2 mt-1 text-xs font-mono font-bold">
-                        <span className="inline-flex items-center gap-1 text-[#22C55E]"><img src={MEDIA.coinNormal} alt="" className="w-3 h-3" />{fmtNum(t.bounty.primeMeat)}</span>
-                        {t.bounty.amberium > 0 && <span className="inline-flex items-center gap-1 text-[#F0B429]"><img src={MEDIA.coinVip} alt="" className="w-3 h-3" />{fmtNum(t.bounty.amberium)}</span>}
+                      <div className="flex items-center gap-2 mt-1.5 text-sm font-mono font-bold">
+                        <span className="inline-flex items-center gap-1 text-[#22C55E]"><img src={MEDIA.coinNormal} alt="" className="w-3.5 h-3.5" />{fmtNum(t.bounty.primeMeat)}</span>
+                        {t.bounty.amberium > 0 && <span className="inline-flex items-center gap-1 text-[#F0B429]"><img src={MEDIA.coinVip} alt="" className="w-3.5 h-3.5" />{fmtNum(t.bounty.amberium)}</span>}
                       </div>
                     )}
                   </div>
@@ -88,10 +88,10 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
                   data-testid={`bounty-hunt-${t.sid}`}
                   disabled={t.isMe || disabledHunt || !t.alive}
                   onClick={() => onHunt(t)}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-[13px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110"
                   style={{ background: "linear-gradient(180deg, #E11D2A, #a10f1a)", color: "#fff", boxShadow: "0 6px 20px -8px rgba(225,29,42,0.8)" }}
                 >
-                  <Crosshair className="w-3.5 h-3.5" /> {has ? "Subir bote" : "Cazar"}
+                  <Crosshair className="w-4 h-4" /> {has ? "Subir bote" : "Cazar"}
                 </button>
               </motion.div>
             );

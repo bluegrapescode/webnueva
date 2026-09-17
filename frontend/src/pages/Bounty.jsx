@@ -163,7 +163,7 @@ export default function Bounty() {
 
   return (
     <div className="min-h-screen px-4 sm:px-6 py-8" style={{ background: "radial-gradient(1200px 600px at 50% -10%, rgba(225,29,42,0.06), transparent 60%)" }}>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 mb-3"><Skull className="w-6 h-6" style={{ color: "#E11D2A" }} /><h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">LA <span style={{ color: "#E11D2A" }}>CACERÍA</span></h1></div>
           <p className="text-sm text-white/50 max-w-lg mx-auto">Elige a quién cazar y pon precio a su cabeza, o pon precio a la tuya y gana PrimeMeat por sobrevivir.</p>
@@ -196,7 +196,7 @@ export default function Bounty() {
           </section>
 
           {/* Centro: Tablón (atracción principal) + Mis bounties debajo */}
-          <div className="lg:col-span-6 min-w-0 space-y-6">
+          <div className="lg:col-span-5 min-w-0 space-y-6">
             <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-4"><Trophy className="w-4 h-4 text-[#F0B429]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Tablón de recompensas</h2><span className="ml-auto text-[10px] uppercase tracking-wider text-white/40 font-mono">{allBoard.length}</span></div>
               {allBoard.length === 0 ? (
@@ -240,12 +240,12 @@ export default function Bounty() {
           </div>
 
           {/* Objetivos en línea a la derecha */}
-          <section className="lg:col-span-3 min-w-0 rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
+          <section className="lg:col-span-4 min-w-0 rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2"><Target className="w-4 h-4 text-[#E11D2A]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Objetivos</h2></div>
               {user && <span className="text-[10px] uppercase tracking-wider text-white/40 font-mono">{myContracts.length}/{maxContracts}</span>}
             </div>
-            {user ? <div className="max-h-[560px] overflow-y-auto overflow-x-hidden pr-1"><TargetList targets={targets} onHunt={onHunt} disabledHunt={atLimit} /></div>
+            {user ? <div className="max-h-[620px] overflow-y-auto overflow-x-hidden pr-1"><TargetList targets={targets} onHunt={onHunt} disabledHunt={atLimit} /></div>
               : <p className="text-sm text-white/40 py-8 text-center">Inicia sesión para cazar.</p>}
           </section>
         </div>
