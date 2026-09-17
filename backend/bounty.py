@@ -653,6 +653,57 @@ def _sim_roster() -> list:
     return [dict(p) for p in _sim_players]
 
 
+# ─────────────────────────── Prontuario / motivos del bounty ───────────────────────────
+# Herbívoros conocidos de Evrima (por slug). Todo lo demás se considera carnívoro.
+_HERBIVORE_SLUGS = {
+    "trike", "triceratops", "stego", "stegosaurus", "maia", "maiasaura", "paras", "parasaurolophus",
+    "gali", "gallimimus", "dryo", "dryosaurus", "hypsi", "hypsilophodon", "tenonto", "tenontosaurus",
+    "pachy", "pachycephalosaurus", "dibble", "diabloceratops", "beipi", "beipiaosaurus",
+}
+
+
+def _diet_of(slug: str, species: str = "") -> str:
+    s = str(slug or "").lower()
+    sp = str(species or "").lower()
+    if s in _HERBIVORE_SLUGS or any(h in sp for h in ("tricera", "stego", "maia", "paras", "galli", "dryo", "hypsi", "tenonto", "pachy", "diablo", "beipi")):
+        return "herbivoro"
+    return "carnivoro"
+
+
+def _target_profile(p: dict) -> dict:
+    """Genera el 'porqué' del bounty: dieta, cazas y motivos. Usa telemetría real si
+    el roster la provee (p['kills'], p['herb_on_herb']); si no, simula datos
+    DETERMINISTAS por sid para el preview (estables entre reinicios)."""
+    sid = str(p.get("sid") or "")
+    diet = _diet_of(p.get("slug"), p.get("species"))
+    kills = p.get("kills")
+    if kills is None:
+        kills = random.Random("bounty:kills:" + sid).randint(0, 14)
+    kills = int(kills)
+    herb = p.get("herb_on_herb")
+    if herb is None:
+        herb = diet == "herbivoro" and random.Random("bounty:herb:" + sid).random() < 0.45
+    herb = bool(herb)
+
+    reasons = []
+    if kills >= 8:
+        reasons.append({"code": "serial", "label": f"Asesino en serie · {kills} cazas", "tone": "danger"})
+    elif kills >= 4:
+        reasons.append({"code": "aggressive", "label": f"Agresivo · {kills} cazas", "tone": "warn"})
+    elif kills >= 1:
+        reasons.append({"code": "hunter", "label": f"{kills} caza{'s' if kills != 1 else ''} recientes", "tone": "muted"})
+    if herb:
+        reasons.append({"code": "traitor", "label": "Traidor: atacó a un herbívoro", "tone": "danger"})
+    if diet == "carnivoro" and kills >= 10:
+        reasons.append({"code": "apex", "label": "Depredador ápice", "tone": "danger"})
+    if not reasons:
+        reasons.append({"code": "clean", "label": "Sin cargos — caza libre", "tone": "muted"})
+
+    score = kills + (6 if herb else 0)
+    threat = "extremo" if score >= 12 else "alto" if score >= 7 else "medio" if score >= 3 else "bajo"
+    return {"diet": diet, "kills": kills, "herbOnHerb": herb, "reasons": reasons, "threat": threat}
+
+
 # ─────────────────────────── Wiring ───────────────────────────
 def configure(db, *, admin_ids, online_provider, resolve_user_id, user_info,
               charge_wallet, refund_wallet, award_reward, ingame_grant=None,
@@ -748,9 +799,10 @@ def build_router(get_current_user, get_admin_user):
                 "slug": p.get("slug"), "alive": p.get("alive", True),
                 "isMe": bool(my_sid) and sid == my_sid,
                 "bounty": {"primeMeat": t["prime"], "amberium": t["amber"], "count": t["count"]},
+                "profile": _target_profile(p),
             })
         # Los que ya tienen bounty primero, luego alfabético.
-        out.sort(key=lambda x: (-x["bounty"]["primeMeat"], x["name"] or ""))
+        out.sort(key=lambda x: (-x["bounty"]["primeMeat"], -x["profile"]["kills"], x["name"] or ""))
         return {"targets": out, "simulated": getattr(_roster, "_last_sim", False)}
 
     @router.get("/bounty/mine")

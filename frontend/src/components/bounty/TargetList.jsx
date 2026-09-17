@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Crosshair, Skull, Users } from "lucide-react";
+import { Search, Crosshair, Skull, Users, Leaf, Drumstick, AlertTriangle } from "lucide-react";
 import { MEDIA } from "@/lib/media";
 import { fmtNum, dinoGlyph } from "@/lib/bountyMeta";
 
@@ -27,6 +27,14 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
         <AnimatePresence initial={false}>
           {filtered.map((t, i) => {
             const has = t.bounty && t.bounty.primeMeat > 0;
+            const prof = t.profile || {};
+            const reasons = prof.reasons || [];
+            const isHerb = prof.diet === "herbivoro";
+            const toneCls = {
+              danger: "text-[#ff6b74] border-[#E11D2A]/40 bg-[#E11D2A]/10",
+              warn: "text-[#F0B429] border-[#F0B429]/40 bg-[#F0B429]/10",
+              muted: "text-white/50 border-white/12 bg-white/5",
+            };
             return (
               <motion.div
                 key={t.sid}
@@ -52,8 +60,22 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 min-w-0">
                       <p className="text-[11px] text-white/45 truncate">{t.species} • Adulto</p>
+                      <span className={`inline-flex items-center gap-1 text-[10px] shrink-0 ${isHerb ? "text-[#4ade80]" : "text-[#ff8a5c]"}`}>
+                        {isHerb ? <Leaf className="w-2.5 h-2.5" /> : <Drumstick className="w-2.5 h-2.5" />}
+                        {isHerb ? "Herbívoro" : "Carnívoro"}
+                      </span>
                       <span className="inline-flex items-center gap-1 text-[10px] text-white/35 shrink-0"><Users className="w-2.5 h-2.5" /> {has ? `${t.bounty.count}` : "0"}</span>
                     </div>
+                    {reasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`bounty-reasons-${t.sid}`}>
+                        {reasons.map((r, ri) => (
+                          <span key={ri} className={`inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 border ${toneCls[r.tone] || toneCls.muted}`}>
+                            {r.tone === "danger" && <AlertTriangle className="w-2.5 h-2.5" />}
+                            {r.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {has && (
                       <div className="flex items-center gap-2 mt-1 text-xs font-mono font-bold">
                         <span className="inline-flex items-center gap-1 text-[#22C55E]"><img src={MEDIA.coinNormal} alt="" className="w-3 h-3" />{fmtNum(t.bounty.primeMeat)}</span>
