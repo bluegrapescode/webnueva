@@ -162,23 +162,23 @@ export default function Bounty() {
   const isAdmin = user && user.role === "admin";
 
   return (
-    <div className="min-h-screen px-4 sm:px-6 py-8" style={{ background: "radial-gradient(1200px 600px at 50% -10%, rgba(225,29,42,0.06), transparent 60%)" }}>
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 mb-3"><Skull className="w-6 h-6" style={{ color: "#E11D2A" }} /><h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">LA <span style={{ color: "#E11D2A" }}>CACERÍA</span></h1></div>
-          <p className="text-sm text-white/50 max-w-lg mx-auto">Elige a quién cazar y pon precio a su cabeza, o pon precio a la tuya y gana PrimeMeat por sobrevivir.</p>
-          <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest"><span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-green-400" : "bg-white/30"}`} /><span className="text-white/40">{connected ? "En vivo" : "Reconectando…"}</span>{simulated && <span className="text-white/30 ml-2">· jugadores simulados (preview)</span>}</div>
+    <div className="min-h-screen px-4 sm:px-8 lg:px-12 py-10 pb-28" style={{ background: "radial-gradient(1400px 700px at 50% -10%, rgba(225,29,42,0.07), transparent 60%)" }}>
+      <div className="max-w-[1760px] mx-auto">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-3 mb-3"><Skull className="w-8 h-8 lg:w-9 lg:h-9" style={{ color: "#E11D2A" }} /><h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white">LA <span style={{ color: "#E11D2A" }}>CACERÍA</span></h1></div>
+          <p className="text-base text-white/55 max-w-xl mx-auto">Elige a quién cazar y pon precio a su cabeza, o pon precio a la tuya y gana PrimeMeat por sobrevivir.</p>
+          <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest"><span className={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-white/30"}`} /><span className="text-white/45">{connected ? "En vivo" : "Reconectando…"}</span>{simulated && <span className="text-white/30 ml-2">· jugadores simulados (preview)</span>}</div>
         </div>
 
-        {user && <div className="mb-6"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
+        {user && <div className="mb-8"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
 
         {/* Historial (izq) | Tablón + Mis bounties (centro) | Objetivos (der) */}
-        <div className="grid lg:grid-cols-12 gap-6 items-start">
+        <div className="grid lg:grid-cols-12 gap-8 items-start">
           {/* Historial a la izquierda */}
-          <section className="lg:col-span-3 min-w-0 rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-4"><History className="w-4 h-4 text-white/50" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Historial de cacerías</h2></div>
+          <section className="lg:col-span-3 min-w-0 rounded-xl border border-white/8 bg-white/[0.015] p-5 sm:p-6">
+            <div className="flex items-center gap-2 mb-4"><History className="w-4 h-4 text-white/50" /><h2 className="text-base font-bold uppercase tracking-widest text-white/70">Historial de cacerías</h2></div>
             {history.length === 0 ? <p className="text-sm text-white/30 py-6 text-center" data-testid="bounty-history-empty">Aún no hay cacerías registradas.</p> : (
-              <div className="grid gap-2 max-h-[560px] overflow-y-auto overflow-x-hidden pr-1" data-testid="bounty-history-list">
+              <div className="grid gap-2 max-h-[76vh] overflow-y-auto overflow-x-hidden pr-1" data-testid="bounty-history-list">
                 {history.map((b) => {
                   const done = b.status === "completed" || b.status === "dead";
                   return (
@@ -197,12 +197,12 @@ export default function Bounty() {
 
           {/* Centro: Tablón (atracción principal) + Mis bounties debajo */}
           <div className="lg:col-span-5 min-w-0 space-y-6">
-            <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-4"><Trophy className="w-4 h-4 text-[#F0B429]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Tablón de recompensas</h2><span className="ml-auto text-[10px] uppercase tracking-wider text-white/40 font-mono">{allBoard.length}</span></div>
+            <section className="rounded-xl border border-white/8 bg-white/[0.015] p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4"><Trophy className="w-4 h-4 text-[#F0B429]" /><h2 className="text-base font-bold uppercase tracking-widest text-white/70">Tablón de recompensas</h2><span className="ml-auto text-[10px] uppercase tracking-wider text-white/40 font-mono">{allBoard.length}</span></div>
               {allBoard.length === 0 ? (
                 <p className="text-sm text-white/30 py-8 text-center" data-testid="bounty-board-empty">No hay bounties activos. Elige un objetivo o pon precio a tu cabeza.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start" data-testid="bounty-board">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start" data-testid="bounty-board">
                   <AnimatePresence>
                     {allBoard.map((b, i) => (
                       <motion.div key={(b.bountyId || b.targetId) + (b.type || "")} layout
@@ -217,9 +217,9 @@ export default function Bounty() {
             </section>
 
             {user && (
-              <section className="rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
+              <section className="rounded-xl border border-white/8 bg-white/[0.015] p-5 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2"><Skull className="w-4 h-4 text-[#ff6b74]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Mis bounties</h2></div>
+                  <div className="flex items-center gap-2"><Skull className="w-4 h-4 text-[#ff6b74]" /><h2 className="text-base font-bold uppercase tracking-widest text-white/70">Mis bounties</h2></div>
                   <span className="text-[10px] uppercase tracking-wider text-white/40 font-mono">{myContracts.length}/{maxContracts}</span>
                 </div>
                 {hasContract ? (
@@ -240,12 +240,12 @@ export default function Bounty() {
           </div>
 
           {/* Objetivos en línea a la derecha */}
-          <section className="lg:col-span-4 min-w-0 rounded-xl border border-white/8 bg-white/[0.015] p-4 sm:p-5">
+          <section className="lg:col-span-4 min-w-0 rounded-xl border border-white/8 bg-white/[0.015] p-5 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2"><Target className="w-4 h-4 text-[#E11D2A]" /><h2 className="text-sm font-bold uppercase tracking-widest text-white/70">Objetivos</h2></div>
+              <div className="flex items-center gap-2"><Target className="w-4 h-4 text-[#E11D2A]" /><h2 className="text-base font-bold uppercase tracking-widest text-white/70">Objetivos</h2></div>
               {user && <span className="text-[10px] uppercase tracking-wider text-white/40 font-mono">{myContracts.length}/{maxContracts}</span>}
             </div>
-            {user ? <div className="max-h-[620px] overflow-y-auto overflow-x-hidden pr-1"><TargetList targets={targets} onHunt={onHunt} disabledHunt={atLimit} /></div>
+            {user ? <div className="max-h-[76vh] overflow-y-auto overflow-x-hidden pr-1"><TargetList targets={targets} onHunt={onHunt} disabledHunt={atLimit} /></div>
               : <p className="text-sm text-white/40 py-8 text-center">Inicia sesión para cazar.</p>}
           </section>
         </div>
