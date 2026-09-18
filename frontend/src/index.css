@@ -272,3 +272,19 @@ body {
   animation: bountyGlowPulse 3.2s ease-in-out infinite;
   will-change: opacity;
 }
+@keyframes bountyGlowTop {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.bounty-glow-top {
+  animation: bountyGlowTop 1.6s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes bountyBorderTop {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(240,180,41,0.55), 0 0 22px -6px rgba(240,180,41,0.7); }
+  50%      { box-shadow: 0 0 0 2px rgba(240,180,41,0.95), 0 0 40px -4px rgba(240,180,41,0.95); }
+}
+.bounty-border-top {
+  animation: bountyBorderTop 1.6s ease-in-out infinite;
+  will-change: box-shadow;
+}

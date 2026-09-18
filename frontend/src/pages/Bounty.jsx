@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Skull, Droplet, History, Trophy, X, Zap, Target } from "lucide-react";
+import { Skull, Droplet, History, Trophy, X, Zap, Target, Radio, Crown, Medal } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
@@ -109,10 +109,89 @@ function AdminPanel({ config, targets, refresh }) {
   );
 }
 
+function HunterHall() {
+  const [period, setPeriod] = useState("week");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let on = true;
+    setLoading(true);
+    api.bountyLeaderboard(period).then(({ data }) => { if (on) { setRows(data.hunters || []); setLoading(false); } }).catch(() => on && setLoading(false));
+    return () => { on = false; };
+  }, [period]);
+  const badgeTone = {
+    legend: "text-[#F0B429] border-[#F0B429]/50 bg-[#F0B429]/10",
+    apex: "text-[#ff6b74] border-[#E11D2A]/50 bg-[#E11D2A]/10",
+    vet: "text-[#8b5cf6] border-[#8b5cf6]/50 bg-[#8b5cf6]/10",
+    hunter: "text-[#38bdf8] border-[#38bdf8]/40 bg-[#38bdf8]/10",
+    rookie: "text-white/50 border-white/12 bg-white/5",
+  };
+  const rankColor = (r) => (r === 1 ? "#F0B429" : r === 2 ? "#cbd5e1" : r === 3 ? "#d97706" : "#64748b");
+  const periods = [["week", "Semana"], ["month", "Mes"], ["all", "Histórico"]];
+  return (
+    <section className="rounded-xl border border-white/8 bg-white/[0.015] p-5 sm:p-6 mt-8" data-testid="bounty-hall">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+        <div className="flex items-center gap-2"><Crown className="w-5 h-5 text-[#F0B429]" /><h2 className="text-base font-bold uppercase tracking-widest text-white/80">Salón de Cazadores</h2></div>
+        <div className="flex items-center gap-1 bg-black/30 rounded-lg p-1 border border-white/8">
+          {periods.map(([k, l]) => (
+            <button key={k} data-testid={`hall-period-${k}`} onClick={() => setPeriod(k)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors ${period === k ? "bg-[#E11D2A] text-white" : "text-white/50 hover:text-white/80"}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {loading ? <p className="text-sm text-white/30 py-8 text-center">Cargando ranking…</p>
+        : rows.length === 0 ? <p className="text-sm text-white/30 py-8 text-center" data-testid="hall-empty">Aún no hay cazadores en este periodo. ¡Sé el primero!</p>
+        : (
+          <div className="grid gap-2 sm:grid-cols-2" data-testid="hall-list">
+            {rows.map((h) => (
+              <div key={(h.killerSid || h.name) + h.rank} className="flex items-center gap-3 px-3.5 py-3 rounded-lg border border-white/8 bg-white/[0.02]" data-testid={`hall-row-${h.rank}`}>
+                <div className="w-9 h-9 shrink-0 rounded-lg flex items-center justify-center font-black text-sm" style={{ color: rankColor(h.rank), background: `${rankColor(h.rank)}18`, border: `1px solid ${rankColor(h.rank)}44` }}>
+                  {h.rank <= 3 ? <Medal className="w-5 h-5" /> : h.rank}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-white truncate">{h.name}</p>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider rounded px-1.5 py-0.5 border ${badgeTone[h.badge?.tone] || badgeTone.rookie}`}>{h.badge?.label}</span>
+                  </div>
+                  <p className="text-[11px] text-white/45 font-mono">{h.kills} caza{h.kills !== 1 ? "s" : ""} · 🥩 {fmtNum(h.primeMeat)}{h.amberium > 0 && ` · 🟠 ${fmtNum(h.amberium)}`}</p>
+                </div>
+                <div className="text-right shrink-0"><p className="text-lg font-black text-[#F0B429] tabular-nums">{h.kills}</p><p className="text-[9px] uppercase tracking-wider text-white/30">cazas</p></div>
+              </div>
+            ))}
+          </div>
+        )}
+    </section>
+  );
+}
+
+function LiveFeed({ feed }) {
+  if (!feed || feed.length === 0) return null;
+  const items = [...feed, ...feed];
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-white/8 bg-white/[0.02] mb-8" data-testid="bounty-feed">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/8">
+        <Radio className="w-3.5 h-3.5 text-[#E11D2A] animate-pulse" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Cacerías en vivo</span>
+      </div>
+      <div className="relative overflow-hidden py-2">
+        <div className="flex gap-8 whitespace-nowrap animate-[decoShift_28s_linear_infinite]" style={{ width: "max-content" }}>
+          {items.map((it, i) => (
+            <span key={it.id + "-" + i} className="inline-flex items-center gap-2 text-sm">
+              {it.kind === "kill"
+                ? <><Skull className="w-4 h-4 text-[#F0B429]" /><span className="text-white/80 font-semibold">{it.killerName}</span><span className="text-white/40">cazó a</span><span className="text-white/80 font-semibold">{it.targetName}</span>{it.prime > 0 && <span className="text-[#F0B429] font-mono">🥩 {fmtNum(it.prime)}</span>}</>
+                : <><Target className="w-4 h-4 text-[#ff6b74]" /><span className="text-white/40">nuevo contrato sobre</span><span className="text-white/80 font-semibold">{it.targetName}</span>{it.prime > 0 && <span className="text-[#22C55E] font-mono">🥩 {fmtNum(it.prime)}</span>}</>}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Bounty() {
   const { user } = useAuth();
   const { play } = useSound();
-  const { board, config, connected, lastEvent } = useBounty();
+  const { board, config, connected, lastEvent, feed } = useBounty();
   const [targets, setTargets] = useState([]);
   const [simulated, setSimulated] = useState(false);
   const [mine, setMine] = useState(null);
@@ -171,6 +250,8 @@ export default function Bounty() {
         </div>
 
         {user && <div className="mb-8"><SelfBountyPanel mine={mine} config={config} onStart={startSelf} busy={busy} /></div>}
+
+        <LiveFeed feed={feed} />
 
         {/* Historial (izq) | Tablón + Mis bounties (centro) | Objetivos (der) */}
         <div className="grid lg:grid-cols-12 gap-8 items-start">
@@ -249,6 +330,8 @@ export default function Bounty() {
               : <p className="text-sm text-white/40 py-8 text-center">Inicia sesión para cazar.</p>}
           </section>
         </div>
+
+        <HunterHall />
 
         {isAdmin && <div className="mt-6"><AdminPanel config={config} targets={targets} refresh={() => { loadTargets(); loadMine(); loadHistory(); }} /></div>}
       </div>

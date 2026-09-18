@@ -229,6 +229,17 @@ async def _build_board() -> dict:
             acc["expiresAt"] = c["expires_at_ms"]
     selfs = await _db.bounties.find(
         {"type": "self", "status": "active"}, {"_id": 0}).to_list(200)
+    roster_map = {}
+    try:
+        roster_map = {str(p.get("sid")): p for p in (await _roster())}
+    except Exception:
+        roster_map = {}
+    for sid, acc in by_target.items():
+        rp = roster_map.get(str(sid)) or {"sid": sid, "slug": acc.get("slug"), "species": acc.get("dinosaur")}
+        prof = _target_profile(rp)
+        acc["topReason"] = prof["reasons"][0] if prof["reasons"] else None
+        acc["threat"] = prof["threat"]
+        acc["diet"] = prof["diet"]
     board_contracts = sorted(by_target.values(), key=lambda x: x["reward"]["primeMeat"], reverse=True)
     board_self = [_pub_self(s) for s in selfs]
     return {"contracts": board_contracts, "self": board_self}
@@ -508,7 +519,8 @@ async def _resolve_death(killer_sid, victim_sid, killer_name):
 
     if changed:
         await hub.broadcast("bounty:completed", {
-            "targetName": target_name, "killerName": killer_name,
+            "targetName": target_name, "targetId": victim_sid,
+            "killerName": killer_name, "killerSid": killer_sid,
             "reward": {"primeMeat": total_prime, "amberium": total_amber}})
         await _push_board()
         asyncio.create_task(_discord(_discord_completed(
@@ -665,6 +677,14 @@ _HERBIVORE_SLUGS = {
     "gali", "gallimimus", "dryo", "dryosaurus", "hypsi", "hypsilophodon", "tenonto", "tenontosaurus",
     "pachy", "pachycephalosaurus", "dibble", "diabloceratops", "beipi", "beipiaosaurus",
 }
+
+
+def _hunter_badge(kills: int) -> dict:
+    if kills >= 25: return {"label": "Leyenda", "tone": "legend"}
+    if kills >= 15: return {"label": "Ápice", "tone": "apex"}
+    if kills >= 8:  return {"label": "Veterano", "tone": "vet"}
+    if kills >= 3:  return {"label": "Cazador", "tone": "hunter"}
+    return {"label": "Novato", "tone": "rookie"}
 
 
 def _diet_of(slug: str, species: str = "") -> str:
@@ -837,6 +857,33 @@ def build_router(get_current_user, get_admin_user):
         for r in rows:
             out.append(_pub_self(r) if r["type"] == "self" else _pub_contract(r))
         return {"items": out}
+
+    @router.get("/bounty/leaderboard")
+    async def leaderboard(period: str = "all"):
+        spans = {"week": 7 * 86400_000, "month": 30 * 86400_000}
+        since = _ms() - spans[period] if period in spans else None
+        rows = await _db.bounties.find(
+            {"status": {"$in": ["completed", "dead"]}}, {"_id": 0}).to_list(8000)
+        agg = {}
+        for d in rows:
+            ks = d.get("killer_sid") or d.get("killer_name")
+            if not ks:
+                continue
+            ts = d.get("completed_at_ms") or d.get("ended_at_ms") or 0
+            if since and ts < since:
+                continue
+            a = agg.setdefault(ks, {"killerSid": d.get("killer_sid"),
+                                    "name": d.get("killer_name") or "Cazador",
+                                    "kills": 0, "primeMeat": 0, "amberium": 0})
+            a["kills"] += 1
+            r = d.get("reward", {})
+            a["primeMeat"] += r.get("prime", 0)
+            a["amberium"] += r.get("amber", 0) + (d.get("killer_amber", 0) if d.get("type") == "self" else 0)
+        out = sorted(agg.values(), key=lambda x: (x["kills"], x["primeMeat"]), reverse=True)[:20]
+        for i, r in enumerate(out):
+            r["rank"] = i + 1
+            r["badge"] = _hunter_badge(r["kills"])
+        return {"period": period, "hunters": out}
 
     @router.post("/bounty/contract")
     async def contract(data: ContractIn, user=Depends(get_current_user)):

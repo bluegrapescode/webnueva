@@ -506,6 +506,7 @@ export const api = {
   bountyTargets:    () => client.get("/bounty/targets"),
   bountyMine:       () => client.get("/bounty/mine"),
   bountyHistory:    (limit = 20) => client.get(`/bounty/history?limit=${limit}`),
+  bountyLeaderboard: (period = "all") => client.get(`/bounty/leaderboard?period=${period}`),
   bountyPlaceContract: (target_sid, prime, amber = 0) => client.post("/bounty/contract", { target_sid, prime, amber }),
   bountyCancelContract: (bounty_id) => client.post("/bounty/contract/cancel", { bounty_id }),
   bountySelfStart:  () => client.post("/bounty/self/start"),

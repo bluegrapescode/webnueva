@@ -300,3 +300,11 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - Causa raíz: la página se re-renderiza cada 1s (setInterval tickNow para contadores). El glow usaba framer animate={{opacity:[...]}} con array literal nuevo en cada render -> framer REINICIABA la animación cada segundo => se veía entrecortado. Además el prop `layout` en cada tarjeta forzaba recálculo de layout por render (thrash).
 - Fix: (1) glow migrado a animación CSS pura .bounty-glow (@keyframes bountyGlowPulse opacity 0.4->0.92->0.4, 3.2s) en index.css -> corre en compositor, inmune a re-renders de React. (2) Removido `layout` del motion.div de cada tarjeta en Bounty.jsx. CountUp ya depende solo de [value] (no reinicia por render).
 - Verificado: Babel/webpack OK. Suavidad no capturable en screenshot estático ni render headless (gate de carga de ruta).
+
+## Actualización 15 (Jun 2026) — 5 features: Salón, Alertas, Feed, #1 destacado, Motivo en Tablón
+- (a) Salón de Cazadores: GET /bounty/leaderboard?period=week|month|all agrega bounties completed/dead por killer (kills, primeMeat, amberium) + badge por tier (_hunter_badge). Componente HunterHall en Bounty.jsx (toggle de periodo, top 20, medallas). Verificado curl (6 hunters).
+- (b) Alertas globales: BountyContext ahora usa useAuth (mySid), dispara toasts en cualquier página: te pusieron precio, cobraste recompensa, te mataron, y anuncio global de cacerías >=100k. Broadcast bounty:completed ahora incluye killerSid/targetId.
+- (c) Feed en vivo: BountyContext mantiene buffer feed (últimos 14 eventos contract_new/completed); componente LiveFeed (ticker marquee) bajo el header.
+- (d) #1 Más Buscado destacado: BountyCard isTop (rank 0 no-self) usa .bounty-glow-top (glow dorado más rápido/intenso) + .bounty-border-top (borde animado) + borde dorado. Verificado por screenshot.
+- (e) Motivo en el Tablón: _build_board añade topReason/threat/diet por objetivo usando el MISMO roster que /targets (roster_map) para consistencia. BountyCard muestra b.topReason. Verificado: NubladoMX = "Asesino en serie · 12 cazas" idéntico en lista y tablón.
+- Estado pruebas: backend por curl OK; d y e verificados visualmente; a por datos+montaje; b y c son WS/logueado (no reproducibles en headless con login Steam).

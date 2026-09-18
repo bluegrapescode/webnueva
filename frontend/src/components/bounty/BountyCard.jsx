@@ -61,7 +61,12 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
   const prime = isSelf ? 0 : (b.reward ? b.reward.primeMeat : 0);
   const amber = isSelf ? (b.killerAmber || 0) : (b.reward ? b.reward.amberium : 0);
   const threat = isSelf ? { label: "OBJETIVO DORADO", color: GOLD } : threatOf(prime);
-  const isTop = rank === 0;
+  const isTop = rank === 0 && !isSelf;
+  const reasonToneCls = {
+    danger: "text-[#ff6b74] border-[#E11D2A]/40 bg-[#E11D2A]/10",
+    warn: "text-[#F0B429] border-[#F0B429]/40 bg-[#F0B429]/10",
+    muted: "text-white/55 border-white/12 bg-white/5",
+  };
 
   // Progreso de supervivencia (self).
   const survPct = isSelf && b.startedAt && b.endsAt
@@ -72,14 +77,14 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
       {/* Glow pulsante detrás — animación CSS pura (compositada, inmune a re-renders de React) */}
       <div
         aria-hidden
-        className="bounty-glow absolute inset-0 rounded-2xl pointer-events-none"
-        style={{ boxShadow: `0 0 44px -8px ${accent}` }}
+        className={`${isTop ? "bounty-glow-top" : "bounty-glow"} absolute inset-0 rounded-2xl pointer-events-none`}
+        style={{ boxShadow: `0 0 ${isTop ? 56 : 44}px -8px ${isTop ? GOLD : accent}` }}
       />
       <motion.div
-        className={`relative flex flex-col overflow-hidden rounded-2xl border ${hero ? "h-full" : ""}`}
+        className={`relative flex flex-col overflow-hidden rounded-2xl border ${isTop ? "bounty-border-top" : ""} ${hero ? "h-full" : ""}`}
         style={{
           background: isSelf ? "linear-gradient(160deg, #1c1206 0%, #101018 55%, #0a0a0c 100%)" : "linear-gradient(160deg, #1c0709 0%, #101018 55%, #0a0a0c 100%)",
-          borderColor: isSelf ? "rgba(240,180,41,0.35)" : "rgba(225,29,42,0.35)",
+          borderColor: isTop ? "rgba(240,180,41,0.7)" : isSelf ? "rgba(240,180,41,0.35)" : "rgba(225,29,42,0.35)",
           boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
           willChange: "transform",
         }}
@@ -126,6 +131,13 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
               <ShieldAlert className="w-3 h-3" /> {threat.label}
             </span>
           </div>
+          {b.topReason && (
+            <div className="mt-2" data-testid="bounty-card-reason">
+              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide rounded px-2 py-0.5 border ${reasonToneCls[b.topReason.tone] || reasonToneCls.muted}`}>
+                {b.topReason.tone === "danger" && <ShieldAlert className="w-3 h-3" />} {b.topReason.label}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
