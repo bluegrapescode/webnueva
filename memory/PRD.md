@@ -295,3 +295,8 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - Problema: la animación de "pulso" (glow) de las tarjetas se veía lagueada.
 - Causa: se animaba box-shadow en bucle (animate={boxShadow:[...]}), que fuerza repaint por frame y no usa GPU.
 - Fix BountyCard.jsx: se envolvió la tarjeta en un div relativo con una capa <motion.div> de glow detrás (absolute inset-0, boxShadow fijo del acento) que anima SOLO opacity [0.4,0.92,0.4] (3.2s, easeInOut) -> compositada por GPU, suave. La tarjeta ahora tiene box-shadow estático y willChange:transform; se quitó la animación de boxShadow. Verificado por Babel/compilación (render/suavidad no capturable en screenshot estático).
+
+## Actualización 14 (Jun 2026) — Glow entrecortado: causa raíz y fix definitivo
+- Causa raíz: la página se re-renderiza cada 1s (setInterval tickNow para contadores). El glow usaba framer animate={{opacity:[...]}} con array literal nuevo en cada render -> framer REINICIABA la animación cada segundo => se veía entrecortado. Además el prop `layout` en cada tarjeta forzaba recálculo de layout por render (thrash).
+- Fix: (1) glow migrado a animación CSS pura .bounty-glow (@keyframes bountyGlowPulse opacity 0.4->0.92->0.4, 3.2s) en index.css -> corre en compositor, inmune a re-renders de React. (2) Removido `layout` del motion.div de cada tarjeta en Bounty.jsx. CountUp ya depende solo de [value] (no reinicia por render).
+- Verificado: Babel/webpack OK. Suavidad no capturable en screenshot estático ni render headless (gate de carga de ruta).

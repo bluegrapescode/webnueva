@@ -205,7 +205,7 @@ export default function Bounty() {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start" data-testid="bounty-board">
                   <AnimatePresence>
                     {allBoard.map((b, i) => (
-                      <motion.div key={(b.bountyId || b.targetId) + (b.type || "")} layout
+                      <motion.div key={(b.bountyId || b.targetId) + (b.type || "")}
                         initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ delay: Math.min(i * 0.05, 0.25), duration: 0.35 }}>
                         <BountyCard bounty={b} rank={i} variant="full" />

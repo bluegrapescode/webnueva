@@ -69,13 +69,11 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
 
   return (
     <div className={`relative ${hero ? "h-full" : ""}`}>
-      {/* Glow pulsante detrás — solo anima opacity (GPU), sin lag de box-shadow */}
-      <motion.div
+      {/* Glow pulsante detrás — animación CSS pura (compositada, inmune a re-renders de React) */}
+      <div
         aria-hidden
-        className="absolute inset-0 rounded-2xl pointer-events-none"
-        style={{ boxShadow: `0 0 44px -8px ${accent}`, willChange: "opacity" }}
-        animate={{ opacity: [0.4, 0.92, 0.4] }}
-        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        className="bounty-glow absolute inset-0 rounded-2xl pointer-events-none"
+        style={{ boxShadow: `0 0 44px -8px ${accent}` }}
       />
       <motion.div
         className={`relative flex flex-col overflow-hidden rounded-2xl border ${hero ? "h-full" : ""}`}

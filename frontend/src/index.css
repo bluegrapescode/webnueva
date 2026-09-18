@@ -264,3 +264,11 @@ body {
   background-size: 3px 3px;
   mix-blend-mode: overlay;
 }
+@keyframes bountyGlowPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.92; }
+}
+.bounty-glow {
+  animation: bountyGlowPulse 3.2s ease-in-out infinite;
+  will-change: opacity;
+}
