@@ -6,6 +6,7 @@ import { fmtNum, fmtCountdown, dinoGlyph } from "@/lib/bountyMeta";
 
 const RED = "#E11D2A";
 const GOLD = "#F0B429";
+const PURPLE = "#A855F7";
 const MEAT = "#22C55E";
 
 function useTick() {
@@ -78,13 +79,13 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
       <div
         aria-hidden
         className={`${isTop ? "bounty-glow-top" : "bounty-glow"} absolute inset-0 rounded-2xl pointer-events-none`}
-        style={{ boxShadow: `0 0 ${isTop ? 56 : 44}px -8px ${isTop ? GOLD : accent}` }}
+        style={{ boxShadow: `0 0 ${isTop ? 56 : 44}px -8px ${isTop ? PURPLE : accent}` }}
       />
       <motion.div
         className={`relative flex flex-col overflow-hidden rounded-2xl border ${isTop ? "bounty-border-top" : ""} ${hero ? "h-full" : ""}`}
         style={{
           background: isSelf ? "linear-gradient(160deg, #1c1206 0%, #101018 55%, #0a0a0c 100%)" : "linear-gradient(160deg, #1c0709 0%, #101018 55%, #0a0a0c 100%)",
-          borderColor: isTop ? "rgba(240,180,41,0.7)" : isSelf ? "rgba(240,180,41,0.35)" : "rgba(225,29,42,0.35)",
+          borderColor: isTop ? "rgba(168,85,247,0.75)" : isSelf ? "rgba(240,180,41,0.35)" : "rgba(225,29,42,0.35)",
           boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
           willChange: "transform",
         }}
@@ -104,7 +105,7 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
         </span>
         {isTop && (
           <motion.span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded"
-            style={{ background: "rgba(225,29,42,0.18)", color: "#FF4D4D", border: "1px solid rgba(225,29,42,0.5)" }}
+            style={{ background: "rgba(168,85,247,0.18)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.55)" }}
             animate={{ opacity: [1, 0.6, 1] }} transition={{ duration: 1.6, repeat: Infinity }} data-testid="bounty-most-wanted">
             <Flame className="w-3.5 h-3.5" /> #1 MÁS BUSCADO
           </motion.span>
