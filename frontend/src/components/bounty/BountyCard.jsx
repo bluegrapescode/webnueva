@@ -68,21 +68,27 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
     ? Math.min(100, Math.max(0, ((Date.now() - b.startedAt) / (b.endsAt - b.startedAt)) * 100)) : 0;
 
   return (
-    <motion.div
-      className={`relative flex flex-col overflow-hidden rounded-2xl border ${hero ? "h-full" : ""}`}
-      style={{
-        background: isSelf ? "linear-gradient(160deg, #1c1206 0%, #101018 55%, #0a0a0c 100%)" : "linear-gradient(160deg, #1c0709 0%, #101018 55%, #0a0a0c 100%)",
-        borderColor: isSelf ? "rgba(240,180,41,0.35)" : "rgba(225,29,42,0.35)",
-      }}
-      whileHover={{ y: -4 }}
-      animate={{ boxShadow: [
-        `0 10px 30px rgba(0,0,0,0.6), 0 0 26px -18px ${accent}`,
-        `0 10px 30px rgba(0,0,0,0.6), 0 0 40px -12px ${accent}`,
-        `0 10px 30px rgba(0,0,0,0.6), 0 0 26px -18px ${accent}`,
-      ] }}
-      transition={{ boxShadow: { duration: 2.8, repeat: Infinity, ease: "easeInOut" }, y: { duration: 0.2 } }}
-      data-testid="bounty-card"
-    >
+    <div className={`relative ${hero ? "h-full" : ""}`}>
+      {/* Glow pulsante detrás — solo anima opacity (GPU), sin lag de box-shadow */}
+      <motion.div
+        aria-hidden
+        className="absolute inset-0 rounded-2xl pointer-events-none"
+        style={{ boxShadow: `0 0 44px -8px ${accent}`, willChange: "opacity" }}
+        animate={{ opacity: [0.4, 0.92, 0.4] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className={`relative flex flex-col overflow-hidden rounded-2xl border ${hero ? "h-full" : ""}`}
+        style={{
+          background: isSelf ? "linear-gradient(160deg, #1c1206 0%, #101018 55%, #0a0a0c 100%)" : "linear-gradient(160deg, #1c0709 0%, #101018 55%, #0a0a0c 100%)",
+          borderColor: isSelf ? "rgba(240,180,41,0.35)" : "rgba(225,29,42,0.35)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+          willChange: "transform",
+        }}
+        whileHover={{ y: -4 }}
+        transition={{ y: { duration: 0.2 } }}
+        data-testid="bounty-card"
+      >
       <div className="absolute inset-0 pointer-events-none opacity-[0.08]" style={{ backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`, backgroundSize: "16px 16px" }} />
       <div className="absolute inset-0 pointer-events-none bounty-scan opacity-25" />
 
@@ -170,7 +176,8 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
           </span>
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 

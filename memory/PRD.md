@@ -290,3 +290,8 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - Bounty.jsx: contenedor max-w-7xl -> max-w-[1760px]; padding px-4 sm:px-8 lg:px-12 py-10 pb-28 (pb-28 libra las burbujas fijas de chat/amigos); gap-6 -> gap-8; secciones p-4 sm:p-5 -> p-5 sm:p-6; h2 text-sm -> text-base; header más grande (Skull w-8/9, h1 hasta text-6xl, p text-base); scroll interno max-h-[76vh]; board grid md:grid-cols-2 -> xl:grid-cols-2 gap-4 (tarjetas más grandes lado a lado en pantallas anchas).
 - BountyCard.jsx (variante full) escalada: avatar w-12->w-16 glifo text-2xl->4xl, nombre text-base->text-xl, StatChip px-2/py-1->px-2.5/py-1.5 valor text-[13px]->sm etiqueta text-[8px]->9px grid gap-1.5->2.5, iconos w-4->w-5, barra supervivencia h-1.5->h-2, caja recompensa rounded-lg px-3 py-2->rounded-xl px-4 py-3 valor text-base->text-xl.
 - Verificado: webpack 0 errores, /bounty 200, Babel OK. Render visual no capturable en headless (flakiness del gate de carga de la ruta; app corre, ticker en vivo actualiza).
+
+## Actualización 13 (Jun 2026) — Pulso de recompensa suave (fix lag)
+- Problema: la animación de "pulso" (glow) de las tarjetas se veía lagueada.
+- Causa: se animaba box-shadow en bucle (animate={boxShadow:[...]}), que fuerza repaint por frame y no usa GPU.
+- Fix BountyCard.jsx: se envolvió la tarjeta en un div relativo con una capa <motion.div> de glow detrás (absolute inset-0, boxShadow fijo del acento) que anima SOLO opacity [0.4,0.92,0.4] (3.2s, easeInOut) -> compositada por GPU, suave. La tarjeta ahora tiene box-shadow estático y willChange:transform; se quitó la animación de boxShadow. Verificado por Babel/compilación (render/suavidad no capturable en screenshot estático).
