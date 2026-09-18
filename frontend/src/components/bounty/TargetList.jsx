@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Crosshair, Skull, Users, Leaf, Drumstick, AlertTriangle } from "lucide-react";
+import { Search, Crosshair, Skull, Users, Leaf, Drumstick, AlertTriangle, Crown } from "lucide-react";
 import { MEDIA } from "@/lib/media";
 import { fmtNum, dinoGlyph } from "@/lib/bountyMeta";
 
@@ -12,6 +12,16 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
     if (!s) return targets;
     return targets.filter((t) => (t.name || "").toLowerCase().includes(s) || (t.species || "").toLowerCase().includes(s));
   }, [targets, q]);
+
+  // El #1 Más Buscado = el objetivo con la recompensa (PrimeMeat) más alta.
+  const topWantedSid = useMemo(() => {
+    let best = null;
+    for (const t of targets || []) {
+      const p = t.bounty?.primeMeat || 0;
+      if (p > 0 && (!best || p > best.p)) best = { sid: t.sid, p };
+    }
+    return best?.sid || null;
+  }, [targets]);
 
   return (
     <div data-testid="bounty-target-list">
@@ -27,6 +37,7 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
         <AnimatePresence initial={false}>
           {filtered.map((t, i) => {
             const has = t.bounty && t.bounty.primeMeat > 0;
+            const isTopWanted = has && t.sid === topWantedSid;
             const prof = t.profile || {};
             const reasons = prof.reasons || [];
             const isHerb = prof.diet === "herbivoro";
@@ -42,21 +53,22 @@ export function TargetList({ targets, onHunt, disabledHunt }) {
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                 transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.35 }}
                 whileHover={{ scale: 1.01 }}
-                className="group flex flex-col gap-2.5 p-3 rounded-md border transition-colors"
-                style={{ borderColor: has ? "rgba(225,29,42,0.35)" : "rgba(255,255,255,0.08)", background: has ? "rgba(225,29,42,0.05)" : "rgba(255,255,255,0.02)" }}
+                className={`group flex flex-col gap-2.5 p-3 rounded-md border transition-colors ${isTopWanted ? "bounty-border-top" : ""}`}
+                style={{ borderColor: isTopWanted ? "rgba(168,85,247,0.75)" : has ? "rgba(225,29,42,0.35)" : "rgba(255,255,255,0.08)", background: isTopWanted ? "rgba(168,85,247,0.07)" : has ? "rgba(225,29,42,0.05)" : "rgba(255,255,255,0.02)" }}
                 data-testid={`bounty-target-${t.sid}`}
               >
                 <div className="flex items-center gap-3 w-full min-w-0">
                   <div className="relative w-12 h-12 shrink-0 rounded-md flex items-center justify-center overflow-hidden"
-                    style={{ background: "radial-gradient(circle, rgba(225,29,42,0.14), transparent 70%)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    style={{ background: isTopWanted ? "radial-gradient(circle, rgba(168,85,247,0.22), transparent 70%)" : "radial-gradient(circle, rgba(225,29,42,0.14), transparent 70%)", border: "1px solid rgba(255,255,255,0.08)" }}>
                     <span className="text-3xl">{dinoGlyph(t.slug)}</span>
-                    {has && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#E11D2A] animate-pulse ring-2 ring-[#0b0b0d]" />}
+                    {has && <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full animate-pulse ring-2 ring-[#0b0b0d] ${isTopWanted ? "bg-[#A855F7]" : "bg-[#E11D2A]"}`} />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-[15px] font-bold text-white truncate">{t.name}</p>
                       {t.isMe && <span className="text-[9px] uppercase tracking-wider text-white/40 border border-white/15 rounded px-1.5 py-0.5 shrink-0">Tú</span>}
-                      {has && !t.isMe && <span className="text-[9px] uppercase tracking-wider font-bold text-[#ff6b74] border border-[#E11D2A]/40 rounded px-1.5 py-0.5 shrink-0">En la mira</span>}
+                      {isTopWanted ? <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-black text-[#c084fc] border border-[#A855F7]/60 bg-[#A855F7]/15 rounded px-1.5 py-0.5 shrink-0" data-testid={`bounty-topwanted-${t.sid}`}><Crown className="w-2.5 h-2.5" /> #1 Más Buscado</span>
+                        : has && !t.isMe && <span className="text-[9px] uppercase tracking-wider font-bold text-[#ff6b74] border border-[#E11D2A]/40 rounded px-1.5 py-0.5 shrink-0">En la mira</span>}
                     </div>
                     <div className="flex items-center gap-2 mt-1 min-w-0">
                       <p className="text-xs text-white/45 truncate">{t.species} • Adulto</p>

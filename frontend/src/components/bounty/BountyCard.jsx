@@ -45,7 +45,7 @@ function StatChip({ icon, label, value, valueColor = "#fff", testid }) {
 }
 
 // Tarjeta WANTED rica (contrato o auto-bounty). rank = posición en el tablón (0 = #1).
-export function BountyCard({ bounty: b, variant = "full", rank }) {
+export function BountyCard({ bounty: b, variant = "full", rank, isTop: isTopProp }) {
   useTick();
   if (!b) {
     return (
@@ -62,7 +62,7 @@ export function BountyCard({ bounty: b, variant = "full", rank }) {
   const prime = isSelf ? 0 : (b.reward ? b.reward.primeMeat : 0);
   const amber = isSelf ? (b.killerAmber || 0) : (b.reward ? b.reward.amberium : 0);
   const threat = isSelf ? { label: "OBJETIVO DORADO", color: GOLD } : threatOf(prime);
-  const isTop = rank === 0 && !isSelf;
+  const isTop = (isTopProp !== undefined ? isTopProp : rank === 0) && !isSelf;
   const reasonToneCls = {
     danger: "text-[#ff6b74] border-[#E11D2A]/40 bg-[#E11D2A]/10",
     warn: "text-[#F0B429] border-[#F0B429]/40 bg-[#F0B429]/10",

@@ -238,6 +238,16 @@ export default function Bounty() {
 
   const scoreOf = (b) => (b.type === "self" ? (b.accrued || 0) + (b.primePerMin || 0) + (b.killerAmber || 0) : (b.reward ? b.reward.primeMeat : 0));
   const allBoard = [...(board.contracts || []), ...(board.self || [])].sort((a, z) => scoreOf(z) - scoreOf(a));
+  const boardKey = (b) => (b.bountyId || b.targetId) + (b.type || "");
+  // El #1 Más Buscado = el contrato con mayor PrimeMeat (misma lógica que la lista de Objetivos).
+  const topWantedKey = (() => {
+    let best = null;
+    for (const c of board.contracts || []) {
+      const p = c.reward ? c.reward.primeMeat : 0;
+      if (p > 0 && (!best || p > (best.reward ? best.reward.primeMeat : 0))) best = c;
+    }
+    return best ? boardKey(best) : null;
+  })();
   const isAdmin = user && user.role === "admin";
 
   return (
@@ -286,10 +296,10 @@ export default function Bounty() {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start" data-testid="bounty-board">
                   <AnimatePresence>
                     {allBoard.map((b, i) => (
-                      <motion.div key={(b.bountyId || b.targetId) + (b.type || "")}
+                      <motion.div key={boardKey(b)}
                         initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ delay: Math.min(i * 0.05, 0.25), duration: 0.35 }}>
-                        <BountyCard bounty={b} rank={i} variant="full" />
+                        <BountyCard bounty={b} rank={i} isTop={boardKey(b) === topWantedKey} variant="full" />
                       </motion.div>
                     ))}
                   </AnimatePresence>
