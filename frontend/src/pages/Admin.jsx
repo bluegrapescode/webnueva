@@ -18,6 +18,7 @@ import { BansTab } from "@/components/admin/BansTab";
 import { CreatorsTab } from "@/components/admin/CreatorsTab";
 import { WheelAdminTab } from "@/components/admin/WheelAdminTab";
 import AdminSkinShop from "@/components/admin/AdminSkinShop";
+import AdminCrafting from "@/components/admin/AdminCrafting";
 import { fmtDate as cemFmtDate, statusMeta as cemStatusMeta } from "@/lib/cemeteryMeta";
 
 // Owner-only tabs are drawn beside their neighbour, never as a separate list:
@@ -42,6 +43,7 @@ const TABS = [
   { k: "recovery", label: "Recuperación", icon: LifeBuoy },
   { k: "cemetery", label: "Cementerio", icon: Skull },
   { k: "skins_shop", label: "Tienda Skins", icon: Sparkles },
+  { k: "crafting", label: "Crafteo", icon: Gem },
   { k: "multipliers", label: "Multiplicadores", icon: Zap },
   { k: "battlepass", label: "Pase de Batalla", icon: Trophy },
   { k: "creators", label: "Creators", icon: Radio },
@@ -113,6 +115,7 @@ export default function Admin() {
               {tab === "recovery" && <RecoveryTab />}
               {tab === "cemetery" && <CementerioTab />}
               {tab === "skins_shop" && <AdminSkinShop />}
+              {tab === "crafting" && <AdminCrafting />}
               {tab === "multipliers" && <MultiplierEventsTab />}
               {tab === "battlepass" && <BattlePassTab />}
               {tab === "wheel" && user.is_owner && <WheelAdminTab />}

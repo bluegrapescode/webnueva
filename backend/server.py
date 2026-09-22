@@ -18948,6 +18948,33 @@ bounty.configure(
     jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
 app.include_router(bounty.build_router(get_current_user, get_admin_user), prefix="/api")
 
+# ─────────────────────── Sistema de Crafteo de Skins (🔨) ───────────────────────
+import crafting
+
+
+async def _crafting_grant_skin(user_id: str, snap: dict, uses: int):
+    """Entrega la skin crafteada a La Bóveda (db.inventory, categoría Skins) con
+    `uses` cargas. Si el jugador ya tiene esa skin crafteada, acumula usos."""
+    item_id = "craft:" + str(snap.get("id"))
+    existing = await db.inventory.find_one({"user_id": user_id, "item_id": item_id})
+    if existing:
+        await db.inventory.update_one(
+            {"id": existing["id"]},
+            {"$inc": {"uses": int(uses)}, "$set": {"acquired_at": now_iso()}})
+        return
+    await db.inventory.insert_one({
+        "id": new_id(), "user_id": user_id, "item_id": item_id, "name": snap.get("name"),
+        "category": "Skins", "rarity": (snap.get("rarity") or "").capitalize(),
+        "image": snap.get("image_url"), "quantity": 1, "uses": int(uses),
+        "universal": True, "dino_slug": snap.get("dino_slug") or None, "order": 9999,
+        "source": "crafting", "acquired_at": now_iso()})
+
+
+crafting.configure(
+    db, admin_ids=ADMIN_STEAM_IDS, grant_skin=_crafting_grant_skin, add_log=add_log,
+    discord_notify=None, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
+app.include_router(crafting.build_router(get_current_user, get_admin_user), prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19566,6 +19593,11 @@ async def on_startup():
         bounty.start_loops()
     except Exception:
         logger.warning("[bounty] startup init skipped", exc_info=True)
+    # Sistema de Crafteo de Skins (🔨): índices + seed + recuperación + sweeper.
+    try:
+        crafting.start_loops()
+    except Exception:
+        logger.warning("[crafting] startup init skipped", exc_info=True)
 
 
 @app.on_event("shutdown")

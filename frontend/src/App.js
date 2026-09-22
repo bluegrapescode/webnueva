@@ -39,6 +39,7 @@ const Cementerio = React.lazy(() => import("@/pages/Cementerio"));
 const TiendaSkins = React.lazy(() => import("@/pages/TiendaSkins"));
 const PaymentSuccess = React.lazy(() => import("@/pages/PaymentSuccess"));
 const Bounty = React.lazy(() => import("@/pages/Bounty"));
+const SkinCrafting = React.lazy(() => import("@/pages/SkinCrafting"));
 const BountyOverlay = React.lazy(() => import("@/pages/BountyOverlay"));
 import CreatorNotifier from "@/components/creator/CreatorNotifier";
 import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
@@ -97,6 +98,7 @@ function AnimatedRoutes() {
         <Route path="/my-dino" element={<PageWrap><MyDino /></PageWrap>} />
         <Route path="/cementerio" element={<PageWrap><Cementerio /></PageWrap>} />
         <Route path="/tienda-skins" element={<PageWrap><TiendaSkins /></PageWrap>} />
+        <Route path="/crafteo" element={<PageWrap><SkinCrafting /></PageWrap>} />
         <Route path="/bounty" element={<PageWrap><Bounty /></PageWrap>} />
         <Route path="/bounty/overlay" element={<BountyOverlay />} />
         <Route path="/payment/success" element={<PageWrap><PaymentSuccess /></PageWrap>} />

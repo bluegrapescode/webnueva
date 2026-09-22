@@ -80,6 +80,13 @@ export function bountyWsUrl() {
   return `${base}/api/bounty/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Sistema de Crafteo — WebSocket para /api/crafting/ws (materiales, jobs, claim).
+export function craftingWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/crafting/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -515,6 +522,22 @@ export const api = {
   bountySimulateKill: (target_sid) => client.post("/bounty/admin/simulate-kill", { target_sid }),
   bountyPause:      () => client.post("/bounty/admin/pause"),
   bountyResume:     () => client.post("/bounty/admin/resume"),
+
+  // ── Sistema de Crafteo de Skins (🔨) ──
+  craftingWsUrl,
+  craftingState:    () => client.get("/crafting/state"),
+  craftingCraft:    (recipe_id, idempotency_key) => client.post("/crafting/craft", { recipe_id, idempotency_key }),
+  craftingClaim:    (job_id, idempotency_key) => client.post("/crafting/claim", { job_id, idempotency_key }),
+  craftingCancel:   (job_id) => client.post("/crafting/cancel", { job_id }),
+  craftAdminOverview: () => client.get("/crafting/admin/overview"),
+  craftAdminSaveMaterial: (body) => client.post("/crafting/admin/materials", body),
+  craftAdminDeleteMaterial: (id) => client.delete(`/crafting/admin/materials/${id}`),
+  craftAdminSaveRecipe: (body) => client.post("/crafting/admin/recipes", body),
+  craftAdminDeleteRecipe: (id) => client.delete(`/crafting/admin/recipes/${id}`),
+  craftAdminGetSettings: () => client.get("/crafting/admin/settings"),
+  craftAdminSaveSettings: (body) => client.put("/crafting/admin/settings", body),
+  craftAdminGrant:  (body) => client.post("/crafting/admin/grant", body),
+  craftAdminLogs:   (kind, limit = 100) => client.get(`/crafting/admin/logs${kind ? `?kind=${kind}&limit=${limit}` : `?limit=${limit}`}`),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

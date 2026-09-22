@@ -5,7 +5,7 @@ import {
   Volume2, VolumeX, Menu, X, LogOut, User as UserIcon,
   ChevronDown, Ticket, Home, LayoutDashboard, Bone, Store, Tag, ArrowLeftRight,
   Gamepad2, Swords, Target, BarChart3, Radio, Video, Palette, ShieldCheck,
-  Spade, Dices, Gift, Package, Activity, MapPin, Dna, Skull, Sparkles, Crosshair,
+  Spade, Dices, Gift, Package, Activity, MapPin, Dna, Skull, Sparkles, Crosshair, Hammer,
 } from "lucide-react";
 
 // True when the given "to" (which may carry a ?query) matches current location.
@@ -38,6 +38,7 @@ function buildNav(user) {
       children: [
         { to: "/store", id: "store", label: "Tienda", icon: Store, desc: "Compra dinos, cofres y más" },
         { to: "/tienda-skins", id: "skins-shop", label: "Skins", icon: Sparkles, desc: "Skins únicas por tiempo limitado" },
+        { to: "/crafteo", id: "crafteo", label: "Crafteo de Skins", icon: Hammer, desc: "Fabrica skins con materiales del mapa" },
         { to: "/marketplace", id: "market", label: "Mercado", icon: Tag, desc: "Compra y vende entre jugadores" },
         { to: "/intercambios", id: "trades", label: "Intercambios", icon: ArrowLeftRight, desc: "Intercambia animales y objetos" },
       ],
