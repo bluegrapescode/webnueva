@@ -73,7 +73,7 @@ function DisplayCase({ skin, busy, equippedNow, onBuy, onEquip }) {
               className="relative w-60 h-60 sm:w-72 sm:h-72 lg:w-80 lg:h-80 rounded-3xl overflow-hidden border lux-float"
               style={{ borderColor: `${r.color}66`, boxShadow: `0 0 70px -6px ${r.color}` }}>
               <div className="absolute inset-0" style={{ background: `radial-gradient(72% 62% at 50% 40%, ${r.color}55, #07080a 92%)` }} />
-              <img src={skin.image_url} alt={skin.name} className={`absolute inset-0 w-full h-full object-cover ${skin.owned ? "grayscale opacity-85" : ""}`} />
+              <img src={skin.image_url} alt={skin.name} className={`absolute inset-0 w-full h-full object-contain p-3 drop-shadow-2xl ${skin.owned ? "grayscale opacity-85" : ""}`} />
               {holo && <span className="lux-holo pointer-events-none absolute inset-0 opacity-75" aria-hidden />}
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
             </motion.div>
@@ -153,27 +153,27 @@ function DisplayCase({ skin, busy, equippedNow, onBuy, onEquip }) {
   );
 }
 
-// ====== FILA de la lista lateral ======
+// ====== FILA de la lista lateral (tile compacto, 2 por fila) ======
 function SkinRow({ skin, active, onSelect, play }) {
   const r = rarityOf(skin.rarity);
   return (
     <button data-testid={`skin-card-${skin.id}`}
       onMouseEnter={() => play?.("hover")} onClick={() => onSelect(skin)}
-      className={`group relative w-full flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors ${active ? "bg-amber-400/10" : "bg-white/[0.02] hover:bg-white/[0.05]"}`}
-      style={{ borderColor: active ? "rgba(245,158,11,0.6)" : `${r.color}33`, boxShadow: active ? `inset 3px 0 0 ${r.color}, 0 0 26px -12px ${r.color}` : `inset 3px 0 0 ${r.color}` }}>
-      <div className="relative h-14 w-16 shrink-0 rounded-lg overflow-hidden border border-white/5">
+      className={`group relative w-full flex items-center gap-2.5 rounded-lg border p-2 text-left transition-colors ${active ? "bg-amber-400/10" : "bg-white/[0.02] hover:bg-white/[0.05]"}`}
+      style={{ borderColor: active ? "rgba(245,158,11,0.65)" : `${r.color}33`, boxShadow: active ? `0 0 22px -12px ${r.color}` : "none" }}>
+      <div className="relative h-11 w-11 shrink-0 rounded-md overflow-hidden border border-white/5">
         <div className="absolute inset-0" style={{ background: `radial-gradient(80% 80% at 50% 40%, ${r.color}55, #07080a 90%)` }} />
-        <img src={skin.image_url} alt={skin.name} loading="lazy" className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${skin.owned ? "grayscale opacity-70" : ""}`} />
+        <img src={skin.image_url} alt={skin.name} loading="lazy" className={`absolute inset-0 w-full h-full object-contain p-0.5 transition-transform duration-500 group-hover:scale-105 ${skin.owned ? "grayscale opacity-70" : ""}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.color, boxShadow: `0 0 8px ${r.color}` }} />
-          <p className="font-display font-bold text-sm truncate text-white">{skin.name}</p>
-          {skin.owned && <Check size={12} className="text-emerald-400 shrink-0" />}
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: r.color, boxShadow: `0 0 6px ${r.color}` }} />
+          <p className="font-display font-bold text-[13px] truncate text-white leading-tight">{skin.name}</p>
+          {skin.owned && <Check size={11} className="text-emerald-400 shrink-0" />}
         </div>
-        <p className="text-[11px] text-white/45 truncate mt-0.5">{skin.dino_species || "—"}{skin.skin_type ? ` · ${skin.skin_type}` : ""}</p>
+        <p className="text-[10px] text-white/45 truncate leading-tight mt-0.5">{skin.dino_species || "—"}</p>
+        <span className="font-code font-black tabular-nums text-[11px] text-amber-300">${skin.price_usd.toFixed(2)}</span>
       </div>
-      <span className="font-code font-black tabular-nums text-sm shrink-0 pr-1 text-amber-300">${skin.price_usd.toFixed(2)}</span>
     </button>
   );
 }
@@ -358,7 +358,7 @@ export default function TiendaSkins() {
                     <span className="text-[10px] text-white/30 font-mono">{g.skins.length}</span>
                     <span className="flex-1 h-px ml-1" style={{ background: `linear-gradient(90deg, ${g.meta.color}44, transparent)` }} />
                   </div>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <AnimatePresence initial={false}>
                       {g.skins.map((s) => (
                         <motion.div key={s.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
