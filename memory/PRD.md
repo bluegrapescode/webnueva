@@ -352,3 +352,8 @@ Server-authoritative, WS-driven (sin polling), atómico + idempotency + recupera
 ### Verificación: testing_agent iteration_30.json — 100% frontend E2E (craft con descuento atómico 390->350, cola, claim con speed x3600, toast, OWNED, admin CRUD, WS live sin reload, responsive 1920 y 390 sin overflow). Backend core curl-verificado (idempotencia, claim-not-ready 400, doble-claim 409, sweeper, entrega uses=20). Fix aplicado post-review: materials:updated ahora re-evalúa checks/CRAFT al instante. crafting_speed_mult reseteado a 1.0.
 
 ### PENDIENTE (Fase 2/3): gathering real (collect(nodeId) desde el mod in-game, nodos, respawn, cooldown, posiciones aleatorias, gathering_logs), Discord de crafteos raros (webhook en Settings), historiales admin ampliados, iconos definitivos que enviará el usuario.
+
+## Actualización 20 (Jun 2026) — Crafteo: sonidos + animaciones sincronizadas
+- Sonidos sintetizados nuevos en lib/sounds.js: craftStart (forja/yunque), craftMaterial (recolección), craftReady (listo), craftClaim (fanfarria). Disparados DESDE los eventos WS del servidor en CraftingContext (material:collected/crafting:started/completed/claimed) => 100% sincronizados con el estado real; play("error") en fallos. Sin superficie nueva de exploit (todo sigue server-authoritative).
+- Animaciones CSS GPU-friendly (index.css): forge-progress (shimmer en barras activas), forge-ember (partículas en cards en CRAFTING), craft-ready-pulse (glow en jobs READY + botón reclamar), craftPopIn. Aplicadas en components/crafting/parts.jsx.
+- Verificado: testing_agent iteration_31.json 100% frontend — clases de animación presentes en los estados correctos, craft/claim sin regresión, sin errores de consola, sin overflow 1920/390. crafting_speed_mult reseteado a 1.
