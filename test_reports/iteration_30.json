@@ -1,0 +1,47 @@
+{
+  "summary": "Full E2E of Skin Crafting (Phase 1): demo auth token + localStorage flow, /crafteo 3-column layout, materials-bar chips, recipe cards, category tabs (all/carnivore/herbivore/owned/craftable), recipe detail panel with requisites, CRAFT with atomic deduction (bones 390->350, metal 330->310), queue-job appearance, sped-up (crafting_speed_mult=3600) completion, CLAIM via queue button, success toast ('Stego Invernal añadida a tu colección.'), job removed from queue, recipe status flipped to OWNED. Admin /admin > Crafteo tab works with all sub-tabs (materials/recipes/settings/grant/logs). Settings save returned 'Ajustes guardados y propagados'. Responsive verified at 1920x1080 and 390x844 (no horizontal overflow, columns stack). All prior backend anti-exploit checks (idempotency, not-ready-claim 400, double-claim 409) previously curl-verified by main agent; not re-run this iteration.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_details": {
+    "player_flow": {
+      "materials_chips": ["bones","metal","leather","polymer"],
+      "recipe_cards_present": ["stego_frost","rex_volcanic","trike_gilded","spino_abyss"],
+      "tabs_present": ["all","carnivore","herbivore","owned","craftable"],
+      "carnivore_filter": {"rex_visible": true, "spino_visible": true, "trike_hidden": true},
+      "herbivore_filter": {"trike_visible": true, "stego_visible": true, "rex_hidden": true},
+      "craft_deduction": {"bones_before": 390, "bones_after": 350, "expected_delta": 40},
+      "queue_job_appeared": true,
+      "claim_toast": "Stego Invernal añadida a tu colección.",
+      "queue_cleared_after_claim": true,
+      "ws_live_updates": true
+    },
+    "admin_flow": {
+      "admin_tab_crafting": true,
+      "subtabs_all_visible": true,
+      "settings_save_toast": "Ajustes guardados y propagados",
+      "settings_ws_propagation": "verified via toast + prior /crafteo speed=3600 taking effect"
+    },
+    "responsive": {
+      "desktop_1920x1080": {"scrollWidth": 1920, "clientWidth": 1920, "overflow": false},
+      "mobile_390x844": {"scrollWidth": 390, "clientWidth": 390, "overflow": false, "columns_stack": true}
+    },
+    "setup_used": {"crafting_speed_mult": 3600, "materials_granted_per_id": 300}
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CraftingContext refresh() is invoked on nearly every WS event (started/completed/claimed/cancelled/recipe:updated/material:updated/settings:updated). Server-authoritative state is fine, but consider merging deltas server-side for higher-scale to avoid GET /state amplification when many players are notified simultaneously.",
+    "materials:updated event only updates inventory (setState uses msg.data.inventory), but recipe.status/materials.ok flags are derived server-side and won't refresh from that event alone. Not observed as a bug here because craft/claim also trigger refresh(), but granting materials from admin will only update chip numbers, not recipe requirement check marks, until another event fires."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (prev verified)", "frontend": "100%"},
+  "test_credentials": "POST /api/auth/demo -> token; user id=3c45966b9bbf4bf59035ebae8237faa4 (admin).",
+  "seed_data_creation": "Granted 300 of each material (bones/metal/leather/polymer) to demo user; set crafting_speed_mult=3600.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Skin Crafting Phase 1 is fully working E2E. To retest quickly: POST /api/auth/demo, PUT /api/crafting/admin/settings {crafting_speed_mult:3600}, POST /api/crafting/admin/grant for the 4 materials, then navigate /crafteo. crafting_speed_mult should be reset to 1 if timing-sensitive UX (progress bar animation) needs verification."
+}

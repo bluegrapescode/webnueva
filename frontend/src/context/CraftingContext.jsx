@@ -40,7 +40,9 @@ export function CraftingProvider({ children }) {
         const notif = state?.settings?.notifications_enabled !== false;
         switch (msg.event) {
           case "materials:updated":
-            setState((s) => s ? { ...s, inventory: msg.data.inventory } : s); break;
+            setState((s) => s ? { ...s, inventory: msg.data.inventory } : s);
+            refresh(); // re-evalúa checks ✅/❌ y el botón CRAFT al instante
+            break;
           case "material:collected":
             if (notif) { const m = state?.materials?.find((x) => x.id === msg.data.material_id); toast.success(`+${msg.data.amount} ${m?.name || "material"}`); }
             break;

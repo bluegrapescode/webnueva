@@ -333,3 +333,22 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - Feedback: la lista de rarezas era muy larga hacia abajo, y el preview recortaba la imagen (importante para imágenes subidas por el usuario).
 - Fix TiendaSkins.jsx: (1) los tiles de cada grupo de rareza ahora se renderizan en 'grid grid-cols-2 gap-2' (SkinRow rediseñado como tile compacto: thumb 44px object-contain, nombre/especie/precio apilados) -> lista ~50% más corta. (2) La imagen de la vitrina (DisplayCase) pasó de object-cover a 'object-contain p-3 drop-shadow-2xl' -> se ve el contenido COMPLETO sin recorte. Thumbnails de la lista también object-contain.
 - Verificado: testing_agent iteration_29.json 100% — 2 columnas (285px desktop / 175px móvil), object-contain aplicado, 15 tiles, sin overflow horizontal en 1920 y 390.
+
+## Actualización 19 (Jun 2026) — SISTEMA DE CRAFTEO DE SKINS (Fase 1) ✅
+Server-authoritative, WS-driven (sin polling), atómico + idempotency + recuperación tras reinicios.
+
+### Backend (`/app/backend/crafting.py`, wired en server.py ~L18950 + startup crafting.start_loops)
+- Colecciones: crafting_materials, player_materials, crafting_recipes (materiales embebidos), crafting_jobs, crafting_settings(_id="crafting"), crafting_logs. Índices en player_id, recipe_id, status, finish_at, material_id + idempotency_key único sparse.
+- Endpoints (/api/crafting): GET /state · POST /craft · POST /claim · POST /cancel · WS /ws · admin: GET /admin/overview, POST/DELETE /admin/materials, POST/DELETE /admin/recipes, GET/PUT /admin/settings, POST /admin/grant, GET /admin/logs.
+- CRAFT: transacción compensada (descuento $gte por material + rollback), idempotency_key (doble-click = 1 job/1 descuento), límite de crafteos activos por rol (default/vip/apex desde settings).
+- Timers server-side: started_at/finish_at persistidos; sweeper cada 15s + barrido al boot -> CRAFTING vencido pasa a COMPLETED (sobrevive reinicios/crash). CLAIM valida propiedad+COMPLETED, marca CLAIMED atómico (sin doble claim), entrega la skin a LA BÓVEDA (db.inventory categoría Skins, item_id "craft:<recipe>", uses=max(20,receta)).
+- Eventos WS: crafting:started/completed/claimed/cancelled, materials:updated, material:collected, recipe:updated, material:updated, settings:updated. El servidor NO envía el temporizador cada segundo (solo started_at/finish_at; el cliente cuenta local).
+- Seed: 4 materiales (Huesos/Metal/Cuero/Polímero, iconos NUBLAR RESOURCES) + 4 recetas (T-Rex Volcánico, Spino Abismal, Trike Dorado, Stego Invernal).
+
+### Frontend
+- Ruta /crafteo (`pages/SkinCrafting.jsx` + `context/CraftingContext.jsx` WS + `components/crafting/parts.jsx`). Layout 3 columnas estilo okok: Cola de Crafteo (izq) · grid + tabs ALL/CARNÍVOROS/HERBÍVOROS/EN BÓVEDA/FABRICABLES (centro) · Detalles + CRAFT (der). Barra de inventario de materiales arriba. Estados: CRAFTABLE/MISSING/CRAFTING/READY/OWNED. Countdown local + barra de progreso. Notificaciones (sonner). Nav: Tienda > Crafteo de Skins.
+- Admin: `components/admin/AdminCrafting.jsx` (tab "Crafteo" en Admin.jsx) con subtabs Materiales/Recetas/Ajustes Globales/Otorgar/Historial (CRUD completo, grant server-authoritative para pruebas, propagación por WS).
+
+### Verificación: testing_agent iteration_30.json — 100% frontend E2E (craft con descuento atómico 390->350, cola, claim con speed x3600, toast, OWNED, admin CRUD, WS live sin reload, responsive 1920 y 390 sin overflow). Backend core curl-verificado (idempotencia, claim-not-ready 400, doble-claim 409, sweeper, entrega uses=20). Fix aplicado post-review: materials:updated ahora re-evalúa checks/CRAFT al instante. crafting_speed_mult reseteado a 1.0.
+
+### PENDIENTE (Fase 2/3): gathering real (collect(nodeId) desde el mod in-game, nodos, respawn, cooldown, posiciones aleatorias, gathering_logs), Discord de crafteos raros (webhook en Settings), historiales admin ampliados, iconos definitivos que enviará el usuario.
