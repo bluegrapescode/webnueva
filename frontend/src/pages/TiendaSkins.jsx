@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, LayoutGrid, List as ListIcon, PackageOpen, Crown, Sparkles, ArrowRight, Gem } from "lucide-react";
-import { api, shopWsUrl } from "@/lib/api";
+import { toast } from "sonner";
+import { Search, PackageOpen, Crown, Gem, ShoppingCart, Check, Loader2, Sparkles, ShieldCheck, Layers, Tag, Clock } from "lucide-react";
+import { api, shopWsUrl, externalRedirect } from "@/lib/api";
 import { useSound } from "@/context/SoundContext";
 import { useAuth } from "@/context/AuthContext";
-import { GalleryCard } from "@/components/shop/GalleryCard";
-import { SkinDetailModal } from "@/components/shop/SkinDetailModal";
 import { PurchaseCelebration } from "@/components/shop/PurchaseCelebration";
 import { RARITY_ORDER, rarityOf } from "@/components/shop/shopRarity";
 import { Countdown } from "@/components/shop/Countdown";
-import { SkeletonCard } from "@/components/common/PageLoader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const SORTS = {
@@ -29,83 +27,169 @@ const RARITY_FLAVOR = {
   mythic: "Rareza mítica: de las más exclusivas del catálogo.",
 };
 
-// Banner destacado: muestra la skin de mayor prestigio del catálogo.
-function FeaturedHero({ skin, onOpen, play }) {
-  if (!skin) return null;
-  const r = rarityOf(skin.rarity);
-  const holo = skin.rarity === "legendary" || skin.rarity === "mythic";
-  const sparks = [12, 28, 44, 60, 76, 88];
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}
-      data-testid="hero-skin-banner"
-      className="relative overflow-hidden rounded-3xl border border-amber-500/30 p-6 sm:p-9 lg:p-11 min-h-[420px] lg:min-h-[460px]"
-      style={{ background: "linear-gradient(135deg,#12141d 0%,#0b0d12 52%,#050608 100%)", boxShadow: "0 26px 90px -30px rgba(245,158,11,0.28)" }}>
-      {/* luz dorada + tinte de rareza */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(60% 80% at 82% 30%, ${r.color}33, transparent 65%)` }} />
-      <div className="absolute inset-0 pointer-events-none lux-gold-glow" style={{ background: "radial-gradient(45% 60% at 78% 40%, rgba(245,158,11,0.22), transparent 70%)" }} />
-      <div className="absolute inset-0 pointer-events-none opacity-[0.06]" style={{ backgroundImage: "radial-gradient(#F59E0B 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
-
-      <div className="relative grid lg:grid-cols-12 gap-6 lg:gap-8 items-center h-full">
-        {/* texto */}
-        <div className="lg:col-span-7 min-w-0">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-300">
-            <Sparkles size={12} /> Pieza destacada de la vitrina
-          </span>
-          <h2 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl leading-[0.9] mt-4">
-            <span className="text-gold-clip">{skin.name}</span>
-          </h2>
-          <div className="flex flex-wrap items-center gap-2 mt-4">
-            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md" style={{ color: "#0a0b0f", background: r.color }}>
-              {holo ? <Crown size={11} /> : <Gem size={11} />} {r.label}
-            </span>
-            {skin.dino_species && <span className="text-[11px] font-semibold uppercase tracking-wide text-white/60 border border-white/12 rounded-md px-2.5 py-1">{skin.dino_species}</span>}
-            {skin.skin_type && <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">{skin.skin_type}</span>}
-          </div>
-          <p className="text-sm sm:text-base text-white/60 mt-4 max-w-lg leading-relaxed">{skin.description || RARITY_FLAVOR[skin.rarity] || RARITY_FLAVOR.common}</p>
-          {skin.end_at && (
-            <p className="text-xs font-code text-amber-300/90 mt-3">Disponible por <Countdown endAt={skin.end_at} className="text-amber-200" /></p>
-          )}
-          <div className="flex items-center gap-4 mt-7">
-            <button data-testid="hero-buy-btn" onClick={() => { play?.("open"); onOpen?.(skin); }}
-              className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-black uppercase tracking-wider text-black transition-transform hover:scale-[1.03] active:scale-95"
-              style={{ background: "linear-gradient(135deg,#FCD34D,#F59E0B)", boxShadow: "0 12px 34px -12px rgba(245,158,11,0.9)" }}>
-              {skin.owned ? "Ver en tu colección" : "Ver y comprar"} <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-            </button>
-            <div className="leading-none">
-              <p className="text-[10px] uppercase tracking-widest text-white/40">Precio</p>
-              <p className="font-code font-black text-2xl text-amber-300 mt-0.5">${skin.price_usd.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* render flotante */}
-        <div className="lg:col-span-5 relative flex items-center justify-center min-h-[220px]">
-          <div className="absolute w-64 h-64 rounded-full lux-gold-glow" style={{ background: `radial-gradient(circle, ${r.color}55, transparent 68%)` }} />
-          {sparks.map((l, i) => <span key={i} className="lux-spark" style={{ left: `${l}%`, animationDelay: `${i * 0.5}s` }} />)}
-          <div className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 rounded-3xl overflow-hidden border lux-float" style={{ borderColor: `${r.color}66`, boxShadow: `0 0 60px -6px ${r.color}` }}>
-            <div className="absolute inset-0" style={{ background: `radial-gradient(70% 60% at 50% 40%, ${r.color}55, #07080a 92%)` }} />
-            <img src={skin.image_url} alt={skin.name} className={`absolute inset-0 w-full h-full object-cover ${skin.owned ? "grayscale opacity-80" : ""}`} />
-            {holo && <span className="lux-holo pointer-events-none absolute inset-0 opacity-75" aria-hidden />}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-          </div>
+// ====== VITRINA (display case) — panel grande maestro ======
+function DisplayCase({ skin, busy, equippedNow, onBuy, onEquip }) {
+  if (!skin) {
+    return (
+      <div className="relative rounded-3xl border border-amber-500/20 min-h-[520px] flex items-center justify-center" style={{ background: "linear-gradient(140deg,#101219,#0a0b0f)" }} data-testid="display-empty">
+        <div className="text-center">
+          <PackageOpen size={40} className="mx-auto text-amber-400/50 mb-3" />
+          <p className="text-white/50 text-sm">Selecciona una skin de la vitrina</p>
         </div>
       </div>
-    </motion.section>
+    );
+  }
+  const r = rarityOf(skin.rarity);
+  const holo = skin.rarity === "legendary" || skin.rarity === "mythic";
+  const mythic = skin.rarity === "mythic";
+  const sparks = [10, 24, 40, 56, 72, 86, 94];
+
+  return (
+    <div className={`relative overflow-hidden rounded-3xl border ${mythic ? "lux-mythic-aura" : ""}`}
+      data-testid="hero-skin-banner"
+      style={{ borderColor: `${r.color}55`, background: "linear-gradient(140deg,#12141d 0%,#0b0d12 55%,#050608 100%)", boxShadow: mythic ? undefined : `0 30px 90px -34px ${r.color}` }}>
+      {/* iluminación cenital + tinte de rareza */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(70% 55% at 50% -6%, ${r.color}44, transparent 62%)` }} />
+      <div className="absolute inset-0 pointer-events-none lux-gold-glow" style={{ background: "radial-gradient(50% 40% at 50% 8%, rgba(245,158,11,0.20), transparent 70%)" }} />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: "radial-gradient(#F59E0B 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+
+      <div className="relative p-6 sm:p-9 flex flex-col min-h-[520px]">
+        {/* rareza + estado */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md" style={{ color: "#0a0b0f", background: r.color, boxShadow: `0 3px 14px -2px ${r.color}` }}>
+            {holo ? <Crown size={12} /> : <Gem size={12} />} {r.label}
+          </span>
+          {skin.owned && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-md bg-emerald-500/25 text-emerald-200 border border-emerald-400/50"><Check size={11} /> En tu colección</span>}
+        </div>
+
+        {/* render en pedestal */}
+        <div className="relative flex-1 flex items-center justify-center py-7 min-h-[260px]">
+          <div className="absolute w-72 h-72 rounded-full lux-gold-glow" style={{ background: `radial-gradient(circle, ${r.color}55, transparent 66%)` }} />
+          {sparks.map((l, i) => <span key={i} className="lux-spark" style={{ left: `${l}%`, animationDelay: `${i * 0.45}s` }} />)}
+          <AnimatePresence mode="wait">
+            <motion.div key={skin.id}
+              initial={{ opacity: 0, y: 24, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -18, scale: 0.95 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-60 h-60 sm:w-72 sm:h-72 lg:w-80 lg:h-80 rounded-3xl overflow-hidden border lux-float"
+              style={{ borderColor: `${r.color}66`, boxShadow: `0 0 70px -6px ${r.color}` }}>
+              <div className="absolute inset-0" style={{ background: `radial-gradient(72% 62% at 50% 40%, ${r.color}55, #07080a 92%)` }} />
+              <img src={skin.image_url} alt={skin.name} className={`absolute inset-0 w-full h-full object-cover ${skin.owned ? "grayscale opacity-85" : ""}`} />
+              {holo && <span className="lux-holo pointer-events-none absolute inset-0 opacity-75" aria-hidden />}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+            </motion.div>
+          </AnimatePresence>
+          {/* reflejo/base del pedestal */}
+          <div className="absolute bottom-4 w-64 h-8 rounded-[100%] blur-md" style={{ background: `radial-gradient(closest-side, ${r.color}66, transparent)` }} />
+        </div>
+
+        {/* identidad */}
+        <div>
+          <span className="block h-[3px] w-14 rounded-full mb-3" style={{ background: "linear-gradient(90deg,#FEF08A,#F59E0B)", boxShadow: "0 0 12px rgba(245,158,11,0.85)" }} />
+          <h2 className="font-display font-black uppercase tracking-tighter text-3xl sm:text-4xl lg:text-5xl leading-[0.9]" data-testid="display-skin-name">
+            <span className="text-gold-clip">{skin.name}</span>
+          </h2>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {skin.dino_species && <span className="text-[11px] font-semibold uppercase tracking-wide text-white/65 border border-white/12 rounded-md px-2.5 py-1">{skin.dino_species}</span>}
+            {skin.skin_type && <span className="text-[11px] font-semibold uppercase tracking-wide text-white/45">{skin.skin_type}</span>}
+          </div>
+          <p className="text-sm text-white/60 mt-4 leading-relaxed max-w-xl">{skin.description || RARITY_FLAVOR[skin.rarity] || RARITY_FLAVOR.common}</p>
+
+          {/* atributos */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">
+            {[
+              { icon: Gem, label: "Rareza", value: r.label, accent: true },
+              { icon: Layers, label: "Especie", value: skin.dino_species || "Universal" },
+              { icon: Tag, label: "Tipo", value: skin.skin_type || "Estándar" },
+              { icon: Clock, label: "Disponible", value: skin.end_at ? "Limitada" : "Permanente" },
+            ].map((a) => (
+              <div key={a.label} className="rounded-xl px-3 py-2.5 border" style={{ background: "rgba(255,255,255,.03)", borderColor: a.accent ? `${r.color}44` : "rgba(245,158,11,.14)" }}>
+                <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-white/45"><a.icon size={11} style={a.accent ? { color: r.color } : { color: "#F59E0B" }} /> {a.label}</span>
+                <span className="block text-sm font-bold mt-0.5 truncate" style={a.accent ? { color: r.color } : {}}>{a.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* perks + disponibilidad */}
+          <div className="mt-4 space-y-1.5">
+            <span className="flex items-center gap-2 text-xs text-white/65"><ShieldCheck size={14} className="text-amber-400" /> Se aplica a tu {skin.dino_species || "dinosaurio"} en el servidor</span>
+            <span className="flex items-center gap-2 text-xs text-white/65 font-code">
+              <Clock size={14} className="text-amber-400" />
+              {skin.end_at ? <>Disponible por <Countdown endAt={skin.end_at} className="text-amber-200" /></> : "Disponible por tiempo indefinido"}
+            </span>
+          </div>
+
+          {/* precio + acción */}
+          <div className="flex items-end justify-between gap-4 mt-6">
+            <div className="leading-none">
+              <p className="text-[10px] uppercase tracking-widest text-white/40">Precio</p>
+              <p className="font-code font-black text-3xl text-amber-300 mt-1">${skin.price_usd.toFixed(2)}</p>
+            </div>
+            {skin.owned ? (
+              equippedNow ? (
+                <button disabled data-testid="skin-equipped-btn"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl font-black uppercase tracking-wide bg-emerald-500/20 text-emerald-200 border-2 border-emerald-400/50">
+                  <Check size={18} /> Equipada
+                </button>
+              ) : (
+                <button onClick={onEquip} disabled={busy} data-testid={`equip-btn-${skin.id}`}
+                  className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl font-black uppercase tracking-wide text-black transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
+                  style={{ background: "linear-gradient(135deg,#B8DA7E,#7CA842)" }}>
+                  {busy ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Equipar al dino
+                </button>
+              )
+            ) : (
+              <button onClick={onBuy} disabled={busy} data-testid={`buy-btn-${skin.id}`}
+                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl font-black uppercase tracking-wide text-black transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#FCD34D,#F59E0B)", boxShadow: "0 14px 38px -14px rgba(245,158,11,0.9)" }}>
+                {busy ? <Loader2 size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
+                {busy ? "Redirigiendo…" : "Comprar con Stripe"}
+              </button>
+            )}
+          </div>
+          <p className="text-right text-[10px] text-white/35 mt-2">Pago seguro por Stripe · Skin coleccionable ligada a tu cuenta</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ====== FILA de la lista lateral ======
+function SkinRow({ skin, active, onSelect, play }) {
+  const r = rarityOf(skin.rarity);
+  return (
+    <button data-testid={`skin-card-${skin.id}`}
+      onMouseEnter={() => play?.("hover")} onClick={() => onSelect(skin)}
+      className={`group relative w-full flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors ${active ? "bg-amber-400/10" : "bg-white/[0.02] hover:bg-white/[0.05]"}`}
+      style={{ borderColor: active ? "rgba(245,158,11,0.6)" : `${r.color}33`, boxShadow: active ? `inset 3px 0 0 ${r.color}, 0 0 26px -12px ${r.color}` : `inset 3px 0 0 ${r.color}` }}>
+      <div className="relative h-14 w-16 shrink-0 rounded-lg overflow-hidden border border-white/5">
+        <div className="absolute inset-0" style={{ background: `radial-gradient(80% 80% at 50% 40%, ${r.color}55, #07080a 90%)` }} />
+        <img src={skin.image_url} alt={skin.name} loading="lazy" className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${skin.owned ? "grayscale opacity-70" : ""}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.color, boxShadow: `0 0 8px ${r.color}` }} />
+          <p className="font-display font-bold text-sm truncate text-white">{skin.name}</p>
+          {skin.owned && <Check size={12} className="text-emerald-400 shrink-0" />}
+        </div>
+        <p className="text-[11px] text-white/45 truncate mt-0.5">{skin.dino_species || "—"}{skin.skin_type ? ` · ${skin.skin_type}` : ""}</p>
+      </div>
+      <span className="font-code font-black tabular-nums text-sm shrink-0 pr-1 text-amber-300">${skin.price_usd.toFixed(2)}</span>
+    </button>
   );
 }
 
 export default function TiendaSkins() {
   const { play } = useSound();
   const { refresh } = useAuth();
-  const [data, setData] = useState(null); // { items, dinos, types }
-  const [selected, setSelected] = useState(null);
+  const [data, setData] = useState(null);
   const [celebrate, setCelebrate] = useState(null);
   const [dino, setDino] = useState("all");
   const [type, setType] = useState("all");
   const [sort, setSort] = useState("featured");
   const [q, setQ] = useState("");
-  const [view, setView] = useState("grid");
+  const [selectedId, setSelectedId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [equippedNow, setEquippedNow] = useState(false);
 
   const load = useCallback(async () => {
     try { const { data } = await api.shopCatalog(); setData(data); }
@@ -133,7 +217,6 @@ export default function TiendaSkins() {
 
   const items = data?.items || [];
 
-  // Skin destacada del hero: prioriza sección "destacados", luego rareza, luego precio.
   const featured = useMemo(() => {
     if (!items.length) return null;
     const rIdx = (s) => RARITY_ORDER.indexOf(s.rarity);
@@ -158,101 +241,139 @@ export default function TiendaSkins() {
       if (sort === "price_asc") return a.price_usd - b.price_usd;
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "rarity") return rIdx(b.rarity) - rIdx(a.rarity);
-      return 0; // featured = backend order (newest first)
+      return 0;
     });
     return out;
   }, [items, dino, type, sort, q]);
 
-  const openSkin = (s) => { play?.("open"); setSelected(s); };
+  // Agrupar por rareza (mítica -> común) respetando el orden ya aplicado.
+  const groups = useMemo(() => {
+    const byR = {};
+    for (const s of filtered) (byR[s.rarity] ||= []).push(s);
+    return [...RARITY_ORDER].reverse().map((rk) => ({ key: rk, meta: rarityOf(rk), skins: byR[rk] || [] })).filter((g) => g.skins.length);
+  }, [filtered]);
+
+  // Selección por defecto = destacada; se mantiene si sigue existiendo.
+  useEffect(() => {
+    if (!items.length) return;
+    setSelectedId((cur) => (cur && items.some((s) => s.id === cur)) ? cur : featured?.id || null);
+  }, [items, featured]);
+
+  const selected = useMemo(() => items.find((s) => s.id === selectedId) || featured, [items, selectedId, featured]);
+  useEffect(() => { setEquippedNow(!!selected?.equipped); }, [selected]);
+
+  const onSelect = (s) => { play?.("open"); setSelectedId(s.id); if (window.innerWidth < 1024) window.scrollTo({ top: 0, behavior: "smooth" }); };
+
+  const onBuy = async () => {
+    if (!selected) return;
+    setBusy(true); play?.("purchase");
+    try {
+      const { data } = await api.shopCheckout(selected.id);
+      if (data?.checkout_url) externalRedirect(data.checkout_url);
+      else { toast.error("No se pudo iniciar el pago"); setBusy(false); }
+    } catch (e) { toast.error(e?.response?.data?.detail || "No se pudo iniciar el pago"); setBusy(false); }
+  };
+  const onEquip = async () => {
+    if (!selected) return;
+    setBusy(true); play?.("click");
+    try {
+      await api.shopEquip(selected.id);
+      play?.("success"); toast.success(`${selected.name} equipada`); setEquippedNow(true);
+      load(); refresh?.();
+    } catch (e) { toast.error(e?.response?.data?.detail || "No se pudo equipar"); }
+    finally { setBusy(false); }
+  };
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-9"
-      style={{ background: "radial-gradient(1200px 500px at 50% -8%, rgba(245,158,11,0.06), transparent 60%)" }}>
-      {/* encabezado */}
-      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      style={{ background: "radial-gradient(1200px 460px at 50% -8%, rgba(245,158,11,0.06), transparent 60%)" }}>
+      {/* encabezado compacto */}
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mb-6">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-amber-400/90 font-bold">Vitrina de cosméticos · Edición coleccionista</p>
-        <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl leading-none mt-1">
+        <h1 className="font-display font-black uppercase tracking-tighter text-3xl sm:text-4xl lg:text-5xl leading-none mt-1">
           <span className="text-gold-clip">Tienda de Skins</span>
         </h1>
-        <p className="text-sm sm:text-base text-white/55 mt-2 max-w-2xl leading-relaxed">Piezas exclusivas para tu dinosaurio. Cada rareza brilla distinto — toca cualquier skin para ver el detalle y comprarla con Stripe.</p>
       </motion.div>
 
-      {/* hero destacado */}
-      {featured && <FeaturedHero skin={featured} onOpen={openSkin} play={play} />}
+      {/* SALA DE EXHIBICIÓN: vitrina (izq) + lista navegable (der) */}
+      <div className="grid lg:grid-cols-12 gap-6">
+        {/* vitrina maestra (sticky) */}
+        <div className="lg:col-span-7 lg:sticky lg:top-6 self-start">
+          {!data ? (
+            <div className="rounded-3xl border border-amber-500/20 min-h-[520px] animate-pulse" style={{ background: "linear-gradient(140deg,#101219,#0a0b0f)" }} />
+          ) : (
+            <DisplayCase skin={selected} busy={busy} equippedNow={equippedNow} onBuy={onBuy} onEquip={onEquip} />
+          )}
+        </div>
 
-      {/* barra de filtros de lujo (glass + oro) */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}
-        className="sticky top-3 z-30 flex flex-col lg:flex-row lg:items-center gap-3 p-3.5 rounded-2xl border border-amber-500/20 shadow-xl"
-        style={{ background: "rgba(13,15,20,0.9)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" }}>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Select value={dino} onValueChange={(v) => { setDino(v); play?.("click"); }}>
-            <SelectTrigger className="w-[180px] bg-white/[0.03] border-amber-500/20 focus:border-amber-400/50" data-testid="filter-dino"><SelectValue placeholder="Todos los dinos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los dinos</SelectItem>
-              {(data?.dinos || []).map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={type} onValueChange={(v) => { setType(v); play?.("click"); }}>
-            <SelectTrigger className="w-[160px] bg-white/[0.03] border-amber-500/20 focus:border-amber-400/50" data-testid="filter-type"><SelectValue placeholder="Todas las skins" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las skins</SelectItem>
-              {(data?.types || []).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={sort} onValueChange={(v) => { setSort(v); play?.("click"); }}>
-            <SelectTrigger className="w-[170px] bg-white/[0.03] border-amber-500/20 focus:border-amber-400/50" data-testid="filter-sort"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(SORTS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2.5 lg:ml-auto">
-          <div className="relative flex-1 lg:flex-none">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400/60" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar skins…" data-testid="skin-search"
-              className="pl-9 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-amber-500/20 text-sm w-full lg:w-64 outline-none focus:border-amber-400/50 transition-colors" />
+        {/* lista lateral con filtros */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-6 z-30 p-3 rounded-2xl border border-amber-500/20 shadow-xl mb-4"
+            style={{ background: "rgba(13,15,20,0.92)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+            <div className="relative mb-2.5">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400/60" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar skins…" data-testid="skin-search"
+                className="pl-9 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-amber-500/20 text-sm w-full outline-none focus:border-amber-400/50 transition-colors" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={dino} onValueChange={(v) => { setDino(v); play?.("click"); }}>
+                <SelectTrigger className="flex-1 min-w-[130px] bg-white/[0.03] border-amber-500/20 focus:border-amber-400/50" data-testid="filter-dino"><SelectValue placeholder="Todos los dinos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los dinos</SelectItem>
+                  {(data?.dinos || []).map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={type} onValueChange={(v) => { setType(v); play?.("click"); }}>
+                <SelectTrigger className="flex-1 min-w-[120px] bg-white/[0.03] border-amber-500/20 focus:border-amber-400/50" data-testid="filter-type"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las skins</SelectItem>
+                  {(data?.types || []).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={sort} onValueChange={(v) => { setSort(v); play?.("click"); }}>
+                <SelectTrigger className="flex-1 min-w-[120px] bg-white/[0.03] border-amber-500/20 focus:border-amber-400/50" data-testid="filter-sort"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SORTS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="flex rounded-lg overflow-hidden border border-amber-500/20 shrink-0">
-            <button onClick={() => { setView("grid"); play?.("click"); }} data-testid="view-grid" aria-label="Vista cuadrícula"
-              className={`p-2.5 transition-colors ${view === "grid" ? "bg-amber-400/20 text-amber-300" : "text-white/45 hover:text-white"}`}><LayoutGrid size={17} /></button>
-            <button onClick={() => { setView("list"); play?.("click"); }} data-testid="view-list" aria-label="Vista lista"
-              className={`p-2.5 transition-colors ${view === "list" ? "bg-amber-400/20 text-amber-300" : "text-white/45 hover:text-white"}`}><ListIcon size={17} /></button>
-          </div>
-        </div>
-      </motion.div>
 
-      {/* resultados */}
-      {!data ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-24">
-          <PackageOpen size={40} className="mx-auto text-amber-400/60 mb-4" />
-          <p className="text-lg font-bold">No hay skins que coincidan</p>
-          <p className="text-sm text-white/45 mt-1">Prueba con otro filtro o búsqueda.</p>
-        </div>
-      ) : (
-        <>
-          <p className="text-xs text-white/45 font-mono" data-testid="catalog-count">{filtered.length} skins en la vitrina</p>
-          {view === "grid" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6" data-testid="skins-grid">
-              <AnimatePresence mode="popLayout">
-                {filtered.map((s, i) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="grid" index={i} />)}
-              </AnimatePresence>
+          {!data ? (
+            <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-[74px] rounded-xl bg-white/[0.03] animate-pulse" />)}</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-20 rounded-2xl border border-amber-500/15">
+              <PackageOpen size={36} className="mx-auto text-amber-400/60 mb-3" />
+              <p className="text-base font-bold">No hay skins que coincidan</p>
+              <p className="text-sm text-white/45 mt-1">Prueba con otro filtro o búsqueda.</p>
             </div>
           ) : (
-            <div className="space-y-3" data-testid="skins-list">
-              <AnimatePresence mode="popLayout">
-                {filtered.map((s, i) => <GalleryCard key={s.id} skin={s} onClick={openSkin} play={play} view="list" index={i} />)}
-              </AnimatePresence>
+            <div className="lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1.5 space-y-5" data-testid="skins-list">
+              <p className="text-xs text-white/45 font-mono" data-testid="catalog-count">{filtered.length} skins en la vitrina</p>
+              {groups.map((g) => (
+                <div key={g.key}>
+                  <div className="flex items-center gap-2 mb-2 px-0.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: g.meta.color, boxShadow: `0 0 10px ${g.meta.color}` }} />
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: g.meta.color }}>{g.meta.label}</h3>
+                    <span className="text-[10px] text-white/30 font-mono">{g.skins.length}</span>
+                    <span className="flex-1 h-px ml-1" style={{ background: `linear-gradient(90deg, ${g.meta.color}44, transparent)` }} />
+                  </div>
+                  <div className="space-y-2">
+                    <AnimatePresence initial={false}>
+                      {g.skins.map((s) => (
+                        <motion.div key={s.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                          <SkinRow skin={s} active={s.id === selectedId} onSelect={onSelect} play={play} />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </>
-      )}
+        </div>
+      </div>
 
-      <SkinDetailModal skin={selected} open={!!selected} onClose={() => setSelected(null)} play={play}
-        onEquipped={() => { load(); refresh?.(); }} />
       <PurchaseCelebration skin={celebrate} play={play} onDone={() => setCelebrate(null)} />
     </div>
   );
