@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { toast } from "sonner";
 import { api, craftingWsUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useSound } from "@/context/SoundContext";
 
 const CraftingCtx = createContext(null);
 export const useCrafting = () => useContext(CraftingCtx);
@@ -10,6 +11,7 @@ const uuid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `${
 
 export function CraftingProvider({ children }) {
   const { user } = useAuth();
+  const { play } = useSound();
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState({});          // recipe_id / job_id -> true
@@ -44,11 +46,12 @@ export function CraftingProvider({ children }) {
             refresh(); // re-evalúa checks ✅/❌ y el botón CRAFT al instante
             break;
           case "material:collected":
+            play?.("craftMaterial");
             if (notif) { const m = state?.materials?.find((x) => x.id === msg.data.material_id); toast.success(`+${msg.data.amount} ${m?.name || "material"}`); }
             break;
-          case "crafting:started": if (notif) toast.info(`Crafteo iniciado: ${msg.data.job?.recipe?.name || ""}`); refresh(); break;
-          case "crafting:completed": if (notif) toast.success(`¡Tu skin ${msg.data.job?.recipe?.name || ""} está lista!`, { icon: "🔔" }); refresh(); break;
-          case "crafting:claimed": if (notif) toast.success(`${msg.data.recipe?.name || "Skin"} añadida a tu colección.`); refresh(); break;
+          case "crafting:started": play?.("craftStart"); if (notif) toast.info(`Crafteo iniciado: ${msg.data.job?.recipe?.name || ""}`); refresh(); break;
+          case "crafting:completed": play?.("craftReady"); if (notif) toast.success(`¡Tu skin ${msg.data.job?.recipe?.name || ""} está lista!`, { icon: "🔔" }); refresh(); break;
+          case "crafting:claimed": play?.("craftClaim"); if (notif) toast.success(`${msg.data.recipe?.name || "Skin"} añadida a tu colección.`); refresh(); break;
           case "crafting:cancelled": refresh(); break;
           case "recipe:updated": case "material:updated": case "settings:updated": refresh(); break;
           default: break;
@@ -71,7 +74,7 @@ export function CraftingProvider({ children }) {
       const { data } = await api.craftingCraft(recipeId, uuid());
       await refresh();
       return data;
-    } catch (e) { toast.error(e?.response?.data?.detail || "No se pudo iniciar el crafteo"); }
+    } catch (e) { play?.("error"); toast.error(e?.response?.data?.detail || "No se pudo iniciar el crafteo"); }
     finally { setBusyKey(recipeId, false); }
   }, [busy, refresh]);
 
@@ -79,7 +82,7 @@ export function CraftingProvider({ children }) {
     if (busy[jobId]) return;
     setBusyKey(jobId, true);
     try { const { data } = await api.craftingClaim(jobId, uuid()); await refresh(); return data; }
-    catch (e) { toast.error(e?.response?.data?.detail || "No se pudo reclamar"); }
+    catch (e) { play?.("error"); toast.error(e?.response?.data?.detail || "No se pudo reclamar"); }
     finally { setBusyKey(jobId, false); }
   }, [busy, refresh]);
 

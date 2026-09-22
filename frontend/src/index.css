@@ -328,3 +328,25 @@ body {
   background: #FCD34D; box-shadow: 0 0 6px 1px rgba(252,211,77,0.9);
   animation: luxSparkle 3.2s ease-in-out infinite;
 }
+
+/* ===== Sistema de Crafteo — animaciones (GPU-friendly) ===== */
+@keyframes forgeShimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+@keyframes craftReadyPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(52,211,153,0.45), 0 0 18px -6px rgba(52,211,153,0.6); }
+  50%      { box-shadow: 0 0 0 2px rgba(52,211,153,0.9), 0 0 34px -4px rgba(52,211,153,0.95); }
+}
+@keyframes forgeEmber {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  20%  { opacity: 0.9; }
+  100% { transform: translateY(-26px) scale(0.3); opacity: 0; }
+}
+@keyframes craftPopIn { 0% { transform: scale(0.85); opacity: 0; } 60% { transform: scale(1.04); } 100% { transform: scale(1); opacity: 1; } }
+.forge-progress { position: relative; overflow: hidden; }
+.forge-progress::after {
+  content: ""; position: absolute; inset: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: forgeShimmer 1.6s ease-in-out infinite; will-change: transform;
+}
+.craft-ready-pulse { animation: craftReadyPulse 1.6s ease-in-out infinite; will-change: box-shadow; }
+.forge-ember { position: absolute; bottom: 10%; width: 3px; height: 3px; border-radius: 9999px; background: #FCD34D; box-shadow: 0 0 6px 1px rgba(245,158,11,0.9); animation: forgeEmber 1.5s ease-in-out infinite; }
+.craft-pop { animation: craftPopIn 0.4s cubic-bezier(0.16,1,0.3,1); }

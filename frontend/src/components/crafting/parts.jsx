@@ -62,6 +62,11 @@ export function RecipeCard({ recipe, selected, onClick }) {
       <div className="relative aspect-square overflow-hidden">
         <div className="absolute inset-0" style={{ background: `radial-gradient(75% 60% at 50% 30%, ${r.color}55, #07080a 92%)` }} />
         <img src={recipe.image_url} alt={recipe.name} loading="lazy" className="absolute inset-0 w-full h-full object-contain p-3 drop-shadow-xl transition-transform duration-500 group-hover:scale-105" />
+        {recipe.status === "CRAFTING" && <>
+          <span className="forge-ember" style={{ left: "38%", animationDelay: "0s" }} />
+          <span className="forge-ember" style={{ left: "54%", animationDelay: "0.5s" }} />
+          <span className="forge-ember" style={{ left: "68%", animationDelay: "0.9s" }} />
+        </>}
         <div className="absolute top-2 left-2"><StatusBadge status={recipe.status} /></div>
         <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md" style={{ color: "#0a0b0f", background: r.color }}>{r.label}</span>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 to-transparent px-3 pt-6 pb-2.5">
@@ -76,10 +81,10 @@ export function RecipeCard({ recipe, selected, onClick }) {
   );
 }
 
-function ProgressBar({ pct, color = "#F59E0B" }) {
+function ProgressBar({ pct, color = "#F59E0B", forging = false }) {
   return (
     <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-      <div className="h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: `linear-gradient(90deg, ${color}, #FCD34D)` }} />
+      <div className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${forging ? "forge-progress" : ""}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: `linear-gradient(90deg, ${color}, #FCD34D)` }} />
     </div>
   );
 }
@@ -100,7 +105,7 @@ export function CraftQueue({ jobs, now, busy, onClaim, onCancel }) {
         const { pct, leftSecs, done } = jobProgress(j, now);
         const isReady = j.status === "COMPLETED" || done;
         return (
-          <div key={j.id} data-testid={`queue-job-${j.id}`} className="rounded-xl border p-2.5 bg-[#0d0f14]/80" style={{ borderColor: isReady ? "rgba(52,211,153,0.5)" : `${r.color}40` }}>
+          <div key={j.id} data-testid={`queue-job-${j.id}`} className={`rounded-xl border p-2.5 bg-[#0d0f14]/80 ${isReady ? "craft-ready-pulse" : ""}`} style={{ borderColor: isReady ? "rgba(52,211,153,0.5)" : `${r.color}40` }}>
             <div className="flex items-center gap-2.5">
               <div className="relative h-11 w-11 rounded-lg overflow-hidden shrink-0" style={{ background: `radial-gradient(70% 70% at 50% 40%, ${r.color}55, #07080a)` }}>
                 <img src={j.recipe?.image_url} alt="" className="absolute inset-0 w-full h-full object-contain p-0.5" />
@@ -123,7 +128,7 @@ export function CraftQueue({ jobs, now, busy, onClaim, onCancel }) {
                 </button>
               )}
             </div>
-            {!isReady && <div className="mt-2"><ProgressBar pct={pct} color={r.color} /></div>}
+            {!isReady && <div className="mt-2"><ProgressBar pct={pct} color={r.color} forging /></div>}
           </div>
         );
       })}
@@ -199,12 +204,12 @@ export function RecipeDetail({ recipe, now, busy, qtyOf, matById, onCraft, onCla
         {isCrafting ? (
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs"><span className="text-amber-300 font-bold uppercase tracking-wide">Fabricando</span><span className="font-code text-white/70">{fmtDur(prog.leftSecs)}</span></div>
-            <ProgressBar pct={prog.pct} color={r.color} />
+            <ProgressBar pct={prog.pct} color={r.color} forging />
             <button data-testid="detail-cancel-btn" disabled={busy[job.id]} onClick={() => onCancel(job.id)} className="w-full py-2.5 rounded-xl text-xs font-bold uppercase text-red-300 border border-red-400/30 hover:bg-red-500/10 transition">Cancelar crafteo</button>
           </div>
         ) : isReady ? (
           <button data-testid="detail-claim-btn" disabled={busy[job.id]} onClick={() => onClaim(job.id)}
-            className="w-full inline-flex items-center justify-center gap-2 py-4 rounded-xl font-black uppercase tracking-wide text-black bg-gradient-to-r from-emerald-400 to-emerald-300 hover:brightness-105 disabled:opacity-60 transition">
+            className="w-full inline-flex items-center justify-center gap-2 py-4 rounded-xl font-black uppercase tracking-wide text-black bg-gradient-to-r from-emerald-400 to-emerald-300 hover:brightness-105 disabled:opacity-60 transition craft-ready-pulse">
             {busy[job.id] ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Reclamar skin
           </button>
         ) : (

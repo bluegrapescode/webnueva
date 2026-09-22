@@ -584,4 +584,34 @@ export const SOUNDS = {
     });
     noise({ dur: 0.045, gain: 0.011, filterType: "bandpass", filterFreq: 2800, filterQ: 1.2, delay: 0.01 });
   },
+
+  // ─── Sistema de Crafteo (🔨) — sintetizado, cinemático y discreto ───
+  // Inicio de forja: dos martillazos sobre yunque (cuerpo grave + anillo metálico) + swell cálido.
+  craftStart: () => {
+    const hammer = (d) => {
+      voice({ freq: 150, type: "triangle", dur: 0.09, gain: 0.07, slideTo: 70, attack: 0.001, release: 0.06, filterType: "lowpass", filterFreq: 900, delay: d });
+      noise({ dur: 0.04, gain: 0.045, filterType: "bandpass", filterFreq: 3200, filterQ: 1.1, delay: d });
+      bell({ freq: 2100, dur: 0.22, gain: 0.02, ratio: 3.1, index: 70, delay: d });
+    };
+    hammer(0); hammer(0.16);
+    voice({ freq: 120, type: "sine", dur: 0.5, gain: 0.035, slideTo: 180, attack: 0.1, release: 0.3, filterType: "lowpass", filterFreq: 800, delay: 0.02 });
+  },
+  // Recolección de material: thunk orgánico corto + tick (no se apila).
+  craftMaterial: () => {
+    voice({ freq: 200, type: "triangle", dur: 0.07, gain: 0.05, slideTo: 130, attack: 0.001, release: 0.05, filterType: "lowpass", filterFreq: 1400 });
+    noise({ dur: 0.03, gain: 0.03, filterType: "bandpass", filterFreq: 2000, filterQ: 0.9 });
+    bell({ freq: 1320, dur: 0.14, gain: 0.018, delay: 0.02, ratio: 2.5, index: 50 });
+  },
+  // Crafteo LISTO: arpegio ascendente cálido (avisa que la skin está lista).
+  craftReady: () => {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => bell({ freq: f, dur: 0.5, gain: 0.05, delay: i * 0.08, ratio: 2, index: 110 }));
+    voice({ freq: 130, type: "sine", dur: 0.45, gain: 0.035, slideTo: 95, delay: 0.05, filterType: "lowpass", filterFreq: 700 });
+  },
+  // RECLAMAR skin: fanfarria brillante con shimmer (recompensa premium).
+  craftClaim: () => {
+    const scale = [523.25, 659.25, 784.0, 987.77, 1174.66, 1318.5];
+    scale.forEach((f, i) => bell({ freq: f, dur: 0.6, gain: 0.052, delay: i * 0.07, ratio: 2, index: 130 }));
+    voice({ freq: 160, type: "sine", dur: 0.6, gain: 0.04, slideTo: 110, delay: 0.05, filterType: "lowpass", filterFreq: 800 });
+    noise({ dur: 0.5, gain: 0.018, delay: 0.32, filterType: "highpass", filterFreq: 5200, filterQ: 0.4 });
+  },
 };
