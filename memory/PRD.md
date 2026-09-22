@@ -308,3 +308,13 @@ Reemplaza el bounty aleatorio automático anterior. Ahora los bounties los ponen
 - (d) #1 Más Buscado destacado: BountyCard isTop (rank 0 no-self) usa .bounty-glow-top (glow dorado más rápido/intenso) + .bounty-border-top (borde animado) + borde dorado. Verificado por screenshot.
 - (e) Motivo en el Tablón: _build_board añade topReason/threat/diet por objetivo usando el MISMO roster que /targets (roster_map) para consistencia. BountyCard muestra b.topReason. Verificado: NubladoMX = "Asesino en serie · 12 cazas" idéntico en lista y tablón.
 - Estado pruebas: backend por curl OK; d y e verificados visualmente; a por datos+montaje; b y c son WS/logueado (no reproducibles en headless con login Steam).
+
+## Actualización 16 (Jun 2026) — Rediseño Tienda de Skins (vitrina de lujo oscuro+dorado)
+- Petición: la tienda se veía muy simple; el usuario eligió estilo lujo/coleccionable (oscuro, elegante, dorado), mantener filtros/orden y checkout Stripe, animaciones de rareza más intensas y un Hero destacado con la skin legendaria del momento.
+- Blueprint generado por design_agent en /app/design_guidelines.json (v2.0, arquetipo LUXURY & COLLECTIBLE SHOWCASE). NOTA: el token tailwind `gold` es en realidad verde (#7CA842, marca del sitio); para el oro de lujo se usan clases `amber-*` (#F59E0B).
+- Cambios frontend:
+  - TiendaSkins.jsx: nuevo componente FeaturedHero (selecciona la skin destacada: prioriza section=destacados, luego rareza RARITY_ORDER, luego precio). Encabezado con overline dorado + título degradado (.text-gold-clip). Barra de filtros ahora sticky glass con bordes amber. Se mantienen intactos: WS, filtros (filter-dino/type/sort), búsqueda (skin-search), toggle grid/lista, modal y celebración.
+  - GalleryCard.jsx: tarjeta coleccionable obsidiana + marco dorado; holograma continuo (.lux-holo) y marco cónico giratorio (.lux-conic) en hover para legendary/mythic; aura pulsante (.lux-mythic-aura) siempre en mythic; placa inferior con divisor dorado y pill de precio dorado.
+  - SkinDetailModal.jsx: marco con ring dorado y botón "Comprar con Stripe" dorado (checkout/equip sin cambios).
+  - index.css: keyframes GPU-friendly nuevos: goldGlowPulse, holoSweep, mythicAuraPulse, luxFloat, luxSpin, luxSparkle + utilidades .lux-holo/.lux-gold-glow/.lux-mythic-aura/.lux-float/.lux-conic/.text-gold-clip/.lux-spark.
+- Verificación: testing_agent (iteration_27.json) 100% frontend — 15 tarjetas, hero (hero-skin-banner/hero-buy-btn), catalog-count, filtros/búsqueda/toggle y apertura+cierre de modal, en desktop 1920 y móvil 390 sin overflow horizontal. Sin cambios de backend. (El preview headless pierde la sesión Steam al recargar, por eso las capturas manuales logueadas son intermitentes.)
