@@ -1,164 +1,163 @@
 {
-  "theme": {
-    "mode": "dark",
-    "name": "Cinematic Carbon & Blood Amber (La Isla Nublar)",
-    "description": "Dark, cinematic, tactical gaming atmosphere inspired by Fortnite shop depth and high-risk dinosaur survival bounties."
+  "project_name": "La Isla Nublar LATAM - Tienda de Skins (Skins Store Redesign)",
+  "version": "2.0.0",
+  "archetype": "ARCHETYPE 5: LUXURY & COLLECTIBLE SHOWCASE (Oscuro, Elegante, Dorado, Vitrina Premium)",
+  "context": "e-commerce (In-app cosmetic showcase inside dark dino-survival gaming community platform)",
+  "target_audience": "Spanish-speaking gaming community for The Isle: Evrima looking for rare, high-prestige dinosaur cosmetics",
+  "typography": {
+    "font_family_display": "Outfit, Cabinet Grotesk, system-ui, sans-serif",
+    "font_family_body": "Inter, system-ui, sans-serif",
+    "font_family_mono": "JetBrains Mono, Source Code Pro, monospace",
+    "hierarchy": {
+      "h1_title": "font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl leading-none",
+      "h2_hero": "font-display font-black uppercase tracking-tight text-3xl sm:text-4xl lg:text-5xl leading-tight",
+      "h3_section": "font-display font-extrabold uppercase tracking-tight text-2xl sm:text-3xl",
+      "h4_card_title": "font-display font-black uppercase tracking-tight text-lg sm:text-xl",
+      "subtitle": "text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed",
+      "label_overline": "font-mono text-xs uppercase tracking-[0.2em] text-amber-400/90 font-bold",
+      "price_tag": "font-mono font-black tracking-tight text-sm sm:text-base"
+    },
+    "rules": [
+      "DO NOT use Inter or generic sans for Main and Sub-headings. Use Outfit / Display heavy weights.",
+      "Always pair display titles with golden monospace overlines.",
+      "Main titles must use linear gradient gold text clips: bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent."
+    ]
   },
   "colors": {
-    "background_primary": "#0A0A0C",
-    "background_secondary": "#12131A",
-    "background_card": "#161822",
-    "background_card_elevated": "#1E202E",
-    "border_subtle": "rgba(255, 255, 255, 0.08)",
-    "border_danger": "rgba(225, 29, 42, 0.4)",
-    "border_amber": "rgba(240, 180, 41, 0.4)",
-    "accent_danger_red": "#E11D2A",
-    "accent_danger_red_glow": "rgba(225, 29, 42, 0.25)",
-    "accent_amberium_gold": "#F0B429",
-    "accent_amberium_amber": "#FF9F1C",
-    "accent_primemeat_green": "#22C55E",
-    "accent_primemeat_emerald": "#10B981",
-    "text_primary": "#FFFFFF",
-    "text_secondary": "#94A3B8",
-    "text_muted": "#64748B",
-    "text_danger": "#FF4D4D",
-    "text_amber": "#FBBF24"
-  },
-  "typography": {
-    "font_heading": "'Montserrat', 'Barlow Condensed', sans-serif",
-    "font_body": "'Inter', system-ui, sans-serif",
-    "font_mono": "'JetBrains Mono', monospace",
-    "scale": {
-      "hero_title": "text-3xl md:text-5xl font-black uppercase tracking-wider",
-      "section_title": "text-xl md:text-3xl font-bold uppercase tracking-wide",
-      "card_title": "text-lg md:text-xl font-extrabold uppercase tracking-tight",
-      "stat_value": "text-base md:text-lg font-bold font-mono",
-      "stat_label": "text-xs uppercase font-semibold text-slate-400 tracking-widest",
-      "badge": "text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+    "palette_type": "Dark Obsidian + Royal Amber Gold + Rarity Layer",
+    "base_dark": {
+      "void_bg": "#050608",
+      "surface_card": "#0d0f14",
+      "surface_elevated": "#12151f",
+      "surface_glass": "rgba(13, 15, 20, 0.85)",
+      "border_subtle": "rgba(245, 158, 11, 0.15)",
+      "border_gold_focus": "rgba(245, 158, 11, 0.5)"
+    },
+    "gold_accents": {
+      "primary": "#F59E0B",
+      "light": "#FEF08A",
+      "deep": "#D97706",
+      "dark_gold": "#78350F",
+      "gold_gradient": "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #B45309 100%)",
+      "gold_glow": "rgba(245, 158, 11, 0.35)"
+    },
+    "rarity_layers": {
+      "common": { "label": "Común", "color": "#8e9297", "bg_glow": "rgba(142, 146, 151, 0.15)" },
+      "uncommon": { "label": "Poco común", "color": "#34D399", "bg_glow": "rgba(52, 211, 153, 0.2)" },
+      "rare": { "label": "Raro", "color": "#38BDF8", "bg_glow": "rgba(56, 189, 248, 0.25)" },
+      "epic": { "label": "Épico", "color": "#A855F7", "bg_glow": "rgba(168, 85, 247, 0.3)" },
+      "legendary": { "label": "Legendario", "color": "#F59E0B", "bg_glow": "rgba(245, 158, 11, 0.4)", "holographic": true },
+      "mythic": { "label": "Mítico", "color": "#EF4444", "bg_glow": "rgba(239, 68, 68, 0.5)", "holographic": true, "chromatic_aura": true }
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "rgba(255, 255, 255, 0.7)",
+      "muted": "rgba(255, 255, 255, 0.45)",
+      "gold": "#FCD34D"
     }
   },
   "layout_and_grids": {
-    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8",
-    "hero_spotlight": "w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch",
-    "main_board_layout": "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start",
-    "bounty_grid_area": "lg:col-span-8 space-y-6",
-    "online_targets_sidebar": "lg:col-span-4 space-y-6 sticky top-20",
-    "bounty_cards_grid": "grid grid-cols-1 sm:grid-cols-2 gap-5",
-    "fortnite_style_card_aspect": "flex flex-col h-full rounded-xl border border-white/10 bg-slate-900/80 backdrop-blur-md overflow-hidden hover:border-red-500/50 transition-all duration-300 shadow-xl relative"
-  },
-  "visual_enhancers": {
-    "card_glassmorphism": "bg-slate-950/70 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)]",
-    "wanted_stamp": "uppercase tracking-widest border-2 border-red-600/80 text-red-500 bg-red-950/40 px-3 py-1 font-black text-xs transform -rotate-2 rounded shadow-inner",
-    "contract_bounty_glow": "shadow-[0_0_25px_rgba(225,29,42,0.15)] hover:shadow-[0_0_35px_rgba(225,29,42,0.35)] border-red-600/30 hover:border-red-500/80",
-    "self_bounty_glow": "shadow-[0_0_25px_rgba(240,180,41,0.15)] hover:shadow-[0_0_35px_rgba(240,180,41,0.35)] border-amber-500/30 hover:border-amber-400/80",
-    "scanline_overlay": "pointer-events-none absolute inset-0 bg-[radial-gradient(#e11d2a_1px,transparent_1px)] [background-size:16px_16px] opacity-10",
-    "animated_pulse": "animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-  },
-  "bounty_card_blueprint": {
-    "card_types": [
-      {
-        "type": "CONTRACT_BOUNTY",
-        "visual_archetype": "Wanted Poster Tactical Holo Card",
-        "badge_label": "☠️ CONTRATO GLOBAL",
-        "badge_style": "bg-red-950/80 text-red-400 border border-red-600/40",
-        "key_elements": [
-          "Header banner: Wanted Stamp + Bounty ID + Threat Rank Badge (#1 MOST WANTED, AMENAZA ALTA)",
-          "Dinosaur Avatar Visual: High-res render of target dino (T-Rex, Deino, Spino, Carno) with species badge & growth stage progress bar (e.g., 'Adult • 100% Growth')",
-          "Target Player Info: Player Name, Steam/Server ID, Last Known Location/Region (e.g., 'Spiro Jungle / Swamp')",
-          "Bounty Pool Breakdown: Dual currency display - Total Amberium (💎 Gold) + PrimeMeat (🥩 Green)",
-          "Crowdfund/Funders Indicator: Number of contractors who contributed (e.g., '👥 6 Contratistas')",
-          "Countdown Timer: Expiration timer with pulsating warning under 1 hour",
-          "Issuer Info: 'Contrato iniciado por [Name]'",
-          "Action Button: 'RECLAMAR CACERÍA' / 'APOYAR BOUNTY' with amber glow on hover"
-        ]
-      },
-      {
-        "type": "SELF_BOUNTY",
-        "visual_archetype": "Survival Golden Challenger Card",
-        "badge_label": "🔥 AUTODESAFÍO SOBREVIVIENTE",
-        "badge_style": "bg-amber-950/80 text-amber-300 border border-amber-500/40",
-        "key_elements": [
-          "Header banner: GOLDEN TARGET STAMP + Live Earnings Counter",
-          "Dinosaur Avatar Visual: Target player's active dinosaur render with Golden Aura filter",
-          "Live Meter: '🥩 PrimeMeat Acumulado: +120 🥩 (+15 🥩/min)'",
-          "Bounty Reward for Killer: 'Recompensa para el cazador: 2,500 Amberium'",
-          "Timer survived: 'Tiempo Sobrevivido: 48m / 60m' with active animated progress bar",
-          "Live Telemetry Status: '📍 Coordenadas Transmitidas en Vivo'",
-          "Action Buttons: 'AUMENTAR RECOMPENSA' or 'DESAFÍAR'"
-        ]
-      }
-    ]
-  },
-  "media": {
-    "dino_renders": {
-      "trex": "/renders/trex.png",
-      "allo": "/renders/allo.png",
-      "carno": "/renders/carno.png",
-      "deino": "/renders/deino.png",
-      "cerato": "/renders/cerato.png",
-      "raptor": "/renders/raptor.png",
-      "stego": "/renders/stego.png",
-      "diablo": "/renders/diablo.png"
+    "container": "max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10",
+    "hero_section": {
+      "structure": "Featured Hero Banner showcase at top (min-h-[440px] lg:min-h-[480px])",
+      "bg_style": "relative rounded-3xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#12151f] via-[#0b0d12] to-[#050608] p-6 sm:p-10 shadow-[0_20px_80px_-20px_rgba(245,158,11,0.25)]",
+      "grid": "grid lg:grid-cols-12 gap-8 items-center"
     },
-    "currency_icons": {
-      "amber": "/coins/amber.png",
-      "meat": "/coins/meat.png",
-      "fossil": "/fossil.png"
+    "filter_bar": {
+      "structure": "Glassmorphism sticky floating control strip (p-4 rounded-2xl bg-[#0d0f14]/90 backdrop-blur-xl border border-amber-500/20 shadow-xl)",
+      "layout": "flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+    },
+    "gallery_grid": {
+      "grid": "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6",
+      "list": "space-y-3"
     }
   },
-  "motion": {
-    "card_entrance": {
-      "initial": { "opacity": 0, "y": 20, "scale": 0.95 },
-      "animate": { "opacity": 1, "y": 0, "scale": 1 },
-      "transition": { "duration": 0.35, "ease": [0.16, 1, 0.3, 1] }
+  "component_anatomy": {
+    "featured_hero_banner": {
+      "badge": "Inline flex item with Sparkles icon + GOLD gradient border + text-amber-300 ('DESTACADO LEGENDARIO DE LA SEMANA')",
+      "title": "Massive display title with golden text clip",
+      "dino_badge": "Chip showing dinosaur species (e.g. Tyrannosaurus Rex, Spinosaurus)",
+      "countdown_timer": "Monospace clock container showing time remaining for limited skin",
+      "price_box": "Prominent golden pill tag ($11.49 / $12.99 USD) with Stripe quick checkout CTA button",
+      "visual_render": "High-res dino skin image floating with subtle y-axis floating animation and golden radial spotlight backlight"
     },
-    "hover_effect": {
-      "whileHover": { "y": -4, "scale": 1.02 },
-      "transition": { "duration": 0.2 }
+    "gallery_card_grid": {
+      "aspect_ratio": "aspect-[3/4] or aspect-[4/5] rounded-2xl overflow-hidden border relative group",
+      "surface": "Dark obsidian slate background (#0d0f14) with rarity border tint (border-[color]/40)",
+      "hover_state": "Slight lift -translate-y-2, golden/rarity ambient glow expansion, diagonal light sheen sweep across image",
+      "top_badges": "Rarity tag with Zap icon on left, 'Tuya' green badge on right if owned",
+      "bottom_slab": "Solid dark gradient background, dino skin name, species tag, and bold price pill tag with rarity color fill"
     },
-    "stagger_children": 0.08
+    "gallery_card_list": {
+      "layout": "Horizontal row (h-20 sm:h-24) rounded-xl border border-amber-500/20 bg-[#0d0f14]/80 hover:bg-[#12151f] p-3 flex items-center justify-between gap-4 transition-all duration-200",
+      "left_thumb": "Thumbnail square image with rarity gradient background glow",
+      "info": "Name, Species, Type, Rarity tag",
+      "right_action": "Price tag + 'Ver / Comprar' button or 'Equipada' status"
+    },
+    "skin_detail_modal": {
+      "backdrop": "Dark overlay bg-black/80 backdrop-blur-xl",
+      "dialog": "max-w-4xl p-0 overflow-hidden rounded-3xl border border-amber-500/40 bg-[#0a0c10] shadow-[0_0_80px_rgba(245,158,11,0.3)]",
+      "split": "2-column grid on desktop (Left: 3D or 2D floating dino render preview; Right: Luxury details, stats, perks, countdown & Stripe checkout CTA)"
+    }
   },
-  "accessibility": {
-    "contrast": "APCA high contrast dark mode compliance. Text on overlays backed by solid/glass dark panels.",
-    "focus_states": "focus:ring-2 focus:ring-red-500 focus:outline-none",
-    "reduced_motion": "Honor prefers-reduced-motion CSS query by disabling framer-motion layout transforms."
+  "rarity_animations_and_effects": {
+    "gpu_friendly_rules": "Use CSS compositor-driven keyframe animations (transform, opacity, background-position) to prevent WebSocket re-render performance drops",
+    "css_keyframes": {
+      "goldGlowPulse": "@keyframes goldGlowPulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }",
+      "holoSweep": "@keyframes holoSweep { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }",
+      "mythicAuraPulse": "@keyframes mythicAuraPulse { 0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 0 40px rgba(245, 158, 11, 0.2); } 50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.8), 0 0 60px rgba(245, 158, 11, 0.5); } }",
+      "floatSlow": "@keyframes floatSlow { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }"
+    },
+    "holographic_sheen_technique": "Linear gradient angle overlay at 115deg with background-size: 200% 100% animated continuously on legendary/mythic cards",
+    "particle_field": "CSS keyframe floating gold sparkles specks backdrop layer behind featured hero and legendary detail modal"
   },
-  "testing_conventions": {
-    "data_testid_rules": "All interactive elements and data fields must carry data-testid in kebab-case format.",
-    "examples": [
-      "data-testid=\"bounty-board-container\"",
-      "data-testid=\"bounty-card-contract-{bountyId}\"",
-      "data-testid=\"bounty-card-self-{bountyId}\"",
-      "data-testid=\"bounty-target-name\"",
-      "data-testid=\"bounty-dino-species\"",
-      "data-testid=\"bounty-reward-amberium\"",
-      "data-testid=\"bounty-reward-primemeat\"",
-      "data-testid=\"bounty-contractors-count\"",
-      "data-testid=\"bounty-timer-countdown\"",
-      "data-testid=\"bounty-action-button\"",
-      "data-testid=\"online-target-row-{playerId}\"",
-      "data-testid=\"online-target-hunt-button\"",
-      "data-testid=\"self-bounty-widget-panel\"",
-      "data-testid=\"bounty-filter-tabs\""
+  "image_urls": {
+    "dino_renders": [
+      { "species": "Tyrannosaurus Rex", "url": "/renders/trex.png", "category": "Featured & Hero" },
+      { "species": "Spinosaurus", "url": "/renders/giga.png", "category": "Legendary" },
+      { "species": "Triceratops", "url": "/renders/trike.png", "category": "Epic" },
+      { "species": "Carnotaurus", "url": "/renders/carno.png", "category": "Epic" },
+      { "species": "Ceratosaurus", "url": "/renders/cerato.png", "category": "Rare" },
+      { "species": "Velociraptor", "url": "/renders/raptor.png", "category": "Uncommon" },
+      { "species": "Pteranodon", "url": "/renders/ptera.png", "category": "Rare" },
+      { "species": "Deinosuchus", "url": "/renders/deino.png", "category": "Legendary" }
+    ],
+    "cases_and_eggs": [
+      { "name": "Egg Legendary", "url": "/cosmetics/egg-legendary.png" },
+      { "name": "Egg Epic", "url": "/cosmetics/egg-epic.png" },
+      { "name": "Egg Rare", "url": "/cosmetics/egg-rare.png" }
+    ]
+  },
+  "testing_attributes": {
+    "mandatory_data_testids": [
+      { "element": "Hero Skin Banner", "test_id": "hero-skin-banner" },
+      { "element": "Hero Buy / Action Button", "test_id": "hero-buy-btn" },
+      { "element": "Filter Dino Select", "test_id": "filter-dino" },
+      { "element": "Filter Type Select", "test_id": "filter-type" },
+      { "element": "Filter Sort Select", "test_id": "filter-sort" },
+      { "element": "Search Input", "test_id": "skin-search" },
+      { "element": "Grid View Toggle", "test_id": "view-grid" },
+      { "element": "List View Toggle", "test_id": "view-list" },
+      { "element": "Skin Card", "test_id": "skin-card-{id}" },
+      { "element": "Skin Detail Modal", "test_id": "skin-detail-modal" },
+      { "element": "Buy Stripe Button", "test_id": "buy-btn-{id}" },
+      { "element": "Equip Skin Button", "test_id": "equip-btn-{id}" },
+      { "element": "Catalog Count", "test_id": "catalog-count" },
+      { "element": "Skins Grid Container", "test_id": "skins-grid" },
+      { "element": "Skins List Container", "test_id": "skins-list" }
     ]
   },
   "instructions_to_main_agent": [
-    "1. Replace the plain/sparse bounty cards with the new information-rich Fortnite-style visual architecture specified here.",
-    "2. Ensure both Contract Bounty and Self Bounty cards have distinct headers, badges, and metric displays.",
-    "3. Display dinosaur render images from /renders/{dino}.png alongside dino species name, growth stage progress bar, and server region location.",
-    "4. Highlight currency values using /coins/amber.png and /coins/meat.png icons with bold typography.",
-    "5. Ensure the sidebar 'Objetivos en Línea' has clear row cards with 'Cazar' action buttons that open the Contract Modal with pre-selected target.",
-    "6. Include Framer Motion staggered entrance and lift micro-interactions on hover.",
-    "7. Include all specified data-testid attributes across cards, lists, tabs, and action buttons."
+    "Redesign TiendaSkins.jsx, SkinCard.jsx, GalleryCard.jsx, and SkinDetailModal.jsx to implement this luxury dark+gold collectible vitrina theme.",
+    "Preserve all state hooks, WebSocket updates, filters, search, view toggle, Stripe checkout API calls (api.shopCheckout), and equip API calls (api.shopEquip).",
+    "Implement the Featured Hero Banner at the top of the catalog pulling the top legendary skin ('Toxic Abyss' or first item marked/sorted as featured/legendary).",
+    "Add GPU-friendly CSS animations (holographic sweep, gold ambient glow, mythic aura pulse) in index.css or inline CSS keyframes.",
+    "Ensure all interactive elements retain their exact data-testid attributes for automated testing."
   ],
   "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "Use glass-morphism effects with backdrop filters (12-24px blur).",
-    "You MUST NOT apply universal transition (e.g. transition: all). Always add transitions for specific interactive elements.",
-    "You MUST NOT center align the app container.",
-    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
-    "Use 2-3x more spacing than feels comfortable.",
-    "All interactive and key informational elements MUST include a data-testid attribute."
+    "Do NOT use dark colors as flat gradients; layer obsidian surfaces with delicate amber border strokes and golden spot radial lighting.",
+    "Maintain high text contrast for readability over dark backgrounds (WCAG AA).",
+    "Include hover states, focus states, and transitions for every button and card.",
+    "All interactive elements MUST include data-testid attributes."
   ]
 }

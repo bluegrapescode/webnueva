@@ -288,3 +288,43 @@ body {
   animation: bountyBorderTop 1.6s ease-in-out infinite;
   will-change: box-shadow;
 }
+
+
+/* ===== Tienda de Skins — Vitrina de lujo coleccionable (oscuro + dorado) ===== */
+@keyframes goldGlowPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
+@keyframes holoSweep { 0% { background-position: -160% 0; } 100% { background-position: 260% 0; } }
+@keyframes mythicAuraPulse {
+  0%, 100% { box-shadow: 0 0 22px -6px rgba(239,68,68,0.55), 0 0 46px -14px rgba(245,158,11,0.28); }
+  50%      { box-shadow: 0 0 42px -4px rgba(239,68,68,0.9),  0 0 74px -10px rgba(245,158,11,0.55); }
+}
+@keyframes luxFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes luxSpin { to { transform: rotate(360deg); } }
+@keyframes luxSparkle {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  15%  { opacity: 0.95; }
+  100% { transform: translateY(-110px) scale(0.3); opacity: 0; }
+}
+
+.lux-holo {
+  background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.30) 44%, rgba(252,211,77,0.55) 50%, rgba(255,255,255,0.30) 56%, transparent 68%);
+  background-size: 220% 100%;
+  animation: holoSweep 3.4s linear infinite;
+  mix-blend-mode: screen;
+}
+.lux-gold-glow { animation: goldGlowPulse 3.6s ease-in-out infinite; will-change: opacity; }
+.lux-mythic-aura { animation: mythicAuraPulse 2.4s ease-in-out infinite; }
+.lux-float { animation: luxFloat 5.5s ease-in-out infinite; will-change: transform; }
+.lux-conic {
+  background: conic-gradient(from 0deg, transparent 0 60%, var(--rc, #F59E0B) 74%, #ffffffcc 80%, var(--rc, #F59E0B) 86%, transparent 96%);
+  animation: luxSpin 6s linear infinite;
+}
+.text-gold-clip {
+  background: linear-gradient(135deg, #FEF08A 0%, #F59E0B 46%, #B45309 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.lux-spark {
+  position: absolute; bottom: 8%; width: 3px; height: 3px; border-radius: 9999px;
+  background: #FCD34D; box-shadow: 0 0 6px 1px rgba(252,211,77,0.9);
+  animation: luxSparkle 3.2s ease-in-out infinite;
+}

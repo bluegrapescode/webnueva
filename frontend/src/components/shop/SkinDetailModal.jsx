@@ -54,7 +54,7 @@ export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
       <DialogContent
         className="glass-strong border-0 max-w-4xl p-0 overflow-hidden gap-0 clip-notch"
         data-testid="skin-detail-modal"
-        style={{ boxShadow: `0 0 0 2px ${r.color}, 0 0 60px ${r.color}66, 0 40px 110px -30px ${r.color}` }}
+        style={{ boxShadow: `0 0 0 1.5px ${r.color}, 0 0 0 4px rgba(245,158,11,0.25), 0 0 70px ${r.color}55, 0 40px 120px -30px rgba(245,158,11,0.6)` }}
       >
         <DialogTitle className="sr-only">{skin.name}</DialogTitle>
         <DialogDescription className="sr-only">{skin.description || `Skin ${r.label} para ${skin.dino_species || "dino"}`}</DialogDescription>
@@ -135,7 +135,7 @@ export function SkinDetailModal({ skin, open, onClose, play, onEquipped }) {
               ) : (
                 <button onClick={buy} disabled={busy} data-testid={`buy-btn-${skin.id}`}
                   className="w-full inline-flex items-center justify-center gap-2 clip-notch-sm py-4 font-black uppercase tracking-wide text-black transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
-                  style={{ background: `linear-gradient(135deg,${r.color},#ffffff)` }}>
+                  style={{ background: "linear-gradient(135deg,#FCD34D,#F59E0B)", boxShadow: "0 14px 38px -14px rgba(245,158,11,0.9)" }}>
                   {busy ? <Loader2 size={18} className="animate-spin" /> : <ShoppingCart size={18} />}
                   {busy ? "Redirigiendo…" : "Comprar con Stripe"}
                 </button>
