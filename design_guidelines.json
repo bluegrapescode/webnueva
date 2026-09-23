@@ -1,163 +1,119 @@
 {
-  "project_name": "La Isla Nublar LATAM - Tienda de Skins (Skins Store Redesign)",
-  "version": "2.0.0",
-  "archetype": "ARCHETYPE 5: LUXURY & COLLECTIBLE SHOWCASE (Oscuro, Elegante, Dorado, Vitrina Premium)",
-  "context": "e-commerce (In-app cosmetic showcase inside dark dino-survival gaming community platform)",
-  "target_audience": "Spanish-speaking gaming community for The Isle: Evrima looking for rare, high-prestige dinosaur cosmetics",
+  "theme": "Industrial Forge / Estación de Forja Inmersiva",
+  "archetype": "THE PERFORMANCE PRO / INDUSTRIAL HEAVY METAL FORGE",
+  "language": "es",
   "typography": {
-    "font_family_display": "Outfit, Cabinet Grotesk, system-ui, sans-serif",
-    "font_family_body": "Inter, system-ui, sans-serif",
-    "font_family_mono": "JetBrains Mono, Source Code Pro, monospace",
-    "hierarchy": {
-      "h1_title": "font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl leading-none",
-      "h2_hero": "font-display font-black uppercase tracking-tight text-3xl sm:text-4xl lg:text-5xl leading-tight",
-      "h3_section": "font-display font-extrabold uppercase tracking-tight text-2xl sm:text-3xl",
-      "h4_card_title": "font-display font-black uppercase tracking-tight text-lg sm:text-xl",
-      "subtitle": "text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed",
-      "label_overline": "font-mono text-xs uppercase tracking-[0.2em] text-amber-400/90 font-bold",
-      "price_tag": "font-mono font-black tracking-tight text-sm sm:text-base"
+    "headings": {
+      "font_family": "Chivo, Outfit, sans-serif",
+      "h1_title": "text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_12px_rgba(245,158,11,0.3)]",
+      "h2_showcase": "text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tighter text-amber-100",
+      "h3_section": "text-xs sm:text-sm font-black uppercase tracking-[0.2em] text-amber-400/90 flex items-center gap-2",
+      "card_title": "text-base font-black uppercase tracking-tight text-white truncate"
     },
-    "rules": [
-      "DO NOT use Inter or generic sans for Main and Sub-headings. Use Outfit / Display heavy weights.",
-      "Always pair display titles with golden monospace overlines.",
-      "Main titles must use linear gradient gold text clips: bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent."
-    ]
+    "body": {
+      "font_family": "Inter, DM Sans, sans-serif",
+      "size": "text-sm",
+      "color": "text-slate-300"
+    },
+    "code_and_labels": {
+      "font_family": "JetBrains Mono, Fira Code, monospace",
+      "sub_labels": "text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-amber-500/80",
+      "counts_and_timers": "font-mono font-black tabular-nums text-sm"
+    }
   },
   "colors": {
-    "palette_type": "Dark Obsidian + Royal Amber Gold + Rarity Layer",
-    "base_dark": {
-      "void_bg": "#050608",
-      "surface_card": "#0d0f14",
-      "surface_elevated": "#12151f",
-      "surface_glass": "rgba(13, 15, 20, 0.85)",
-      "border_subtle": "rgba(245, 158, 11, 0.15)",
-      "border_gold_focus": "rgba(245, 158, 11, 0.5)"
+    "base": {
+      "background_dark": "#07080b",
+      "surface_iron": "#0d0f15",
+      "surface_elevated": "#141722",
+      "border_iron": "rgba(255, 255, 255, 0.08)",
+      "border_forge_glow": "rgba(245, 158, 11, 0.35)"
     },
-    "gold_accents": {
-      "primary": "#F59E0B",
-      "light": "#FEF08A",
-      "deep": "#D97706",
-      "dark_gold": "#78350F",
-      "gold_gradient": "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #B45309 100%)",
-      "gold_glow": "rgba(245, 158, 11, 0.35)"
+    "brand_accents": {
+      "olive_green_primary": "#7CA842",
+      "olive_green_light": "#B8DA7E",
+      "molten_amber": "#F59E0B",
+      "forge_heat_orange": "#FF5500",
+      "fire_red": "#EF4444",
+      "emerald_ready": "#10B981"
     },
-    "rarity_layers": {
-      "common": { "label": "Común", "color": "#8e9297", "bg_glow": "rgba(142, 146, 151, 0.15)" },
-      "uncommon": { "label": "Poco común", "color": "#34D399", "bg_glow": "rgba(52, 211, 153, 0.2)" },
-      "rare": { "label": "Raro", "color": "#38BDF8", "bg_glow": "rgba(56, 189, 248, 0.25)" },
-      "epic": { "label": "Épico", "color": "#A855F7", "bg_glow": "rgba(168, 85, 247, 0.3)" },
-      "legendary": { "label": "Legendario", "color": "#F59E0B", "bg_glow": "rgba(245, 158, 11, 0.4)", "holographic": true },
-      "mythic": { "label": "Mítico", "color": "#EF4444", "bg_glow": "rgba(239, 68, 68, 0.5)", "holographic": true, "chromatic_aura": true }
-    },
-    "text": {
-      "primary": "#FFFFFF",
-      "secondary": "rgba(255, 255, 255, 0.7)",
-      "muted": "rgba(255, 255, 255, 0.45)",
-      "gold": "#FCD34D"
+    "rarities": {
+      "common": { "color": "#8e9297", "label": "Común", "glow": "rgba(142,146,151,0.2)" },
+      "uncommon": { "color": "#34D399", "label": "Poco Común", "glow": "rgba(52,211,153,0.25)" },
+      "rare": { "color": "#38bdf8", "label": "Raro", "glow": "rgba(56,189,248,0.3)" },
+      "epic": { "color": "#a855f7", "label": "Épico", "glow": "rgba(168,85,247,0.35)" },
+      "legendary": { "color": "#f59e0b", "label": "Legendario", "glow": "rgba(245,158,11,0.4)" }
     }
   },
-  "layout_and_grids": {
-    "container": "max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10",
-    "hero_section": {
-      "structure": "Featured Hero Banner showcase at top (min-h-[440px] lg:min-h-[480px])",
-      "bg_style": "relative rounded-3xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#12151f] via-[#0b0d12] to-[#050608] p-6 sm:p-10 shadow-[0_20px_80px_-20px_rgba(245,158,11,0.25)]",
-      "grid": "grid lg:grid-cols-12 gap-8 items-center"
-    },
-    "filter_bar": {
-      "structure": "Glassmorphism sticky floating control strip (p-4 rounded-2xl bg-[#0d0f14]/90 backdrop-blur-xl border border-amber-500/20 shadow-xl)",
-      "layout": "flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-    },
-    "gallery_grid": {
-      "grid": "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6",
-      "list": "space-y-3"
-    }
-  },
-  "component_anatomy": {
-    "featured_hero_banner": {
-      "badge": "Inline flex item with Sparkles icon + GOLD gradient border + text-amber-300 ('DESTACADO LEGENDARIO DE LA SEMANA')",
-      "title": "Massive display title with golden text clip",
-      "dino_badge": "Chip showing dinosaur species (e.g. Tyrannosaurus Rex, Spinosaurus)",
-      "countdown_timer": "Monospace clock container showing time remaining for limited skin",
-      "price_box": "Prominent golden pill tag ($11.49 / $12.99 USD) with Stripe quick checkout CTA button",
-      "visual_render": "High-res dino skin image floating with subtle y-axis floating animation and golden radial spotlight backlight"
-    },
-    "gallery_card_grid": {
-      "aspect_ratio": "aspect-[3/4] or aspect-[4/5] rounded-2xl overflow-hidden border relative group",
-      "surface": "Dark obsidian slate background (#0d0f14) with rarity border tint (border-[color]/40)",
-      "hover_state": "Slight lift -translate-y-2, golden/rarity ambient glow expansion, diagonal light sheen sweep across image",
-      "top_badges": "Rarity tag with Zap icon on left, 'Tuya' green badge on right if owned",
-      "bottom_slab": "Solid dark gradient background, dino skin name, species tag, and bold price pill tag with rarity color fill"
-    },
-    "gallery_card_list": {
-      "layout": "Horizontal row (h-20 sm:h-24) rounded-xl border border-amber-500/20 bg-[#0d0f14]/80 hover:bg-[#12151f] p-3 flex items-center justify-between gap-4 transition-all duration-200",
-      "left_thumb": "Thumbnail square image with rarity gradient background glow",
-      "info": "Name, Species, Type, Rarity tag",
-      "right_action": "Price tag + 'Ver / Comprar' button or 'Equipada' status"
-    },
-    "skin_detail_modal": {
-      "backdrop": "Dark overlay bg-black/80 backdrop-blur-xl",
-      "dialog": "max-w-4xl p-0 overflow-hidden rounded-3xl border border-amber-500/40 bg-[#0a0c10] shadow-[0_0_80px_rgba(245,158,11,0.3)]",
-      "split": "2-column grid on desktop (Left: 3D or 2D floating dino render preview; Right: Luxury details, stats, perks, countdown & Stripe checkout CTA)"
-    }
-  },
-  "rarity_animations_and_effects": {
-    "gpu_friendly_rules": "Use CSS compositor-driven keyframe animations (transform, opacity, background-position) to prevent WebSocket re-render performance drops",
-    "css_keyframes": {
-      "goldGlowPulse": "@keyframes goldGlowPulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }",
-      "holoSweep": "@keyframes holoSweep { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }",
-      "mythicAuraPulse": "@keyframes mythicAuraPulse { 0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 0 40px rgba(245, 158, 11, 0.2); } 50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.8), 0 0 60px rgba(245, 158, 11, 0.5); } }",
-      "floatSlow": "@keyframes floatSlow { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }"
-    },
-    "holographic_sheen_technique": "Linear gradient angle overlay at 115deg with background-size: 200% 100% animated continuously on legendary/mythic cards",
-    "particle_field": "CSS keyframe floating gold sparkles specks backdrop layer behind featured hero and legendary detail modal"
-  },
-  "image_urls": {
-    "dino_renders": [
-      { "species": "Tyrannosaurus Rex", "url": "/renders/trex.png", "category": "Featured & Hero" },
-      { "species": "Spinosaurus", "url": "/renders/giga.png", "category": "Legendary" },
-      { "species": "Triceratops", "url": "/renders/trike.png", "category": "Epic" },
-      { "species": "Carnotaurus", "url": "/renders/carno.png", "category": "Epic" },
-      { "species": "Ceratosaurus", "url": "/renders/cerato.png", "category": "Rare" },
-      { "species": "Velociraptor", "url": "/renders/raptor.png", "category": "Uncommon" },
-      { "species": "Pteranodon", "url": "/renders/ptera.png", "category": "Rare" },
-      { "species": "Deinosuchus", "url": "/renders/deino.png", "category": "Legendary" }
+  "visual_enhancers": {
+    "forge_aesthetics": [
+      "Industrial riveted metal plates with subtle top highlight and bottom inner-shadow",
+      "Molten heat gradient backing (radial amber-orange glow under the central stage)",
+      "Anvil/Pedestal metallic showcase platform under the dinosaur skin PNG",
+      "Embers and spark particle CSS keyframe animations floating upwards",
+      "Corner metallic accents and industrial hazardous warning lines (amber-black stripes on hover)",
+      "Glow borders with heavy drop shadows drop-shadow-[0_0_25px_rgba(245,158,11,0.25)]"
     ],
-    "cases_and_eggs": [
-      { "name": "Egg Legendary", "url": "/cosmetics/egg-legendary.png" },
-      { "name": "Egg Epic", "url": "/cosmetics/egg-epic.png" },
-      { "name": "Egg Rare", "url": "/cosmetics/egg-rare.png" }
-    ]
+    "glass_and_surfaces": "backdrop-blur-md bg-[#0a0c10]/80 border border-amber-500/20 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
   },
-  "testing_attributes": {
-    "mandatory_data_testids": [
-      { "element": "Hero Skin Banner", "test_id": "hero-skin-banner" },
-      { "element": "Hero Buy / Action Button", "test_id": "hero-buy-btn" },
-      { "element": "Filter Dino Select", "test_id": "filter-dino" },
-      { "element": "Filter Type Select", "test_id": "filter-type" },
-      { "element": "Filter Sort Select", "test_id": "filter-sort" },
-      { "element": "Search Input", "test_id": "skin-search" },
-      { "element": "Grid View Toggle", "test_id": "view-grid" },
-      { "element": "List View Toggle", "test_id": "view-list" },
-      { "element": "Skin Card", "test_id": "skin-card-{id}" },
-      { "element": "Skin Detail Modal", "test_id": "skin-detail-modal" },
-      { "element": "Buy Stripe Button", "test_id": "buy-btn-{id}" },
-      { "element": "Equip Skin Button", "test_id": "equip-btn-{id}" },
-      { "element": "Catalog Count", "test_id": "catalog-count" },
-      { "element": "Skins Grid Container", "test_id": "skins-grid" },
-      { "element": "Skins List Container", "test_id": "skins-list" }
-    ]
+  "layout_architecture": {
+    "structure_type": "Estación de Forja Inmersiva (Central Forge Stage)",
+    "desktop_grid": "3-column wide grid: LEFT = Active Queue & Recipe Rail (3 cols) | CENTER = Massive Central Forge Stage (6 cols) | RIGHT = Materials, Requirements & Forge Action (3 cols)",
+    "mobile_responsive": "Single vertical stack: Central Forge Showcase top -> Recipe Selector below -> Requirements & Craft CTA -> Materials Bar -> Queue bottom. No horizontal overflow at 390px.",
+    "central_showcase": {
+      "role": "The visual heart of the crafting station",
+      "display_mode": "Large central window featuring the selected dinosaur skin PNG fully visible with object-contain",
+      "elements": [
+        "Massive skin image showcase with radial heat lighting behind",
+        "Rarity badge floating on top right",
+        "Dinosaur species tag & skin name beneath image in high-impact display typography",
+        "Crafting duration countdown badge & uses granted indicator",
+        "Molten forge embers rising behind the dino"
+      ]
+    },
+    "materials_inventory": {
+      "role": "Forge supply tray / anvil crate showing resource reserves",
+      "items": ["Huesos (Bones)", "Metal", "Cuero (Leather)", "Polímero (Polymer)"],
+      "presentation": "Industrial crate style with transparent PNG icons, metallic borders, live quantity counts"
+    },
+    "craft_queue": {
+      "role": "Furnace / Mold slots actively forging items",
+      "presentation": "Furnace cards with live animated heat bar, countdown timer, cancel button during forge, and pulsing green/amber Claim button upon completion"
+    }
+  },
+  "motion_and_animations": {
+    "performance_rule": "MUST use pure CSS keyframes for continuous effects (embers, pulse, shimmer) to guarantee 60fps performance during 1-second interval re-renders.",
+    "css_keyframes": {
+      "forge_ember": "@keyframes forgeEmber { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 50% { opacity: 0.8; } 100% { transform: translateY(-80px) scale(1.2); opacity: 0; } }",
+      "heat_glow": "@keyframes heatGlow { 0%, 100% { opacity: 0.4; filter: blur(30px); } 50% { opacity: 0.8; filter: blur(40px); } }",
+      "progress_shimmer": "@keyframes forgeShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }",
+      "ready_pulse": "@keyframes readyPulse { 0%, 100% { box-shadow: 0 0 15px rgba(52,211,153,0.3); } 50% { box-shadow: 0 0 30px rgba(52,211,153,0.7); } }"
+    }
+  },
+  "accessibility_and_testing": {
+    "data_test_ids": [
+      "materials-bar",
+      "material-chip-{id}",
+      "recipe-grid",
+      "recipe-card-{id}",
+      "tab-{id}",
+      "craft-queue",
+      "queue-job-{id}",
+      "claim-btn-{id}",
+      "cancel-btn-{id}",
+      "claim-all-btn",
+      "recipe-detail",
+      "req-{material_id}",
+      "craft-btn",
+      "detail-claim-btn",
+      "detail-cancel-btn"
+    ],
+    "contrast_standard": "WCAG AA compliant contrast for text over dark iron backgrounds"
   },
   "instructions_to_main_agent": [
-    "Redesign TiendaSkins.jsx, SkinCard.jsx, GalleryCard.jsx, and SkinDetailModal.jsx to implement this luxury dark+gold collectible vitrina theme.",
-    "Preserve all state hooks, WebSocket updates, filters, search, view toggle, Stripe checkout API calls (api.shopCheckout), and equip API calls (api.shopEquip).",
-    "Implement the Featured Hero Banner at the top of the catalog pulling the top legendary skin ('Toxic Abyss' or first item marked/sorted as featured/legendary).",
-    "Add GPU-friendly CSS animations (holographic sweep, gold ambient glow, mythic aura pulse) in index.css or inline CSS keyframes.",
-    "Ensure all interactive elements retain their exact data-testid attributes for automated testing."
-  ],
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Do NOT use dark colors as flat gradients; layer obsidian surfaces with delicate amber border strokes and golden spot radial lighting.",
-    "Maintain high text contrast for readability over dark backgrounds (WCAG AA).",
-    "Include hover states, focus states, and transitions for every button and card.",
-    "All interactive elements MUST include data-testid attributes."
+    "Keep all existing logic, handlers (craft, claim, cancel, qtyOf, matById), sound triggers, and state management completely intact in SkinCrafting.jsx and parts.jsx.",
+    "Redesign the UI presentation layer to bring the Immersive Forge Station to life with central stage focus, molten iron aesthetics, riveted industrial paneling, glowing amber accents, and crisp typography.",
+    "Ensure dinosaur PNGs are displayed with object-contain inside the central showcase window so no dinosaur model is cropped.",
+    "Verify that all data-testid attributes listed in testing guidelines are strictly preserved."
   ]
 }
