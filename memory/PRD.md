@@ -487,3 +487,22 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - **Hub fijo/compacto**: `ClansInner` root `min-h-[calc(100vh-68px)]`; contenedor `py-4`; grid de la vista Chat con altura fija `xl:h-[calc(100vh-360px)]` y panel derecho (`hub-right`) con `xl:overflow-y-auto` (scroll interno). Banner más compacto (padding `p-4 sm:p-5`, nombre `text-3xl sm:text-5xl`, tag `text-3xl sm:text-4xl`). ExtraScroll final ~16-32px (imperceptible).
 - **Sonidos**: `success` y `notification` rehechos como arpegios ascendentes premium con sub cálido + shimmer. (Chat: `chatSend`/`chatReceive` de la tanda anterior.)
 
+
+## 2026-06-24 — Gran lote de features del Clan Hub ("haz todo eso")
+Verificado por testing_agent (iteration_36.json): backend 7/7, frontend 100%.
+**Chat & Social** (Clans.jsx ClanChat):
+- Mensajes propios alineados a la derecha (etiqueta "Tú", burbuja con acento).
+- @menciones: autocompletar (mention-list), resaltado de token, sonido `mention` al ser mencionado (ClanContext).
+- Reacciones con emoji: hover → ＋ (react-btn), popover de emojis, chips con contador. Backend `POST /clans/react` + WS `clan:reaction`. Emojis validados contra ALLOWED_REACTIONS.
+- Tarjeta de perfil al clic en avatar (MemberRow → profile-card): nivel, aporte, kills, estado.
+- Anuncio fijado del líder (clan-announcement + Editar): `POST /clans/announcement`, campo `announcement` en clan.
+**Progreso & Competencia**:
+- Logros del clan (achievements-panel) y Misiones semanales (missions-panel) en pestaña Resumen; Ranking de miembros (leaderboard-panel) en Estadísticas. Backend `GET /clans/insights` (computa achievements/missions/leaderboard). Miembros con `contribution`/`kills` (seed).
+**Territorios & Guerra**:
+- Mini-mapa de zonas (turf-minimap, h-340px) + alerta de ataque (attack-alert) + Historial de Turf Wars (turf-history). Backend `GET /clans/turf-history`; `turf_history` se inserta en `turfwars._apply_capture`.
+**Estética & Vida**:
+- Banner con niebla/partículas animadas (framer-motion). Estado en vivo de miembros (status_text: En línea/En partida/Ausente) + nivel en MemberRow.
+- Sonido `mention` nuevo en sounds.js.
+**Diferido**: subida de imágenes en el chat (requiere integración de object storage) — pendiente para próxima iteración.
+Nota: mini-mapa refleja el estado real de turf (demo clan no posee zonas en el sim → "0 de 10"); el banner muestra 3 vía `territories_display`.
+

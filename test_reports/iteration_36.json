@@ -1,0 +1,32 @@
+{
+  "summary": "Verified the new Clan Hub feature batch (announcement, role-colored bubbles + own-alignment, @mentions, reactions, profile cards, member live status, Resumen achievements/missions, Estadisticas leaderboard, Territorios mini-map + turf history, banner). Backend: 7/7 pytest tests passed against public endpoints. Frontend: all data-testids present and interactive on the /clanes route using demo login token.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/clanes Territorios tab (desktop 1536x864)", "issues": ["Page-level vertical scroll ~599px because the mini-map/turf panels are tall. Body scrollHeight=1463 vs viewport 864. Not blocking, and horizontal overflow is 0, but the user requirement asked for 'minimal vertical page scroll on /clanes' -- consider reducing the mini-map height or making the left column internally scroll on shorter desktop viewports."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_clan_hub_features.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Nice-to-have) Constrain the Territorios tab left column height (mini-map) so total /clanes page fits ~ viewport at 1536x864 (currently ~600px page overflow)."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/clans.py is 887 lines - approaching the 700-line threshold; consider splitting router endpoints, chat, insights, and admin sections into submodules.",
+    "do_react allows a client-supplied emoji string up to 8 chars but does not restrict to a whitelist -- users could store arbitrary short strings as 'reactions'. Consider validating against an allowed emoji set.",
+    "GET /api/clans/me returns the full ranks + settings block on every call; response is large for a hot dashboard endpoint. Consider trimming for the hub page or splitting into /me and /me/config.",
+    "get_insights recomputes counts on every call (count_documents x3 + full members list). For a hot dashboard, a short (5-10s) per-clan memoization would reduce Mongo load."
+  ],
+  "updated_files": ["/app/backend/tests/test_clan_hub_features.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% for the requested feature checklist"},
+  "test_credentials": "POST /api/auth/demo -> token; set localStorage.primal_token; demo user is LEADER of clan TEST (Escuadron Prueba). See /app/memory/test_credentials.md.",
+  "seed_data_creation": "No new seed data created. Announcement mutated during test then cleared. A couple TEST_CHAT_* messages left in clan history (harmless).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend endpoints /api/clans/me, /insights, /turf-history, /announcement, /react, /chat are all healthy. Demo clan has territories=3, wins=7, 16 members with status_text/level/contribution/kills, leaderboard has 10 rows, turf-history has 6 events, mini-map renders 10 zones. Frontend uses data-testids: toptab-{chat,miembros,resumen,estadisticas,territorios,turfwars}, clan-announcement, announcement-{edit,input,save}, chat-{input,send}, mention-list + mention-<Name>, react-btn-<id>/react-<id>-<emoji>/reaction-chip-<id>-<emoji>, member-avatar-<uid>, profile-card-<uid>, achievements-panel + achievement-<id>, missions-panel + mission-<id>, leaderboard-panel + lb-<uid>, turf-minimap + zone-<id>, turf-history + turf-event-<i>, attack-alert.",
+  "rca_of_the_issue": "N/A - no functional defects found. Only a minor layout observation on the Territorios tab height."
+}

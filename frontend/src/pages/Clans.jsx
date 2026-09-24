@@ -681,7 +681,7 @@ function TurfMiniMap({ clan }) {
   const contested = zones.filter((z) => z.owner?.id === clan.id && (z.contest_progress > 0 || z.contested));
   useEffect(() => { if (contested.length) play?.("notification"); }, [contested.length]);  // eslint-disable-line
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 xl:max-h-[calc(100vh-300px)] xl:overflow-y-auto xl:pr-1.5">
       {contested.length > 0 && (
         <div data-testid="attack-alert" className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 flex items-center gap-3 animate-pulse">
           <Swords className="text-red-400" size={20} />
@@ -689,7 +689,7 @@ function TurfMiniMap({ clan }) {
         </div>
       )}
       <Panel title="Mapa de territorios" icon={MapPin} accent="#38BDF8" testid="turf-minimap">
-        <div className="relative rounded-xl border border-white/10 overflow-hidden bg-[#0a1420]" style={{ aspectRatio: "16 / 9" }}>
+        <div className="relative rounded-xl border border-white/10 overflow-hidden bg-[#0a1420] h-[280px] sm:h-[340px]">
           <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 50% 40%, rgba(56,189,248,0.10), transparent 60%)" }} />
           {zones.map((z) => {
             const owned = z.owner?.id === clan.id;

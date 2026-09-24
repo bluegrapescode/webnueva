@@ -42,6 +42,8 @@ CURRENCY_LABEL = {"amberium": "Amberium", "primemeat": "PrimeMeat"}
 
 PERM_KEYS = ["edit_clan", "manage_ranks", "assign_ranks", "invite", "kick", "manage_members"]
 
+ALLOWED_REACTIONS = {"🔥", "👍", "😂", "❤️", "💪", "👑", "🎯", "🚀", "💀", "🩸", "🌋", "🌿", "🎉", "😱", "🤝", "⭐", "💥", "🏆", "😀", "😎", "🦖", "🦕", "⚔️", "🛡️"}
+
 
 def _now(): return datetime.now(timezone.utc)
 def _iso(dt): return dt.astimezone(timezone.utc).isoformat()
@@ -598,7 +600,7 @@ async def do_set_announcement(user, text):
 async def do_react(user, message_id, emoji):
     mem, clan = await _require_clan(user["id"])
     emoji = (emoji or "")[:8]
-    if not emoji: raise HTTPException(400, "Emoji vacío.")
+    if emoji not in ALLOWED_REACTIONS: raise HTTPException(400, "Emoji no permitido.")
     msg = await _db.clan_messages.find_one({"id": message_id, "clan_id": clan["id"]}, {"_id": 0})
     if not msg: raise HTTPException(404, "Mensaje no encontrado.")
     reactions = msg.get("reactions") or {}
