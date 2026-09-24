@@ -645,10 +645,10 @@ function ClansInner() {
         {/* Brillo verde agresivo superior */}
         <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.16), transparent 60%)" }} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]/70" />
-        {/* T-Rex emergiendo del bosque (parte del fondo, abajo a la izquierda) */}
-        <div className="hidden lg:block absolute left-0 bottom-0" style={{ width: 380, height: 340 }}>
-          <img src={TREX_IMG} alt="" className="w-full h-full object-cover object-left-bottom"
-            style={{ opacity: 0.95, WebkitMaskImage: "radial-gradient(135% 130% at 18% 88%, black 42%, transparent 80%)", maskImage: "radial-gradient(135% 130% at 18% 88%, black 42%, transparent 80%)" }} />
+        {/* T-Rex emergiendo del bosque (parte del fondo, abajo a la izquierda) — bien visible */}
+        <div className="hidden lg:block absolute left-0 bottom-0" style={{ width: 300, height: 380 }}>
+          <img src={TREX_IMG} alt="" className="w-full h-full object-cover"
+            style={{ objectPosition: "left bottom", opacity: 1, WebkitMaskImage: "linear-gradient(to top, black 66%, transparent 98%)", maskImage: "linear-gradient(to top, black 66%, transparent 98%)" }} />
         </div>
       </div>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
