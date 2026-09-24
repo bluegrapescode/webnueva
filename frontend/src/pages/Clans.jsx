@@ -202,7 +202,7 @@ function ClanChat() {
   const roleOf = (uid) => { const m = (me?.members || []).find((x) => x.user_id === uid); return { rankId: m?.rank_id || "member", isLeader: clan.leader_id === uid }; };
 
   return (
-    <div className="forge-panel rounded-2xl border flex flex-col h-[600px] 2xl:h-[720px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
+    <div className="forge-panel rounded-2xl border flex flex-col h-[600px] xl:h-full min-h-[520px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
       <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b border-white/8 flex-wrap">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest" style={{ color: accent }}>
           {isGlobal ? <Globe size={16} /> : <MessageSquare size={16} />} {isGlobal ? "Chat Global" : "Chat del clan"}
@@ -223,7 +223,7 @@ function ClanChat() {
         {list.map((m) => m.system ? (
           <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border-l-2 border-emerald-400 bg-emerald-500/[0.08] px-3 py-2 flex items-start gap-2">
             <Settings2 size={15} className="text-emerald-400 mt-0.5 shrink-0" />
-            <div className="min-w-0"><span className="text-emerald-300 font-bold text-[11px]">Sistema · {fmtTime(m.created_at)}</span><p className="text-sm text-white/75 break-words">{m.text}</p></div>
+            <div className="min-w-0"><span className="text-emerald-300 font-bold text-xs">Sistema · {fmtTime(m.created_at)}</span><p className="text-sm text-white/85 break-words">{m.text}</p></div>
           </motion.div>
         ) : (() => {
           const r = roleOf(m.user_id);
@@ -238,7 +238,7 @@ function ClanChat() {
                   {isGlobal ? (m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />) : <RoleBadge clan={clan} rankId={r.rankId} isLeader={r.isLeader} />}
                   <span className="ml-auto text-[11px] text-white/55 font-mono shrink-0">{fmtTime(m.created_at)}</span>
                 </div>
-                <div className="inline-block max-w-full rounded-2xl rounded-tl-md px-3 py-2 border-l-2" style={{ background: `${rc}14`, borderColor: rc }}>
+                <div className="inline-block max-w-full rounded-2xl rounded-tl-md px-3 py-2 border-l-2" style={{ background: `${rc}18`, borderColor: rc }}>
                   <p className="text-sm text-white/90 break-words leading-snug">{m.text}</p>
                 </div>
               </div>
@@ -285,13 +285,13 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
       <div className="absolute inset-0"><img src={BANNER_IMG} alt="" className="w-full h-full object-cover" /></div>
       <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(6,9,13,0.94) 0%, rgba(6,9,13,0.6) 38%, rgba(6,9,13,0.2) 68%, transparent 100%)" }} />
       <div className="absolute inset-0 bg-gradient-to-t from-[#06090d] via-transparent to-transparent" />
-      <div className="relative p-5 sm:p-6 flex flex-col md:flex-row md:items-start gap-5">
-        <div className="flex items-start gap-4 flex-1 min-w-0">
-          <div className="font-brush text-4xl sm:text-5xl px-4 py-2 rounded-xl shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.4)", border: `2px solid ${clan.color}`, boxShadow: `0 0 22px ${clan.color}, inset 0 0 14px ${clan.color}44`, textShadow: `0 0 12px ${clan.color}` }}>{clan.tag}</div>
+      <div className="relative p-4 sm:p-5 flex flex-col md:flex-row md:items-start gap-4">
+        <div className="flex items-start gap-3.5 flex-1 min-w-0">
+          <div className="font-brush text-3xl sm:text-4xl px-3 py-1.5 rounded-xl shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.4)", border: `2px solid ${clan.color}`, boxShadow: `0 0 22px ${clan.color}, inset 0 0 14px ${clan.color}44`, textShadow: `0 0 12px ${clan.color}` }}>{clan.tag}</div>
           <div className="min-w-0">
-            <h1 className="font-brush text-white text-4xl sm:text-6xl leading-[0.95] flex items-center gap-3 drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={30} /></h1>
-            <p className="text-sm sm:text-base font-bold uppercase tracking-wide mt-1.5" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-xs text-white/80">
+            <h1 className="font-brush text-white text-3xl sm:text-5xl leading-[0.95] flex items-center gap-2.5 drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={26} /></h1>
+            <p className="text-sm font-bold uppercase tracking-wide mt-1" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-white/80">
               <span className="inline-flex items-center gap-1"><Calendar size={11} /> Fundado {fmtDate(clan.created_at)}</span>
               <span className="inline-flex items-center gap-1"><Hash size={11} /> ID del Clan: {clan.code}</span>
               <span className="inline-flex items-center gap-1"><Globe size={11} /> Idioma: {clan.language}</span>
@@ -299,7 +299,7 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-col md:items-end gap-3 md:w-[440px] shrink-0">
+        <div className="flex flex-col md:items-end gap-2.5 md:w-[440px] shrink-0">
           {canEdit && <button data-testid="edit-clan-btn" onClick={onEdit} className="self-start md:self-end inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black uppercase bg-black/55 border border-white/15 hover:bg-black/75 backdrop-blur"><Settings2 size={14} /> Editar clan</button>}
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 flex items-center justify-center rounded-xl font-display font-black text-2xl relative shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.55)", border: `2px solid ${clan.color}` }}>
@@ -398,7 +398,7 @@ function InvitePlayersPanel({ act }) {
 function RightPanels({ me, canManage, act }) {
   if (!canManage) return null;
   return (
-    <div className="space-y-4" data-testid="hub-right">
+    <div className="space-y-4 xl:h-full xl:overflow-y-auto xl:pr-1.5" data-testid="hub-right">
       <InvitePlayersPanel act={act} />
       <Panel title="Invitaciones Pendientes" icon={Inbox} count={(me.sent_invites || []).length} testid="pending-invites" accent="#38BDF8" right={<VerTodas />}>
         <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
@@ -508,13 +508,13 @@ function Hub() {
         <nav className="p-2 space-y-0.5">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, false))}</nav>
       </aside>
 
-      <div className="space-y-5 min-w-0">
+      <div className="space-y-4 min-w-0">
         <BannerHeader clan={clan} online={me.online_count || 0} canEdit={perms.edit_clan} onEdit={() => setTab("config")} />
         {/* Barra de pestañas horizontal (según diseño) */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mt-1" data-testid="clan-top-tabs">
           {TOP.map(([t, label, Icon]) => (
             <button key={label} data-testid={`toptab-${t}`} onClick={() => { play?.("click"); setTab(t); }}
-              className={`shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wide transition ${tab === t ? "bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 shadow-[0_0_18px_rgba(34,197,94,0.28)]" : "bg-black/45 text-white/55 hover:text-white border border-white/10 backdrop-blur"}`}>
+              className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-black uppercase tracking-wide transition ${tab === t ? "bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 shadow-[0_0_18px_rgba(34,197,94,0.28)]" : "bg-black/45 text-white/60 hover:text-white border border-white/10 backdrop-blur"}`}>
               <Icon size={14} /> {label}
             </button>
           ))}
@@ -523,7 +523,7 @@ function Hub() {
         <nav className="lg:hidden flex gap-1.5 overflow-x-auto pb-1" data-testid="clan-mobile-nav">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, true))}</nav>
 
         {(tab === "chat" || tab === "resumen") && (
-          <div className="grid xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_440px] gap-5 2xl:gap-6">
+          <div className="grid xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_480px] gap-5 2xl:gap-6 xl:h-[calc(100vh-360px)] xl:min-h-[440px] 2xl:min-h-[520px]">
             <ClanChat />
             {canManage ? <RightPanels me={me} canManage={canManage} act={act} /> : (
               <Panel title="Miembros" icon={Users} count={clan.member_count}><div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">{(me.members || []).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={{}} isLeader={false} user={user} act={act} />)}</div></Panel>
@@ -653,7 +653,7 @@ function InvitePanel() {
 function ClansInner() {
   const { me, loading } = useClan();
   return (
-    <div className="relative isolate min-h-screen" data-testid="clan-page">
+    <div className="relative isolate min-h-[calc(100vh-68px)]" data-testid="clan-page">
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <img src={PAGE_BG} alt="" className="w-full h-full object-cover opacity-[0.92]" style={{ objectPosition: "center top" }} />
         {/* Vignette suave: deja el bosque bien visible pero mantiene legible el HUD */}
@@ -664,7 +664,7 @@ function ClansInner() {
         <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.16), transparent 60%)" }} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]/70" />
       </div>
-      <div className="w-full max-w-[2100px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
+      <div className="w-full max-w-[2100px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4">
         {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
       </div>
     </div>

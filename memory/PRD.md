@@ -481,3 +481,9 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - Cableado: `ClanChat.send()` → `chatSend`; WS `clan:message`/`clan:global` → `chatReceive` SOLO si `m.data.user_id !== user?.id` (no suena en el eco de tus propios mensajes).
 - **Legibilidad**: banner (labels de stats `text-[8px]/45`→`text-[10px]/70`, valores `text-lg`; meta row `text-[11px]/60`→`text-xs/80`; Nivel/XP más grandes), sublabels de jugadores `text-[10px]/45`→`text-[11px]/65`, timestamps de chat `/35`→`/55`, contadores de Panel y "Ver todas" con más contraste.
 
+
+## 2026-06-24 — Hub fijo a pantalla + banner compacto + sonidos notif
+- **Footer oculto en `/clanes`**: `Layout.jsx` usa `useLocation`; `hideFooter = pathname.startsWith("/clanes")`. Elimina el scroll hacia el footer/vacío.
+- **Hub fijo/compacto**: `ClansInner` root `min-h-[calc(100vh-68px)]`; contenedor `py-4`; grid de la vista Chat con altura fija `xl:h-[calc(100vh-360px)]` y panel derecho (`hub-right`) con `xl:overflow-y-auto` (scroll interno). Banner más compacto (padding `p-4 sm:p-5`, nombre `text-3xl sm:text-5xl`, tag `text-3xl sm:text-4xl`). ExtraScroll final ~16-32px (imperceptible).
+- **Sonidos**: `success` y `notification` rehechos como arpegios ascendentes premium con sub cálido + shimmer. (Chat: `chatSend`/`chatReceive` de la tanda anterior.)
+

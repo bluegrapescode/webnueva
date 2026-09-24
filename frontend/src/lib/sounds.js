@@ -247,9 +247,16 @@ export const SOUNDS = {
   },
 
   // ── Notifications (premium bell-based) ──
-  success: () => { bell({ freq: 660, dur: 0.4, gain: 0.06, ratio: 3, index: 120 }); bell({ freq: 990, dur: 0.55, gain: 0.055, delay: 0.1, ratio: 2, index: 90 }); },
+  success: () => {
+    [523.25, 783.99, 1046.5].forEach((f, i) => bell({ freq: f, dur: 0.46, gain: 0.055, delay: i * 0.06, ratio: 2.4, index: 120 }));
+    voice({ freq: 140, type: "sine", dur: 0.42, gain: 0.03, slideTo: 100, delay: 0.03, filterType: "lowpass", filterFreq: 700 });
+  },
   error: () => { voice({ freq: 300, type: "sine", dur: 0.16, gain: 0.06, slideTo: 180, filterType: "lowpass", filterFreq: 1600 }); voice({ freq: 150, type: "triangle", dur: 0.22, gain: 0.05, slideTo: 110, delay: 0.02 }); },
-  notification: () => { bell({ freq: 1046, dur: 0.5, gain: 0.06, ratio: 2.0, index: 160 }); bell({ freq: 1568, dur: 0.6, gain: 0.045, delay: 0.11, ratio: 1.5, index: 120 }); },
+  notification: () => {
+    [659.25, 987.77, 1318.5].forEach((f, i) => bell({ freq: f, dur: 0.5, gain: 0.05, delay: i * 0.07, ratio: 2, index: 110 }));
+    voice({ freq: 165, type: "sine", dur: 0.42, gain: 0.03, slideTo: 120, delay: 0.04, filterType: "lowpass", filterFreq: 720 });
+    bell({ freq: 2093, dur: 0.5, gain: 0.013, delay: 0.22, ratio: 3, index: 55 });
+  },
   message: () => { bell({ freq: 784, dur: 0.35, gain: 0.055, ratio: 2.5, index: 140 }); bell({ freq: 1175, dur: 0.45, gain: 0.045, delay: 0.09, ratio: 2, index: 100 }); },
 
   // ── Sistema Global de Bounty (☠️) — limpios, cinemáticos y discretos ──
