@@ -55,6 +55,7 @@ export function ClanProvider({ children }) {
           case "clan:updated": refresh(); break;
           case "clan:removed": toast.message("Ya no perteneces al clan."); refresh(); setMessages([]); setGlobalMessages([]); break;
           case "clan:invited": play?.("open"); toast.info(`Invitación al clan [${m.data.tag}] ${m.data.name}`); refresh(); break;
+          case "clan:invite_cancelled": refresh(); break;
           case "clan:config": refresh(); break;
           default: break;
         }

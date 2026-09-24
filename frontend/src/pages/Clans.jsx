@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Crown, Users, Send, Swords, Settings2, LogOut, Trash2, UserPlus, Star, Check, X, Plus, ArrowUpRight, Flame, MessageSquare, Globe } from "lucide-react";
+import { Shield, Crown, Users, Send, Swords, Settings2, LogOut, Trash2, UserPlus, Star, Check, X, Plus, ArrowUpRight, Flame, MessageSquare, Globe, Search, MapPin, BarChart3, Inbox, Clock, Hexagon, ChevronRight, Bell } from "lucide-react";
+import { useTurf } from "@/hooks/useTurf";
 import { ClanProvider, useClan } from "@/context/ClanContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
@@ -17,6 +18,30 @@ function TagBadge({ tag, color, size = "md" }) {
 }
 
 const CLAN_COLORS = ["#C08B5C", "#E11D48", "#F59E0B", "#22C55E", "#38BDF8", "#A855F7", "#EC4899", "#7C3AED"];
+const BANNER_IMG = "https://images.unsplash.com/photo-1658302290771-e18350e6f2c4?crop=entropy&cs=srgb&fm=jpg&q=85&w=1600";
+const TREX_IMG = "https://images.pexels.com/photos/32620069/pexels-photo-32620069.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=520&w=520";
+
+function roleColor(order, isLeader) {
+  if (isLeader) return "#F5B841";
+  if (order <= 1) return "#A855F7";
+  if (order === 2) return "#38BDF8";
+  if (order === 3) return "#22C55E";
+  return "#7CA842";
+}
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }); } catch { return "—"; } }
+function fmtAgo(iso) {
+  try { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return "Ahora"; if (s < 3600) return `Hace ${Math.floor(s / 60)} min`;
+    if (s < 86400) return `Hace ${Math.floor(s / 3600)} h`; return `Hace ${Math.floor(s / 86400)} d`;
+  } catch { return ""; }
+}
+function RoleBadge({ clan, rankId, isLeader }) {
+  const r = (clan.ranks || []).find((x) => x.id === rankId) || {};
+  const name = isLeader ? "Líder" : (r.name || "Miembro");
+  const c = roleColor(r.order ?? 5, isLeader);
+  return <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: c, background: `${c}1f`, border: `1px solid ${c}55` }}>{isLeader && <Crown size={9} />}{name}</span>;
+}
+const STATUS_COLOR = { "En línea": "#22C55E", "En partida": "#F59E0B", "Ausente": "#EF4444" };
 
 // ═══════════ Modal: Fundar un clan ═══════════
 function FoundModal({ cfg, onClose }) {
@@ -206,75 +231,315 @@ function ClanChat() {
   );
 }
 
+// ═══════════ Banner del clan ═══════════
+function BannerHeader({ clan, online, canEdit, onEdit }) {
+  const xpPct = Math.min(100, Math.round((clan.xp_into / Math.max(1, clan.xp_needed)) * 100));
+  const stats = [
+    { icon: Users, label: "Miembros", val: `${clan.member_count}/${clan.min_members}` },
+    { icon: Globe, label: "Online", val: online },
+    { icon: Flame, label: "Notoriedad", val: clan.notoriety.toLocaleString() },
+    { icon: MapPin, label: "Territorios", val: clan.territories },
+  ];
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} data-testid="clan-header"
+      className="relative rounded-2xl border overflow-hidden" style={{ borderColor: `${clan.color}55` }}>
+      <div className="absolute inset-0"><img src={BANNER_IMG} alt="" className="w-full h-full object-cover grayscale opacity-40" /></div>
+      <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, #070a0e 12%, ${clan.color}11 55%, transparent 100%)` }} />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#070a0e] via-transparent to-transparent" />
+      <div className="relative p-5 sm:p-6">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="rounded-xl font-display font-black text-2xl sm:text-3xl px-4 py-3 shrink-0" style={{ color: "#0a0b0f", background: clan.color, boxShadow: `0 8px 30px -6px ${clan.color}` }}>{clan.tag}</div>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display font-black uppercase tracking-tight text-3xl sm:text-5xl leading-none flex items-center gap-3 drop-shadow-lg"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={30} /></h1>
+            <p className="text-sm sm:text-base font-semibold mt-1.5" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3 text-[11px] text-white/60">
+              <span>Fundado {fmtDate(clan.created_at)}</span><span className="text-white/25">·</span>
+              <span>ID del Clan: {clan.code}</span><span className="text-white/25">·</span>
+              <span>Idioma: {clan.language}</span><span className="text-white/25">·</span>
+              <span>Tipo: {clan.clan_type}</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-3">
+            {canEdit && <button data-testid="edit-clan-btn" onClick={onEdit} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black uppercase bg-black/50 border border-white/15 hover:bg-black/70 backdrop-blur"><Settings2 size={14} /> Editar clan</button>}
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 flex items-center justify-center rounded-xl font-display font-black text-2xl relative shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.55)", border: `2px solid ${clan.color}` }}>
+                <Hexagon className="absolute inset-0 m-auto opacity-20" size={54} style={{ color: clan.color }} />{clan.level}
+              </div>
+              <div className="w-40">
+                <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Nivel del clan</p>
+                <div className="h-2 rounded-full bg-black/60 overflow-hidden mt-1"><div className="h-full rounded-full" style={{ width: `${xpPct}%`, background: clan.color }} /></div>
+                <p className="text-[10px] text-white/55 mt-1 font-mono">{clan.xp_into.toLocaleString()} / {clan.xp_needed.toLocaleString()} XP</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-xl bg-black/45 border border-white/10 px-3 py-2 backdrop-blur flex items-center gap-2.5">
+              <s.icon size={17} className="text-white/50 shrink-0" />
+              <div className="leading-tight"><p className="font-mono font-black text-lg">{s.val}</p><p className="text-[9px] uppercase tracking-widest text-white/45">{s.label}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ClanTabs({ tabs, tab, setTab, me }) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-1" data-testid="clan-tabs">
+      {tabs.map(([t, label, Icon]) => {
+        const badge = t === "invitaciones" ? ((me.join_requests || []).length + (me.sent_invites || []).length) : 0;
+        return (
+          <button key={t} data-testid={`tab-${t}`} onClick={() => setTab(t)} className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg text-xs font-black uppercase tracking-wide transition ${tab === t ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40" : "bg-white/[0.03] text-white/60 hover:text-white border border-white/10"}`}>
+            <Icon size={14} /> {label}{badge > 0 && <span className="text-[9px] bg-red-500 text-white rounded-full px-1.5 py-0.5">{badge}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MemberRow({ m, clan, perms, isLeader, user, act }) {
+  return (
+    <div data-testid={`member-row-${m.user_id}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
+      <div className="relative h-9 w-9 rounded-full overflow-hidden bg-white/10 shrink-0">{m.avatar && <img src={m.avatar} alt="" className="w-full h-full object-cover" />}<span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0d0f15] ${m.online ? "bg-emerald-400" : "bg-white/25"}`} /></div>
+      <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{m.name}</p><RoleBadge clan={clan} rankId={m.rank_id} isLeader={clan.leader_id === m.user_id} /></div>
+      {perms.assign_ranks && clan.leader_id !== m.user_id && (
+        <select data-testid={`assign-${m.user_id}`} value={m.rank_id} onChange={(e) => act(() => import("@/lib/api").then(({ api }) => api.clanAssign(m.user_id, e.target.value)), "Rango asignado")} className="text-xs rounded-lg bg-white/[0.05] border border-white/12 px-2 py-1.5">
+          {clan.ranks.filter((r) => r.id !== "leader").map((r) => <option key={r.id} value={r.id} className="bg-[#0d0f15]">{r.name}</option>)}
+        </select>
+      )}
+      {isLeader && clan.leader_id !== m.user_id && <button title="Transferir liderazgo" data-testid={`transfer-${m.user_id}`} onClick={() => window.confirm(`¿Transferir liderazgo a ${m.name}?`) && act(() => import("@/lib/api").then(({ api }) => api.clanTransfer(m.user_id)), "Liderazgo transferido")} className="p-1.5 rounded-lg text-amber-300 hover:bg-amber-400/10"><Crown size={15} /></button>}
+      {perms.kick && clan.leader_id !== m.user_id && m.user_id !== user?.id && <button data-testid={`kick-${m.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanKick(m.user_id)), "Miembro expulsado")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300"><X size={15} /></button>}
+    </div>
+  );
+}
+
+function Panel({ title, icon: Icon, count, children, testid, accent = "#22C55E" }) {
+  return (
+    <div className="forge-panel rounded-2xl border border-white/10 p-4" data-testid={testid}>
+      <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest mb-3" style={{ color: accent }}><Icon size={15} /> {title}{count != null && <span className="text-white/40">({count})</span>}</h3>
+      {children}
+    </div>
+  );
+}
+
+// Panel: Invitar jugadores (búsqueda en vivo)
+function InvitePlayersPanel({ act }) {
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    let live = true;
+    const t = setTimeout(() => { import("@/lib/api").then(({ api }) => api.clanPlayerSearch(q).then(({ data }) => live && setRows(data.players || [])).catch(() => {})); }, 250);
+    return () => { live = false; clearTimeout(t); };
+  }, [q]);
+  return (
+    <Panel title="Invitar Jugadores" icon={UserPlus} testid="invite-players">
+      <div className="relative mb-2"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" /><input data-testid="invite-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar jugador…" className={input + " pl-9"} /></div>
+      <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+        {rows.length === 0 && <p className="text-xs text-white/35 py-4 text-center">Sin resultados.</p>}
+        {rows.map((p) => (
+          <div key={p.id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45 flex items-center gap-1.5">Nivel {p.level}<span className="w-1 h-1 rounded-full" style={{ background: STATUS_COLOR[p.status] }} /><span style={{ color: STATUS_COLOR[p.status] }}>{p.status}</span></p></div>
+            <button data-testid={`invite-player-${p.id}`} disabled={p.in_clan || p.invited} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanInvite({ user_id: p.id })), "Invitación enviada")} className="text-xs font-black px-3 py-1.5 rounded-lg bg-emerald-400 text-black disabled:opacity-40 disabled:bg-white/10 disabled:text-white/40">{p.in_clan ? "En clan" : p.invited ? "Invitado" : "Invitar"}</button>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function RightPanels({ me, canManage, act }) {
+  if (!canManage) return null;
+  return (
+    <div className="space-y-4" data-testid="hub-right">
+      <InvitePlayersPanel act={act} />
+      <Panel title="Invitaciones Pendientes" icon={Inbox} count={(me.sent_invites || []).length} testid="pending-invites" accent="#38BDF8">
+        <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
+          {(me.sent_invites || []).length === 0 && <p className="text-xs text-white/35 py-3 text-center">Sin invitaciones pendientes.</p>}
+          {(me.sent_invites || []).map((p) => (
+            <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
+              <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
+              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+              <button data-testid={`cancel-invite-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanCancelInvite(p.user_id)), "Invitación cancelada")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Solicitudes para Unirse" icon={Bell} count={(me.join_requests || []).length} testid="join-requests" accent="#F5B841">
+        <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+          {(me.join_requests || []).length === 0 && <p className="text-xs text-white/35 py-3 text-center">Sin solicitudes.</p>}
+          {(me.join_requests || []).map((p) => (
+            <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
+              <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
+              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+              <button data-testid={`accept-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestAccept(p.user_id)), "¡Miembro aceptado!")} className="p-1.5 rounded-lg text-emerald-300 bg-emerald-500/15 border border-emerald-400/30"><Check size={14} /></button>
+              <button data-testid={`decline-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestDecline(p.user_id)))} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function Locked() {
+  return <div className="forge-panel rounded-2xl border border-white/10 p-10 text-center text-white/45"><Shield size={30} className="mx-auto mb-3 opacity-50" /><p className="text-sm">No tienes permiso para ver esta sección.</p></div>;
+}
+
+function DangerZone({ isLeader, act }) {
+  return (
+    <div className="pt-4 border-t border-white/10 flex flex-wrap gap-2">
+      {isLeader
+        ? <button data-testid="disband-btn" onClick={() => window.confirm("¿Disolver el clan? Esto es permanente.") && act(() => import("@/lib/api").then(({ api }) => api.clanDisband()), "Clan disuelto")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase text-red-300 border border-red-400/30 hover:bg-red-500/10"><Trash2 size={14} /> Disolver clan</button>
+        : <button data-testid="leave-clan-btn" onClick={() => window.confirm("¿Salir del clan?") && act(() => import("@/lib/api").then(({ api }) => api.clanLeave()), "Saliste del clan")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase text-red-300 border border-red-400/30 hover:bg-red-500/10"><LogOut size={14} /> Salir del clan</button>}
+    </div>
+  );
+}
+
 // ═══════════ Hub del clan ═══════════
 function Hub() {
-  const { me, act, busy } = useClan();
+  const { me, act } = useClan();
   const { user } = useAuth();
   const clan = me.clan; const perms = me.my_perms || {}; const isLeader = me.is_leader;
-  const [panel, setPanel] = useState(null); // 'settings' | 'ranks' | 'invite'
-  const rankName = (id) => (clan.ranks.find((r) => r.id === id) || {}).name || "Miembro";
+  const canManage = isLeader || perms.invite || perms.manage_members;
+  const [tab, setTab] = useState("resumen");
+  const turf = useTurf(true);
+  const myZones = (turf.zones || []).filter((z) => z.owner?.id === clan.id);
+
+  const TABS = [
+    ["resumen", "Resumen", Shield], ["miembros", "Miembros", Users], ["chat", "Chat", MessageSquare],
+    ["invitaciones", "Invitaciones", Inbox], ["rangos", "Rangos", Star], ["territorios", "Territorios", MapPin],
+    ["turfwars", "Turf Wars", Swords], ["estadisticas", "Estadísticas", BarChart3], ["config", "Configuración", Settings2],
+  ];
+  const SIDE = [
+    ["resumen", "Mi Clan", Shield], ["explorar", "Explorar Clanes", Globe], ["invitaciones", "Solicitudes", Bell],
+    ["invitaciones", "Invitaciones", UserPlus], ["territorios", "Territorios", MapPin], ["turfwars", "Turf Wars", Swords],
+    ["ranking", "Ranking", BarChart3], ["config", "Configuración", Settings2],
+  ];
 
   return (
-    <div className="space-y-6" data-testid="clan-hub">
-      {/* header */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} data-testid="clan-header"
-        className="relative forge-panel rounded-3xl border overflow-hidden p-6" style={{ borderColor: `${clan.color}66`, boxShadow: `0 24px 80px -34px ${clan.color}` }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(60% 100% at 100% 0%, ${clan.color}33, transparent 60%)` }} />
-        <div className="relative flex flex-wrap items-center gap-4">
-          <TagBadge tag={clan.tag} color={clan.color} size="lg" />
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display font-black uppercase tracking-tighter text-3xl sm:text-4xl leading-none truncate" style={{ color: clan.color }}>{clan.name}</h1>
-            <p className="text-sm text-white/55 mt-1">{clan.description || "Sin descripción."}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center"><p className="font-mono font-black text-2xl text-white">{clan.member_count}<span className="text-white/40 text-sm">/{clan.min_members}</span></p><p className="text-[10px] uppercase tracking-widest text-white/45">Miembros</p></div>
-            <div className="text-center"><p className="font-mono font-black text-2xl text-amber-300">{clan.notoriety}</p><p className="text-[10px] uppercase tracking-widest text-white/45">Notoriedad</p></div>
-            {clan.active ? <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">Activo</span> : <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded bg-white/10 text-white/50">Reclutando</span>}
-          </div>
-        </div>
-        <div className="relative flex flex-wrap gap-2 mt-5">
-          {perms.edit_clan && <HdrBtn testid="edit-clan-btn" active={panel === "settings"} onClick={() => setPanel(panel === "settings" ? null : "settings")} icon={Settings2}>Ajustes</HdrBtn>}
-          {perms.manage_ranks && <HdrBtn testid="manage-ranks-btn" active={panel === "ranks"} onClick={() => setPanel(panel === "ranks" ? null : "ranks")} icon={Star}>Rangos</HdrBtn>}
-          {perms.invite && <HdrBtn testid="invite-btn" active={panel === "invite"} onClick={() => setPanel(panel === "invite" ? null : "invite")} icon={UserPlus}>Invitar</HdrBtn>}
-          {isLeader
-            ? <HdrBtn testid="disband-btn" danger onClick={() => window.confirm("¿Disolver el clan? Esto es permanente.") && act(() => import("@/lib/api").then(({ api }) => api.clanDisband()), "Clan disuelto")} icon={Trash2}>Disolver</HdrBtn>
-            : <HdrBtn testid="leave-clan-btn" danger onClick={() => window.confirm("¿Salir del clan?") && act(() => import("@/lib/api").then(({ api }) => api.clanLeave()), "Saliste del clan")} icon={LogOut}>Salir</HdrBtn>}
-        </div>
-        <AnimatePresence>
-          {panel && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="relative overflow-hidden">
-            <div className="mt-4 pt-4 border-t border-white/10">
-              {panel === "settings" && <SettingsPanel clan={clan} />}
-              {panel === "ranks" && <RanksPanel clan={clan} />}
-              {panel === "invite" && <InvitePanel />}
-            </div>
-          </motion.div>}
-        </AnimatePresence>
-      </motion.div>
+    <div className="grid lg:grid-cols-[210px_1fr] gap-6" data-testid="clan-hub">
+      <aside className="hidden lg:flex flex-col rounded-2xl border border-white/10 forge-panel overflow-hidden self-start sticky top-24">
+        <div className="p-4 border-b border-white/10 flex items-center gap-2"><Swords size={18} className="text-emerald-400" /><span className="font-display font-black uppercase tracking-tight">Clanes</span></div>
+        <nav className="p-2 space-y-0.5">
+          {SIDE.map(([t, label, Icon]) => (
+            <button key={label} data-testid={`side-${t}-${label}`} onClick={() => setTab(t)} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition ${tab === t ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30" : "text-white/60 hover:text-white hover:bg-white/[0.04] border border-transparent"}`}>
+              <Icon size={16} /><span className="truncate">{label}</span>
+              {label === "Solicitudes" && (me.join_requests || []).length > 0 && <span className="ml-auto text-[10px] bg-red-500 text-white rounded-full px-1.5">{me.join_requests.length}</span>}
+              {label === "Invitaciones" && (me.sent_invites || []).length > 0 && <span className="ml-auto text-[10px] bg-red-500 text-white rounded-full px-1.5">{me.sent_invites.length}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-auto relative h-36 opacity-80" style={{ WebkitMaskImage: "linear-gradient(to top, black 45%, transparent)", maskImage: "linear-gradient(to top, black 45%, transparent)" }}><img src={TREX_IMG} alt="" className="w-full h-full object-cover grayscale" /></div>
+      </aside>
 
-      {/* miembros + chat */}
-      <div className="grid lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 forge-panel rounded-2xl border border-white/10 p-5">
-          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-white/80 mb-3"><Users size={16} className="text-emerald-400" /> Miembros ({clan.member_count})</h3>
-          <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-            {(me.members || []).map((m) => (
-              <div key={m.user_id} data-testid={`member-row-${m.user_id}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
-                <div className="relative h-9 w-9 rounded-full overflow-hidden bg-white/10 shrink-0">{m.avatar && <img src={m.avatar} alt="" className="w-full h-full object-cover" />}<span className={`absolute -bottom-0 -right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0d0f15] ${m.online ? "bg-emerald-400" : "bg-white/25"}`} /></div>
-                <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate flex items-center gap-1.5">{m.name}{clan.leader_id === m.user_id && <Crown size={13} className="text-amber-400" />}</p><p className="text-[11px] text-white/45">{rankName(m.rank_id)}</p></div>
-                {perms.assign_ranks && clan.leader_id !== m.user_id && (
-                  <select data-testid={`assign-${m.user_id}`} value={m.rank_id} onChange={(e) => act(() => import("@/lib/api").then(({ api }) => api.clanAssign(m.user_id, e.target.value)), "Rango asignado")}
-                    className="text-xs rounded-lg bg-white/[0.05] border border-white/12 px-2 py-1.5">
-                    {clan.ranks.filter((r) => r.id !== "leader").map((r) => <option key={r.id} value={r.id} className="bg-[#0d0f15]">{r.name}</option>)}
-                  </select>
-                )}
-                {isLeader && clan.leader_id !== m.user_id && <button title="Transferir liderazgo" data-testid={`transfer-${m.user_id}`} onClick={() => window.confirm(`¿Transferir liderazgo a ${m.name}?`) && act(() => import("@/lib/api").then(({ api }) => api.clanTransfer(m.user_id)), "Liderazgo transferido")} className="p-1.5 rounded-lg text-amber-300 hover:bg-amber-400/10"><Crown size={15} /></button>}
-                {perms.kick && clan.leader_id !== m.user_id && m.user_id !== user?.id && <button data-testid={`kick-${m.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanKick(m.user_id)), "Miembro expulsado")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300"><X size={15} /></button>}
-              </div>
+      <div className="space-y-5 min-w-0">
+        <BannerHeader clan={clan} online={me.online_count || 0} canEdit={perms.edit_clan} onEdit={() => setTab("config")} />
+        <ClanTabs tabs={TABS} tab={tab} setTab={setTab} me={me} />
+
+        {tab === "resumen" && (
+          <div className="grid xl:grid-cols-[1fr_340px] gap-5">
+            <div className="space-y-4">
+              <Panel title="Sobre el clan" icon={Shield}><p className="text-sm text-white/70">{clan.description || "Este clan aún no tiene descripción."}</p></Panel>
+              <Panel title="Miembros" icon={Users} count={clan.member_count}>
+                <div className="grid sm:grid-cols-2 gap-2">{(me.members || []).slice(0, 8).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={{}} isLeader={false} user={user} act={act} />)}</div>
+                {(me.members || []).length > 8 && <button onClick={() => setTab("miembros")} className="mt-3 text-xs font-bold text-emerald-300 inline-flex items-center gap-1">Ver todos <ChevronRight size={13} /></button>}
+              </Panel>
+              <Panel title="Territorios controlados" icon={MapPin} count={myZones.length} accent="#38BDF8">
+                {myZones.length === 0 ? <p className="text-sm text-white/40">Tu clan no controla territorios. Ve a <button onClick={() => setTab("turfwars")} className="text-emerald-300 font-bold">Turf Wars</button>.</p>
+                  : <div className="flex flex-wrap gap-2">{myZones.map((z) => <span key={z.id} className="text-xs font-bold px-2.5 py-1 rounded-lg border" style={{ color: clan.color, borderColor: `${clan.color}55`, background: `${clan.color}14` }}>{z.name}</span>)}</div>}
+              </Panel>
+            </div>
+            <RightPanels me={me} canManage={canManage} act={act} />
+          </div>
+        )}
+
+        {tab === "miembros" && (
+          <Panel title="Miembros del clan" icon={Users} count={clan.member_count}>
+            <div className="grid sm:grid-cols-2 gap-2">{(me.members || []).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={perms} isLeader={isLeader} user={user} act={act} />)}</div>
+          </Panel>
+        )}
+
+        {tab === "chat" && (
+          <div className="grid xl:grid-cols-[1fr_340px] gap-5"><ClanChat />{canManage ? <RightPanels me={me} canManage={canManage} act={act} /> : <Panel title="Miembros online" icon={Users}><div className="space-y-2">{(me.members || []).filter((m) => m.online).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={{}} isLeader={false} user={user} act={act} />)}</div></Panel>}</div>
+        )}
+
+        {tab === "invitaciones" && (
+          <div className="grid lg:grid-cols-2 gap-5">
+            {canManage ? <><InvitePlayersPanel act={act} />
+              <div className="space-y-5">
+                <Panel title="Solicitudes para Unirse" icon={Bell} count={(me.join_requests || []).length} testid="join-requests" accent="#F5B841">
+                  <div className="space-y-1.5">{(me.join_requests || []).length === 0 && <p className="text-xs text-white/35 py-3 text-center">Sin solicitudes.</p>}
+                    {(me.join_requests || []).map((p) => (
+                      <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
+                        <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
+                        <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+                        <button data-testid={`accept-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestAccept(p.user_id)), "¡Miembro aceptado!")} className="p-1.5 rounded-lg text-emerald-300 bg-emerald-500/15 border border-emerald-400/30"><Check size={14} /></button>
+                        <button data-testid={`decline-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestDecline(p.user_id)))} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
+                      </div>
+                    ))}</div>
+                </Panel>
+                <Panel title="Invitaciones Pendientes" icon={Inbox} count={(me.sent_invites || []).length} accent="#38BDF8">
+                  <div className="space-y-1.5">{(me.sent_invites || []).length === 0 && <p className="text-xs text-white/35 py-3 text-center">Sin invitaciones pendientes.</p>}
+                    {(me.sent_invites || []).map((p) => (
+                      <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
+                        <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
+                        <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+                        <button data-testid={`cancel-invite-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanCancelInvite(p.user_id)), "Invitación cancelada")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
+                      </div>
+                    ))}</div>
+                </Panel>
+              </div></> : <Locked />}
+          </div>
+        )}
+
+        {tab === "rangos" && (perms.manage_ranks ? <div className="forge-panel rounded-2xl border border-white/10 p-5"><RanksPanel clan={clan} /></div> : <Locked />)}
+
+        {(tab === "territorios" || tab === "turfwars") && (
+          <Panel title={tab === "territorios" ? "Territorios controlados" : "Turf Wars"} icon={tab === "territorios" ? MapPin : Swords} accent="#38BDF8">
+            <p className="text-sm text-white/60 mb-3">Tu clan controla <b className="text-white">{myZones.length}</b> {myZones.length === 1 ? "territorio" : "territorios"}. La guerra por las zonas ocurre en el mapa en vivo.</p>
+            {myZones.length > 0 && <div className="flex flex-wrap gap-2 mb-4">{myZones.map((z) => <span key={z.id} className="text-xs font-bold px-2.5 py-1 rounded-lg border" style={{ color: clan.color, borderColor: `${clan.color}55`, background: `${clan.color}14` }}>{z.name}</span>)}</div>}
+            <a href="/my-dino?tab=map" data-testid="goto-turf-map" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 text-black font-black text-sm uppercase"><MapPin size={16} /> Abrir mapa · Turf Wars</a>
+          </Panel>
+        )}
+
+        {tab === "estadisticas" && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="stats-tab">
+            {[["Nivel", clan.level, Hexagon], ["Notoriedad", clan.notoriety.toLocaleString(), Flame], ["Miembros", `${clan.member_count}/${clan.min_members}`, Users], ["Territorios", clan.territories, MapPin]].map(([l, v, Ic]) => (
+              <div key={l} className="forge-panel rounded-2xl border border-white/10 p-5"><Ic size={20} className="text-emerald-400 mb-3" /><p className="font-mono font-black text-3xl">{v}</p><p className="text-[10px] uppercase tracking-widest text-white/45 mt-1">{l}</p></div>
             ))}
           </div>
-        </div>
-        <div className="lg:col-span-2"><ClanChat /></div>
+        )}
+
+        {tab === "config" && (perms.edit_clan ? <div className="forge-panel rounded-2xl border border-white/10 p-5 space-y-4"><SettingsPanel clan={clan} /><DangerZone isLeader={isLeader} act={act} /></div> : <div className="forge-panel rounded-2xl border border-white/10 p-5"><DangerZone isLeader={isLeader} act={act} /></div>)}
+
+        {tab === "explorar" && <DirectoryList request={false} />}
+        {tab === "ranking" && <DirectoryList request={false} ranking />}
       </div>
     </div>
+  );
+}
+
+function DirectoryList({ ranking }) {
+  const [dir, setDir] = useState([]);
+  useEffect(() => { import("@/lib/api").then(({ api }) => api.clanDirectory().then(({ data }) => setDir(data.clans || [])).catch(() => {})); }, []);
+  return (
+    <Panel title={ranking ? "Ranking de clanes" : "Explorar clanes"} icon={ranking ? BarChart3 : Globe} count={dir.length}>
+      <div className="space-y-2">
+        {dir.map((c, i) => (
+          <div key={c.id} className="flex items-center gap-3 rounded-xl border p-2.5 bg-black/30" style={{ borderColor: `${c.color}44` }}>
+            {ranking && <span className="w-5 text-center font-black text-white/50">{i === 0 ? <Crown size={14} className="text-amber-400 inline" /> : i + 1}</span>}
+            <TagBadge tag={c.tag} color={c.color} />
+            <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-[11px] text-white/45"><Users size={10} className="inline mr-1" />{c.member_count} · Nvl {c.level} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
+            {c.active ? <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">Activo</span> : <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/45">Reclutando</span>}
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 
@@ -284,13 +549,16 @@ function HdrBtn({ children, icon: Icon, onClick, active, danger, testid }) {
 
 function SettingsPanel({ clan }) {
   const { act } = useClan();
-  const [f, setF] = useState({ name: clan.name, tag: clan.tag, color: clan.color, description: clan.description });
+  const [f, setF] = useState({ name: clan.name, tag: clan.tag, color: clan.color, description: clan.description, language: clan.language, clan_type: clan.clan_type });
   return (
     <div className="grid sm:grid-cols-2 gap-3">
       <label className="block"><span className="text-xs text-white/50 mb-1 block">Nombre</span><input className={input} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-      <label className="block"><span className="text-xs text-white/50 mb-1 block">Tag</span><input className={input + " uppercase"} value={f.tag} onChange={(e) => setF({ ...f, tag: e.target.value.toUpperCase().slice(0, 5) })} /></label>
-      <label className="block"><span className="text-xs text-white/50 mb-1 block">Color</span><input type="color" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} className="h-11 w-16 rounded-lg bg-transparent border border-white/12" /></label>
-      <label className="block"><span className="text-xs text-white/50 mb-1 block">Descripción</span><input className={input} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={120} /></label>
+      <label className="block"><span className="text-xs text-white/50 mb-1 block">Tag (4 caracteres)</span><input className={input + " uppercase font-black tracking-[0.3em]"} value={f.tag} onChange={(e) => setF({ ...f, tag: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) })} /></label>
+      <label className="block"><span className="text-xs text-white/50 mb-1 block">Color</span>
+        <div className="flex flex-wrap gap-2">{CLAN_COLORS.map((c) => <button key={c} onClick={() => setF({ ...f, color: c })} className={`w-8 h-8 rounded-md transition ${f.color === c ? "ring-2 ring-white" : ""}`} style={{ background: c }} />)}</div></label>
+      <label className="block"><span className="text-xs text-white/50 mb-1 block">Lema / Descripción</span><input className={input} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={120} placeholder="Fuerza · Unión · Dominio" /></label>
+      <label className="block"><span className="text-xs text-white/50 mb-1 block">Idioma</span><input className={input} value={f.language} onChange={(e) => setF({ ...f, language: e.target.value })} maxLength={20} placeholder="Español" /></label>
+      <label className="block"><span className="text-xs text-white/50 mb-1 block">Tipo</span><input className={input} value={f.clan_type} onChange={(e) => setF({ ...f, clan_type: e.target.value })} maxLength={28} placeholder="PvP / Territorios" /></label>
       <button data-testid="save-settings-btn" onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanEdit(f)), "Clan actualizado")} className="sm:col-span-2 py-2.5 rounded-lg bg-amber-400 text-black font-black text-sm uppercase">Guardar cambios</button>
     </div>
   );

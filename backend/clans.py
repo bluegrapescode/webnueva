@@ -117,6 +117,8 @@ async def ensure_indexes():
         await _db.clan_members.create_index("clan_id")
         await _db.clan_invites.create_index([("clan_id", 1), ("user_id", 1)], unique=True)
         await _db.clan_invites.create_index("user_id")
+        await _db.clan_requests.create_index([("clan_id", 1), ("user_id", 1)], unique=True)
+        await _db.clan_requests.create_index("user_id")
         await _db.clan_messages.create_index([("clan_id", 1), ("created_at", -1)])
         if await _db.clan_settings.find_one({"_id": "clans"}) is None:
             await _db.clan_settings.insert_one({"_id": "clans", **DEFAULT_SETTINGS})
@@ -146,15 +148,51 @@ def _perms_for(clan, uid, rank_id):
     return {k: bool((r.get("perms") or {}).get(k)) for k in PERM_KEYS}, False
 
 
+def _level_info(xp):
+    xp = max(0, int(xp or 0)); level = 1; rem = xp
+    while True:
+        need = level * 1000
+        if rem < need: break
+        rem -= need; level += 1
+    return {"level": level, "xp_into": rem, "xp_needed": level * 1000, "xp_total": xp}
+
+
+def _acct_level(u):
+    return min(99, 1 + int(u.get("coins", 0) or 0) // 50000)
+
+
+def _player_status(u):
+    if u.get("active_dino"): return "En partida"
+    last = u.get("last_login")
+    try:
+        from datetime import datetime as _dt
+        dt = _dt.fromisoformat(str(last).replace("Z", "+00:00"))
+        if (_now() - dt).total_seconds() < 300: return "En línea"
+    except Exception: pass
+    return "Ausente"
+
+
+def _clan_code(clan):
+    try: return f"#{int(clan['id'][:8], 16) % 10000:04d}"
+    except Exception: return "#0000"
+
+
 async def _pub_clan(clan, settings=None):
     settings = settings or await get_settings()
+    lvl = _level_info(clan.get("notoriety", 0))
+    territories = 0
+    try: territories = await _db.turf_zones.count_documents({"owner_clan_id": clan["id"]})
+    except Exception: pass
     return {
         "id": clan["id"], "name": clan["name"], "tag": clan["tag"], "color": clan.get("color", "#7CA842"),
         "leader_id": clan.get("leader_id"), "description": clan.get("description", ""),
         "notoriety": clan.get("notoriety", 0), "member_count": clan.get("member_count", 0),
         "ranks": sorted(clan.get("ranks", []), key=lambda r: r.get("order", 99)),
         "min_members": settings["min_members"], "active": clan.get("member_count", 0) >= settings["min_members"],
-        "created_at": clan.get("created_at"),
+        "created_at": clan.get("created_at"), "code": _clan_code(clan),
+        "language": clan.get("language", "Español"), "clan_type": clan.get("clan_type", "PvP / Territorios"),
+        "level": lvl["level"], "xp_into": lvl["xp_into"], "xp_needed": lvl["xp_needed"],
+        "territories": territories,
     }
 
 
@@ -187,11 +225,41 @@ async def build_me(user):
         await _db.clan_members.delete_one({"user_id": uid})
         return {"clan": None, "invites": invites, "config": _pub_config(settings)}
     perms, is_leader = _perms_for(clan, uid, mem.get("rank_id"))
-    return {
-        "clan": await _pub_clan(clan, settings), "members": await _members_view(clan),
+    members = await _members_view(clan)
+    online_count = sum(1 for m in members if m.get("online"))
+    out = {
+        "clan": await _pub_clan(clan, settings), "members": members,
         "my_rank_id": mem.get("rank_id"), "my_perms": perms, "is_leader": is_leader,
-        "invites": invites, "config": _pub_config(settings),
+        "invites": invites, "config": _pub_config(settings), "online_count": online_count,
     }
+    if is_leader or perms.get("invite") or perms.get("manage_members"):
+        out["sent_invites"] = await _sent_invites(clan["id"])
+        out["join_requests"] = await _join_requests(clan["id"])
+    return out
+
+
+async def _sent_invites(clan_id):
+    rows = await _db.clan_invites.find({"clan_id": clan_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    ids = [r["user_id"] for r in rows]
+    users = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1, "coins": 1})}
+    out = []
+    for r in rows:
+        u = users.get(r["user_id"], {})
+        out.append({"user_id": r["user_id"], "name": u.get("persona_name") or "Superviviente", "avatar": u.get("avatar"),
+                    "level": _acct_level(u), "created_at": r.get("created_at")})
+    return out
+
+
+async def _join_requests(clan_id):
+    rows = await _db.clan_requests.find({"clan_id": clan_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    ids = [r["user_id"] for r in rows]
+    users = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1, "coins": 1})}
+    out = []
+    for r in rows:
+        u = users.get(r["user_id"], {})
+        out.append({"user_id": r["user_id"], "name": u.get("persona_name") or "Superviviente", "avatar": u.get("avatar"),
+                    "level": _acct_level(u), "created_at": r.get("created_at")})
+    return out
 
 
 def _pub_config(settings):
@@ -205,6 +273,7 @@ class FoundIn(BaseModel):
 
 class EditIn(BaseModel):
     name: str | None = None; tag: str | None = None; color: str | None = None; description: str | None = None
+    language: str | None = None; clan_type: str | None = None
 
 class RankIn(BaseModel):
     id: str | None = None; name: str; order: int = 5; perms: dict = {}
@@ -248,7 +317,8 @@ async def do_found(user, data: FoundIn):
 
     clan = {"id": _nid(), "name": name, "tag": tag, "color": data.color or "#7CA842",
             "leader_id": uid, "description": data.description.strip()[:280], "notoriety": 0,
-            "member_count": 1, "ranks": _default_ranks(), "created_at": _iso(_now())}
+            "member_count": 1, "ranks": _default_ranks(), "language": "Español",
+            "clan_type": "PvP / Territorios", "created_at": _iso(_now())}
     try:
         await _db.clans.insert_one(dict(clan))
     except Exception:
@@ -287,6 +357,8 @@ async def do_edit(user, data: EditIn):
     upd = {}
     if data.color: upd["color"] = data.color
     if data.description is not None: upd["description"] = data.description.strip()[:280]
+    if data.language is not None: upd["language"] = data.language.strip()[:24] or "Español"
+    if data.clan_type is not None: upd["clan_type"] = data.clan_type.strip()[:32] or "PvP / Territorios"
     if data.name:
         name = data.name.strip()
         if not (3 <= len(name) <= 28): raise HTTPException(400, "Nombre inválido (3-28).")
@@ -362,6 +434,7 @@ async def do_invite(user, data: InviteIn):
                                           {"$setOnInsert": {"id": _nid(), "invited_by": user["id"], "created_at": _iso(_now())}}, upsert=True)
     except Exception: pass
     await hub.send_to(target["id"], "clan:invited", {"clan_id": clan["id"], "name": clan["name"], "tag": clan["tag"]})
+    await _push_clan_update(clan["id"])
     return {"success": True}
 
 
@@ -485,7 +558,80 @@ async def get_directory():
     s = await get_settings()
     return {"clans": [{"id": c["id"], "name": c["name"], "tag": c["tag"], "color": c.get("color"),
                        "member_count": c.get("member_count", 0), "notoriety": c.get("notoriety", 0),
+                       "level": _level_info(c.get("notoriety", 0))["level"],
                        "active": c.get("member_count", 0) >= s["min_members"]} for c in clans]}
+
+
+async def search_players(user, q):
+    q = (q or "").strip()
+    mem = await _db.clan_members.find_one({"user_id": user["id"]}, {"_id": 0, "clan_id": 1})
+    clan_id = mem["clan_id"] if mem else None
+    query = {"persona_name": {"$regex": re.escape(q), "$options": "i"}} if q else {}
+    rows = await _db.users.find(query, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1, "coins": 1, "active_dino": 1, "last_login": 1}).limit(40).to_list(40)
+    in_clan = {r["user_id"] async for r in _db.clan_members.find({}, {"_id": 0, "user_id": 1})}
+    invited = set()
+    if clan_id:
+        invited = {r["user_id"] async for r in _db.clan_invites.find({"clan_id": clan_id}, {"_id": 0, "user_id": 1})}
+    out = []
+    for u in rows:
+        if u["id"] == user["id"]: continue
+        out.append({"id": u["id"], "name": u.get("persona_name") or "Superviviente", "avatar": u.get("avatar"),
+                    "level": _acct_level(u), "status": _player_status(u),
+                    "in_clan": u["id"] in in_clan, "invited": u["id"] in invited})
+    out.sort(key=lambda p: (p["in_clan"], p["invited"], p["name"].lower()))
+    return {"players": out[:24]}
+
+
+async def do_cancel_invite(user, target_id):
+    mem, clan = await _require_perm(user, "invite")
+    await _db.clan_invites.delete_one({"clan_id": clan["id"], "user_id": target_id})
+    await hub.send_to(target_id, "clan:invite_cancelled", {"clan_id": clan["id"]})
+    await _push_clan_update(clan["id"])
+    return {"success": True}
+
+
+async def do_request_join(user, clan_id):
+    uid = user["id"]
+    if await _db.clan_members.find_one({"user_id": uid}): raise HTTPException(409, "Ya perteneces a un clan.")
+    clan = await _db.clans.find_one({"id": clan_id}, {"_id": 0, "id": 1})
+    if not clan: raise HTTPException(404, "Clan no encontrado.")
+    try:
+        await _db.clan_requests.update_one({"clan_id": clan_id, "user_id": uid},
+            {"$setOnInsert": {"id": _nid(), "name": user.get("persona_name"), "avatar": user.get("avatar"), "created_at": _iso(_now())}}, upsert=True)
+    except Exception: pass
+    await _push_clan_update(clan_id)
+    return {"success": True}
+
+
+async def do_cancel_request(user, clan_id):
+    await _db.clan_requests.delete_one({"clan_id": clan_id, "user_id": user["id"]})
+    return {"success": True}
+
+
+async def do_request_accept(user, target_id):
+    mem, clan = await _require_perm(user, "invite")
+    req = await _db.clan_requests.find_one({"clan_id": clan["id"], "user_id": target_id})
+    if not req: raise HTTPException(404, "Solicitud no encontrada.")
+    if await _db.clan_members.find_one({"user_id": target_id}):
+        await _db.clan_requests.delete_many({"user_id": target_id})
+        raise HTTPException(409, "Ese jugador ya está en un clan.")
+    target = await _db.users.find_one({"id": target_id}, {"_id": 0, "persona_name": 1, "avatar": 1})
+    await _db.clan_members.insert_one({"clan_id": clan["id"], "user_id": target_id, "rank_id": "member",
+        "name": (target or {}).get("persona_name"), "avatar": (target or {}).get("avatar"), "joined_at": _iso(_now())})
+    await _db.clans.update_one({"id": clan["id"]}, {"$inc": {"member_count": 1}})
+    await _db.clan_requests.delete_many({"user_id": target_id})
+    await _db.clan_invites.delete_many({"user_id": target_id})
+    await hub.send_to(target_id, "clan:updated", {"clan_id": clan["id"]})
+    await _push_clan_update(clan["id"])
+    await _sys_msg(clan["id"], f"{(target or {}).get('persona_name') or 'Un superviviente'} se unió al clan.")
+    return {"success": True}
+
+
+async def do_request_decline(user, target_id):
+    mem, clan = await _require_perm(user, "invite")
+    await _db.clan_requests.delete_one({"clan_id": clan["id"], "user_id": target_id})
+    await _push_clan_update(clan["id"])
+    return {"success": True}
 
 
 # ─────────────── Router ───────────────
@@ -518,6 +664,24 @@ def build_router(get_current_user, get_admin_user):
 
     @router.post("/invite")
     async def invite(data: InviteIn, user=Depends(get_current_user)): return await do_invite(user, data)
+
+    @router.get("/players/search")
+    async def players_search(q: str = "", user=Depends(get_current_user)): return await search_players(user, q)
+
+    @router.post("/invite/cancel")
+    async def invite_cancel(data: TargetIn, user=Depends(get_current_user)): return await do_cancel_invite(user, data.user_id)
+
+    @router.post("/request")
+    async def request_join(data: ClanIdIn, user=Depends(get_current_user)): return await do_request_join(user, data.clan_id)
+
+    @router.post("/request/cancel")
+    async def request_cancel(data: ClanIdIn, user=Depends(get_current_user)): return await do_cancel_request(user, data.clan_id)
+
+    @router.post("/request/accept")
+    async def request_accept(data: TargetIn, user=Depends(get_current_user)): return await do_request_accept(user, data.user_id)
+
+    @router.post("/request/decline")
+    async def request_decline(data: TargetIn, user=Depends(get_current_user)): return await do_request_decline(user, data.user_id)
 
     @router.post("/invite/accept")
     async def inv_accept(data: ClanIdIn, user=Depends(get_current_user)): return await do_invite_accept(user, data.clan_id)
