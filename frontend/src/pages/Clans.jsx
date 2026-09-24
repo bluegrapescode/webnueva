@@ -488,7 +488,6 @@ function Hub() {
       <aside className="hidden lg:flex flex-col rounded-2xl border border-white/10 forge-panel overflow-hidden self-start sticky top-24">
         <div className="p-4 border-b border-white/10 flex items-center gap-2"><Swords size={18} className="text-emerald-400" /><span className="font-display font-black uppercase tracking-tight">Clanes</span></div>
         <nav className="p-2 space-y-0.5">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, false))}</nav>
-        <div className="mt-auto relative h-40 opacity-90" style={{ WebkitMaskImage: "linear-gradient(to top, black 50%, transparent)", maskImage: "linear-gradient(to top, black 50%, transparent)" }}><img src={TREX_IMG} alt="" className="w-full h-full object-cover" /></div>
       </aside>
 
       <div className="space-y-5 min-w-0">
@@ -646,6 +645,11 @@ function ClansInner() {
         {/* Brillo verde agresivo superior */}
         <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.16), transparent 60%)" }} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]/70" />
+        {/* T-Rex emergiendo del bosque (parte del fondo, abajo a la izquierda) */}
+        <div className="hidden lg:block absolute left-0 bottom-0" style={{ width: 380, height: 340 }}>
+          <img src={TREX_IMG} alt="" className="w-full h-full object-cover object-left-bottom"
+            style={{ opacity: 0.95, WebkitMaskImage: "radial-gradient(135% 130% at 18% 88%, black 42%, transparent 80%)", maskImage: "radial-gradient(135% 130% at 18% 88%, black 42%, transparent 80%)" }} />
+        </div>
       </div>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
