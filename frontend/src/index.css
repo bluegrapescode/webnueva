@@ -272,6 +272,15 @@ body {
   animation: bountyGlowPulse 3.2s ease-in-out infinite;
   will-change: opacity;
 }
+@keyframes turfContestPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,255,255,0.15); transform: scale(1); }
+  50%      { box-shadow: 0 0 16px rgba(255,80,80,0.85); transform: scale(1.08); }
+}
+.turf-contest-ring {
+  animation: turfContestPulse 1.1s ease-in-out infinite;
+  will-change: transform, box-shadow;
+}
+
 @keyframes bountyGlowTop {
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 1; }

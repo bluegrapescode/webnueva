@@ -120,12 +120,13 @@ function AiMarker() {
   );
 }
 
-export function InteractiveMap({ position, aiPositions = [] }) {
+export function InteractiveMap({ position, aiPositions = [], turf = null }) {
   const [showLabels, setShowLabels] = useState(true);
   const [showMigration, setShowMigration] = useState(false);
-  const [showWater, setShowWater] = useState(true);
+  const [showWater, setShowWater] = useState(false);
   const [showPatrol, setShowPatrol] = useState(false);
   const [showAi, setShowAi] = useState(true);
+  const [showTurf, setShowTurf] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [query, setQuery] = useState("");
   const [mapSrc, setMapSrc] = useState(MEDIA.gatewayMap);
@@ -192,6 +193,7 @@ export function InteractiveMap({ position, aiPositions = [] }) {
             <OverlayRow title="Zonas de Patrulla" sub={`AI patrullajes · ${PATROL_ZONES.length} points`} on={showPatrol} onToggle={() => setShowPatrol((v) => !v)} testid="map-toggle-patrol" />
             <OverlayRow title="Agua Potable" sub={`Rivers, lakes & wallows · ${WATER_ZONES.length}`} on={showWater} onToggle={() => setShowWater((v) => !v)} testid="map-toggle-water" />
             <OverlayRow title="Criaturas Silvestres" sub={`Posiciones de IA en el mapa · ${aiPositions.length} · actualización lenta (~4 min)`} on={showAi} onToggle={() => setShowAi((v) => !v)} testid="map-toggle-ai" />
+            {turf && <OverlayRow title="Turf Wars ⚔️" sub={`Territorios de clanes · ${turf.zones?.length || 0} zonas`} on={showTurf} onToggle={() => setShowTurf((v) => !v)} testid="map-toggle-turf" />}
           </div>
         </div>
 
@@ -268,6 +270,38 @@ export function InteractiveMap({ position, aiPositions = [] }) {
                       </KeepScale>
                     </div>
                   ))}
+
+                  {/* Turf Wars — territorios de clanes (color del dueño + progreso de captura) */}
+                  {showTurf && turf?.zones?.map((z) => {
+                    const color = z.owner?.color || "#64748b";
+                    const mine = turf.myClanId && z.owner?.id === turf.myClanId;
+                    const canRally = !!turf.myClanId && !turf.busy;
+                    return (
+                      <div key={`turf-${z.id}`} data-testid={`turf-zone-${z.id}`}
+                        className="absolute z-[9]"
+                        style={{ left: `${z.x}%`, top: `${z.y}%`, transform: "translate(-50%, -50%)", pointerEvents: turf.myClanId ? "auto" : "none" }}>
+                        <KeepScale>
+                          <button type="button" disabled={!canRally} onClick={() => canRally && turf.rally(z.id)}
+                            title={z.owner ? `[${z.owner.tag}] ${z.owner.name}${turf.myClanId ? " · Clic para Rally" : ""}` : "Territorio neutral"}
+                            data-testid={`turf-rally-${z.id}`}
+                            className="group flex flex-col items-center gap-1 focus:outline-none disabled:cursor-default"
+                            style={{ cursor: canRally ? "pointer" : "default" }}>
+                            <span className={`flex items-center justify-center rounded-full transition-transform ${canRally ? "group-hover:scale-110" : ""} ${z.contest ? "turf-contest-ring" : ""}`}
+                              style={{ width: 30, height: 30, background: `${color}2e`, border: `2px solid ${color}`, boxShadow: `0 0 12px ${color}99` }}>
+                              <span className="font-display font-black text-white" style={{ fontSize: 8.5, textShadow: "0 1px 2px rgba(0,0,0,0.9)" }}>{z.owner ? z.owner.tag : "—"}</span>
+                            </span>
+                            <span className="whitespace-nowrap font-bold uppercase tracking-wide text-white" style={{ fontSize: 7, textShadow: "0 1px 3px rgba(0,0,0,0.95)" }}>{z.name}</span>
+                            {z.contest && (
+                              <div className="w-8 h-1 rounded-full overflow-hidden bg-black/70">
+                                <div className="h-full" style={{ width: `${z.contest.progress}%`, background: z.contest.color }} />
+                              </div>
+                            )}
+                            {mine && <span className="font-black uppercase text-emerald-300" style={{ fontSize: 6.5 }}>Tuya</span>}
+                          </button>
+                        </KeepScale>
+                      </div>
+                    );
+                  })}
 
                   {/* Location labels — Dino-Den style boxes */}
                   {MAP_LOCATIONS.map((loc) => (

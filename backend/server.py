@@ -18981,6 +18981,24 @@ import clans
 clans.configure(db, admin_ids=ADMIN_STEAM_IDS, add_log=add_log, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
 app.include_router(clans.build_router(get_current_user, get_admin_user), prefix="/api")
 
+# ─────────────────────── Turf Wars (⚔️ Fase 2 de Clanes) ───────────────────────
+import turfwars
+
+
+async def _turf_presence_provider():
+    """Presencia real de miembros de clan por zona (desde el mod). Devuelve None
+    cuando NO hay servidor de juego real -> turfwars simula el frente en preview."""
+    if not (rcon_client.is_configured() or game_ipc.mod_alive()):
+        return None
+    return None  # gancho para telemetría real futura (mapear steam_id -> zona -> clan)
+
+
+turfwars.configure(
+    db, admin_ids=ADMIN_STEAM_IDS,
+    announce=clans._sys_msg, notify_clan=clans._push_clan_update,
+    presence_provider=_turf_presence_provider, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
+app.include_router(turfwars.build_router(get_current_user, get_admin_user), prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19609,6 +19627,11 @@ async def on_startup():
         await clans.ensure_indexes()
     except Exception:
         logger.warning("[clans] startup init skipped", exc_info=True)
+    # Turf Wars (⚔️): seed de zonas/rivales + arranque del motor de captura.
+    try:
+        turfwars.start_loops()
+    except Exception:
+        logger.warning("[turf] startup init skipped", exc_info=True)
 
 
 @app.on_event("shutdown")

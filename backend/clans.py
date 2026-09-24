@@ -150,22 +150,18 @@ async def _pub_clan(clan, settings=None):
     }
 
 
-async def _members_view(clan_id):
+async def _members_view(clan):
+    clan_id = clan["id"]
+    order_map = {r["id"]: r.get("order", 50) for r in clan.get("ranks", [])}
     mems = await _db.clan_members.find({"clan_id": clan_id}, {"_id": 0}).to_list(1000)
     ids = [m["user_id"] for m in mems]
     fresh = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1})}
-    online = set()  # WS-connected
     for m in mems:
         u = fresh.get(m["user_id"], {})
         m["name"] = u.get("persona_name") or m.get("name") or "Superviviente"
         m["avatar"] = u.get("avatar") or m.get("avatar")
         m["online"] = m["user_id"] in hub.by_uid
-    return sorted(mems, key=lambda m: (_rank_order(m), m["name"].lower()))
-
-
-_rank_order_cache = {}
-def _rank_order(m):
-    return _rank_order_cache.get(m.get("rank_id"), 50)
+    return sorted(mems, key=lambda m: (order_map.get(m.get("rank_id"), 50), m["name"].lower()))
 
 
 async def build_me(user):
@@ -182,11 +178,9 @@ async def build_me(user):
     if not clan:
         await _db.clan_members.delete_one({"user_id": uid})
         return {"clan": None, "invites": invites, "config": _pub_config(settings)}
-    global _rank_order_cache
-    _rank_order_cache = {r["id"]: r.get("order", 50) for r in clan.get("ranks", [])}
     perms, is_leader = _perms_for(clan, uid, mem.get("rank_id"))
     return {
-        "clan": await _pub_clan(clan, settings), "members": await _members_view(clan["id"]),
+        "clan": await _pub_clan(clan, settings), "members": await _members_view(clan),
         "my_rank_id": mem.get("rank_id"), "my_perms": perms, "is_leader": is_leader,
         "invites": invites, "config": _pub_config(settings),
     }
@@ -232,7 +226,7 @@ async def do_found(user, data: FoundIn):
         raise HTTPException(409, "Ya perteneces a un clan.")
     name = data.name.strip(); tag = data.tag.strip().upper()
     if not (3 <= len(name) <= 28): raise HTTPException(400, "El nombre debe tener entre 3 y 28 caracteres.")
-    if not re.fullmatch(r"[A-Z0-9]{2,5}", tag): raise HTTPException(400, "El tag debe ser 2-5 caracteres (A-Z, 0-9).")
+    if not re.fullmatch(r"[A-Z0-9]{4}", tag): raise HTTPException(400, "El tag debe tener exactamente 4 caracteres (A-Z, 0-9).")
     if await _db.clans.find_one({"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}):
         raise HTTPException(409, "Ese nombre de clan ya existe.")
     if await _db.clans.find_one({"tag": tag}):
@@ -292,7 +286,7 @@ async def do_edit(user, data: EditIn):
         upd["name"] = name
     if data.tag:
         tag = data.tag.strip().upper()
-        if not re.fullmatch(r"[A-Z0-9]{2,5}", tag): raise HTTPException(400, "Tag inválido.")
+        if not re.fullmatch(r"[A-Z0-9]{4}", tag): raise HTTPException(400, "El tag debe tener exactamente 4 caracteres (A-Z, 0-9).")
         if await _db.clans.find_one({"tag": tag, "id": {"$ne": clan["id"]}}):
             raise HTTPException(409, "Ese tag ya está en uso.")
         upd["tag"] = tag
@@ -384,7 +378,7 @@ async def do_invite_decline(user, clan_id):
     return {"success": True}
 
 
-async def _remove_member(clan, uid, kicked_by=None):
+async def _remove_member(clan, uid):
     await _db.clan_members.delete_one({"clan_id": clan["id"], "user_id": uid})
     await _db.clans.update_one({"id": clan["id"]}, {"$inc": {"member_count": -1}})
     await hub.send_to(uid, "clan:removed", {"clan_id": clan["id"]})
@@ -396,7 +390,7 @@ async def do_kick(user, data: TargetIn):
     if data.user_id == clan["leader_id"]: raise HTTPException(400, "No puedes expulsar al líder.")
     if data.user_id == user["id"]: raise HTTPException(400, "Usa salir del clan.")
     if not await _db.clan_members.find_one({"clan_id": clan["id"], "user_id": data.user_id}): raise HTTPException(404, "Miembro no encontrado.")
-    await _remove_member(clan, data.user_id, kicked_by=user["id"])
+    await _remove_member(clan, data.user_id)
     await _log(user.get("steam_id") or user["id"], "kick", clan["id"], {"target": data.user_id})
     return {"success": True}
 

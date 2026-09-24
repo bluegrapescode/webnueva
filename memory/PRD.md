@@ -365,3 +365,19 @@ Server-authoritative, WS-driven (sin polling), atómico + idempotency + recupera
 - CSS industrial en index.css: heatGlow, emberRise (.ember), .forge-panel (placas de hierro), .forge-rivet (remaches), .hazard-stripes, moltenText, .forge-anvil-base. Barras de progreso = HeatBar con forge-progress shimmer.
 - Componentes eliminados de uso: MaterialsBar/RecipeDetail (reemplazados por MaterialsTray/RequirementsPanel/ForgeStage). Todos los data-testid preservados.
 - Verificado: testing_agent iteration_32.json 100% — render 3 columnas desktop + stack móvil sin overflow (1920/390), craft (bones 810->690) + claim + tabs, cero errores de consola. crafting_speed_mult sigue en 60 (modo prueba del usuario; pendiente resetear a 1 para producción).
+
+## Actualización 22 (Jun 2026) — SISTEMA DE CLANES (Fase 1: Hub) ✅
+Server-authoritative, WS en vivo, 0 exploits. Turf Wars = Fase 2 (irá en el Live Map, requiere mod del juego).
+### Backend (`/app/backend/clans.py`, wired en server.py + startup clans.ensure_indexes)
+- Colecciones: clans (ranks embebidos), clan_members (único user_id => 1 clan por jugador), clan_invites, clan_messages (chat con historial), clan_settings(_id="clans"). Índices únicos name/tag/user_id.
+- Fundar: cobro ATÓMICO con $gte de moneda configurable (default 20.000 Amberium=vip_coins; admin puede cambiar a PrimeMeat=coins y el monto). Refund si falla. Validación name(3-28)/tag(2-5 A-Z0-9) únicos.
+- Permisos por rango (edit_clan/manage_ranks/assign_ranks/invite/kick/manage_members); líder = todos. Rangos default: Líder/Oficial/Miembro. CRUD de rangos, asignar, invitar (por nombre/steam/id), aceptar/rechazar, expulsar, transferir liderazgo, salir, disolver.
+- Chat privado en tiempo real vía WS hub (por usuario, empuja a los uids del clan) + historial persistido + mensajes de sistema.
+- Admin: GET/PUT settings (moneda/costo/min_members/creation_enabled), listar y eliminar clanes.
+- Endpoints /api/clans: me, config, directory, found, edit, ranks(POST/DELETE), assign, invite(+accept/decline), kick, transfer, leave, disband, chat(GET/POST), ws, admin/settings, admin/list, admin/delete.
+### Frontend
+- Ruta /clanes (`pages/Clans.jsx` + `context/ClanContext.jsx` WS): vista SIN clan (formulario fundar con color picker + costo + directorio + invitaciones) y HUB (header con tag/color/notoriedad/miembros, lista de miembros con online/rango/kick/transfer, chat en vivo, paneles Ajustes/Rangos/Invitar). Animaciones framer + sonidos (reutilizados). Nav: Comunidad > Clanes.
+- Admin: `components/admin/AdminClans.jsx` (tab "Clanes").
+### Verificación: testing_agent iteration_33.json — backend 7/7 pytest PASS; frontend E2E (fundar, hub, chat WS live + persistencia, rangos, disband) OK, responsive 1920/390. Fixes post-review aplicados: _members_view sin global (orden correcto bajo concurrencia), removido param muerto kicked_by.
+### Nota UX menor (pre-existente): los flyouts del nav en hover pueden solaparse con los paneles del hub; no bloqueante.
+### PENDIENTE Fase 2: Turf Wars (zonas en el Live Map, entrada/combate/timer de captura server-authoritative vía mod, notoriedad, coloreado del mapa por clan, anuncios).

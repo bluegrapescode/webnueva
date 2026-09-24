@@ -17,6 +17,8 @@ import { InteractiveMap } from "@/components/livemap/InteractiveMap";
 import { VaultSection } from "@/components/inventory/VaultSection";
 import { InventoryPanel } from "@/components/inventory/InventoryPanel";
 import { Gen0VirusPanel } from "@/components/gen0/Gen0VirusPanel";
+import { TurfWarsPanel } from "@/components/livemap/TurfWarsPanel";
+import { useTurf } from "@/hooks/useTurf";
 
 // ── Page identity ────────────────────────────────────────────────────────────
 // 2026-08-07 owner redesign: the stats tab is a 1:1 recreation of the reference
@@ -151,6 +153,7 @@ export default function MyDino() {
   const [aiPositions, setAiPositions] = useState([]);
   const statsTimer = useRef(null);
   const aiTimer = useRef(null);
+  const turf = useTurf(!!user && tab === "map");
 
   const load = () => api.meState()
     .then((r) => { setMeState(r.data); setLoadErr(null); setLastOkAt(Date.now()); })
@@ -328,12 +331,15 @@ export default function MyDino() {
 
           {tab === "map" && meState !== undefined && (
             <motion.div key="map" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-              {inGame ? (
-                <>
-                  <InteractiveMap position={meState?.position} aiPositions={aiPositions} />
-                  <p className="text-xs text-muted-foreground mt-3">Desplaza o pellizca para acercar, arrastra para mover el mapa. Activa ubicaciones, zonas de migración y patrulla, y usa la mira para centrar en tu dinosaurio.</p>
-                </>
-              ) : <p className="text-muted-foreground">No hay dino en vivo para rastrear. Aparece en un servidor conectado para verlo aquí.</p>}
+              {!inGame && (
+                <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-2.5 text-xs text-amber-200/90" data-testid="map-offline-note">
+                  No tienes un dino en vivo ahora mismo — no verás tu propia posición, pero puedes seguir la guerra de territorios (Turf Wars) en tiempo real.
+                </div>
+              )}
+              <InteractiveMap position={meState?.position} aiPositions={aiPositions}
+                turf={{ zones: turf.zones, myClanId: turf.my_clan_id, myRally: turf.my_rally, busy: turf.busy, rally: turf.rally }} />
+              <p className="text-xs text-muted-foreground mt-3">Desplaza o pellizca para acercar, arrastra para mover el mapa. Activa ubicaciones, zonas de migración y patrulla, y usa la mira para centrar en tu dinosaurio.</p>
+              <TurfWarsPanel turf={turf} />
             </motion.div>
           )}
 

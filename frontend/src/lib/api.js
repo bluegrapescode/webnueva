@@ -94,6 +94,13 @@ export function clansWsUrl() {
   return `${base}/api/clans/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Turf Wars — WebSocket para /api/turf/ws (estado de zonas en vivo, capturas).
+export function turfWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/turf/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -569,6 +576,16 @@ export const api = {
   clanAdminSaveSettings: (body) => client.put("/clans/admin/settings", body),
   clanAdminList:    () => client.get("/clans/admin/list"),
   clanAdminDelete:  (clan_id) => client.post("/clans/admin/delete", { clan_id }),
+
+  // ── Turf Wars (⚔️) ──
+  turfWsUrl,
+  turfState:        () => client.get("/turf/state"),
+  turfConfig:       () => client.get("/turf/config"),
+  turfRally:        (zone_id) => client.post("/turf/rally", { zone_id }),
+  turfAdminGetSettings: () => client.get("/turf/admin/settings"),
+  turfAdminSaveSettings: (body) => client.put("/turf/admin/settings", body),
+  turfAdminCapture: (zone_id, clan_id) => client.post("/turf/admin/capture", { zone_id, clan_id }),
+  turfAdminReset:   () => client.post("/turf/admin/reset"),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

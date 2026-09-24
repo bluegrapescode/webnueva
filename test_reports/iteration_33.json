@@ -1,0 +1,27 @@
+{
+  "summary": "Clan System Phase 1 (Hub) — full backend + partial frontend E2E. Backend 7/7 pytest PASS. Frontend: NoClan view + Found flow + Clan Hub header + members list + WebSocket live chat + chat persistence + Ranks UI (Veterano) + Disband all verified. Admin/settings/invite UI verified indirectly via backend endpoints (each passed).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/clanes hub", "issues": ["Top-nav flyouts (Dino en vivo / Comunidad) auto-expand on hover and float over the clan-header management panels (Ajustes/Rangos/Invitar). Not blocking (moving pointer away resolves) but can visually cover the panel. Consider closing nav flyouts on click/scroll or adding a small delay before opening."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_clans.py", "/app/test_reports/pytest/clans.xml"],
+  "action_items": [
+    "Optional UX polish: top-nav flyouts overlay the clan-hub Ajustes/Rangos/Invitar panels on hover — consider dismissing them on scroll or when a hub panel is opened."
+  ],
+  "critical_code_review_comments": [
+    "clans.py: _remove_member() ignores kicked_by kwarg (dead parameter).",
+    "clans.py: _rank_order_cache is a module-level global mutated per-request; multi-clan concurrent requests could interleave and mis-sort members. Move to per-call param instead.",
+    "clans.py: do_disband() called from do_leave() when leader is last member — do_disband() re-checks leader_id which is fine, but the log 'disband' fires without 'auto=True' meta, obscuring self-leave vs disband in audit."
+  ],
+  "updated_files": ["/app/backend/tests/test_clans.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "~85% (core UI flows verified; admin UI + toast text not automated but underlying endpoints pass)"},
+  "test_credentials": "POST /api/auth/demo → JWT for demo admin user id=3c45966b9bbf4bf59035ebae8237faa4",
+  "seed_data_creation": "Founded/disbanded TEST_-prefixed clans during runs; cleaned up (final disband confirmed via curl).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest at /app/backend/tests/test_clans.py — pass REACT_APP_BACKEND_URL env. Founding consumes 20k Amberium per run; demo user currently ~20k after tests. If low, admin can bump vip_coins or lower founding_cost. Top-nav hover flyouts require mouse.move away before interacting with clan-header buttons in Playwright."
+}

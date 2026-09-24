@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Shield, Save, Trash2, Users, Flame } from "lucide-react";
+import { Shield, Save, Trash2, Users, Flame, Swords, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
 
 const input = "w-full glass rounded-lg px-3 py-2.5 text-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-gold/50";
@@ -8,11 +8,12 @@ const input = "w-full glass rounded-lg px-3 py-2.5 text-sm bg-transparent focus:
 export default function AdminClans() {
   const [s, setS] = useState(null);
   const [clans, setClans] = useState([]);
+  const [turf, setTurf] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const [a, b] = await Promise.all([api.clanAdminGetSettings(), api.clanAdminList()]);
-      setS(a.data); setClans(b.data.clans || []);
+      const [a, b, t] = await Promise.all([api.clanAdminGetSettings(), api.clanAdminList(), api.turfAdminGetSettings()]);
+      setS(a.data); setClans(b.data.clans || []); setTurf(t.data);
     } catch { toast.error("No se pudo cargar clanes"); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -21,6 +22,11 @@ export default function AdminClans() {
     try { await api.clanAdminSaveSettings(s); toast.success("Ajustes guardados"); load(); }
     catch (e) { toast.error(e?.response?.data?.detail || "Error"); }
   };
+  const saveTurf = async () => {
+    try { await api.turfAdminSaveSettings(turf); toast.success("Turf Wars actualizado"); load(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Error"); }
+  };
+  const resetTurf = async () => { if (!window.confirm("¿Reiniciar TODOS los territorios a neutral?")) return; try { await api.turfAdminReset(); toast.message("Territorios reiniciados"); } catch { toast.error("Error"); } };
   const del = async (id) => { if (!window.confirm("¿Eliminar este clan?")) return; try { await api.clanAdminDelete(id); toast.message("Clan eliminado"); load(); } catch { toast.error("Error"); } };
 
   if (!s) return <p className="text-muted-foreground text-sm">Cargando…</p>;
@@ -56,6 +62,23 @@ export default function AdminClans() {
           </div>
         </div>
       </div>
+
+      {turf && (
+        <div className="glass rounded-2xl p-5 mt-6" data-testid="admin-turf">
+          <div className="flex items-center gap-2.5 mb-4"><Swords className="text-red-400" size={20} /><h3 className="font-bold text-lg">Turf Wars ⚔️</h3>
+            <button onClick={resetTurf} data-testid="turf-reset" className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold border border-red-400/40 text-red-300 rounded-lg px-3 py-2 hover:bg-red-500/10"><RotateCcw size={13} /> Reiniciar territorios</button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <label className="block"><span className="text-xs text-muted-foreground mb-1 block">Segundos para capturar</span><input type="number" data-testid="turf-capture-secs" className={input} value={turf.capture_seconds} onChange={(e) => setTurf({ ...turf, capture_seconds: Number(e.target.value) })} /></label>
+            <label className="block"><span className="text-xs text-muted-foreground mb-1 block">Presencia mínima</span><input type="number" data-testid="turf-min-presence" className={input} value={turf.min_presence} onChange={(e) => setTurf({ ...turf, min_presence: Number(e.target.value) })} /></label>
+            <label className="block"><span className="text-xs text-muted-foreground mb-1 block">Duración del rally (s)</span><input type="number" data-testid="turf-rally-secs" className={input} value={turf.rally_seconds} onChange={(e) => setTurf({ ...turf, rally_seconds: Number(e.target.value) })} /></label>
+            <label className="block"><span className="text-xs text-muted-foreground mb-1 block">Notoriedad por captura</span><input type="number" data-testid="turf-noto-capture" className={input} value={turf.notoriety_capture} onChange={(e) => setTurf({ ...turf, notoriety_capture: Number(e.target.value) })} /></label>
+            <label className="block"><span className="text-xs text-muted-foreground mb-1 block">Notoriedad por zona (renta)</span><input type="number" data-testid="turf-noto-hold" className={input} value={turf.notoriety_hold} onChange={(e) => setTurf({ ...turf, notoriety_hold: Number(e.target.value) })} /></label>
+            <button onClick={() => setTurf({ ...turf, sim_enabled: !turf.sim_enabled })} data-testid="turf-sim-toggle" className={`self-end p-2.5 rounded-lg text-sm font-semibold border ${turf.sim_enabled ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-200" : "bg-white/[0.03] border-white/10 text-white/50"}`}>Simulación: {turf.sim_enabled ? "ON" : "OFF"}</button>
+          </div>
+          <button onClick={saveTurf} data-testid="turf-settings-save" className="mt-4 inline-flex items-center gap-2 bg-gold text-background font-bold px-4 py-2.5 rounded-lg text-sm"><Save size={15} /> Guardar Turf Wars</button>
+        </div>
+      )}
     </div>
   );
 }

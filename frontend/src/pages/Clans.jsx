@@ -16,74 +16,139 @@ function TagBadge({ tag, color, size = "md" }) {
   return <span className={`inline-flex items-center font-display font-black uppercase tracking-tight rounded-md ${s}`} style={{ color: "#0a0b0f", background: color || "#7CA842", boxShadow: `0 2px 14px -2px ${color || "#7CA842"}` }}>[{tag}]</span>;
 }
 
-// ═══════════ Sin clan: fundar / invitaciones / directorio ═══════════
-function NoClan() {
-  const { me, act, busy } = useClan();
-  const { play } = useSound();
-  const cfg = me?.config || {};
-  const [f, setF] = useState({ name: "", tag: "", color: "#22c55e", description: "" });
-  const [dir, setDir] = useState([]);
-  useEffect(() => { import("@/lib/api").then(({ api }) => api.clanDirectory().then(({ data }) => setDir(data.clans || [])).catch(() => {})); }, [me]);
+const CLAN_COLORS = ["#C08B5C", "#E11D48", "#F59E0B", "#22C55E", "#38BDF8", "#A855F7", "#EC4899", "#7C3AED"];
 
-  const found = () => act(() => import("@/lib/api").then(({ api }) => api.clanFound({ ...f, tag: f.tag.toUpperCase() })), "¡Clan fundado!");
+// ═══════════ Modal: Fundar un clan ═══════════
+function FoundModal({ cfg, onClose }) {
+  const { act, busy } = useClan();
+  const { play } = useSound();
+  const [f, setF] = useState({ name: "", tag: "", color: "#C08B5C", description: "" });
+  const valid = f.name.trim().length >= 3 && f.tag.length === 4 && cfg.creation_enabled;
+  const found = () => act(() => import("@/lib/api").then(({ api }) => api.clanFound({ ...f, tag: f.tag.toUpperCase() })), "¡Clan fundado!").then(onClose).catch(() => {});
 
   return (
-    <div className="grid lg:grid-cols-5 gap-6">
-      <div className="lg:col-span-3 space-y-6">
-        {(me?.invites || []).length > 0 && (
-          <div className="forge-panel rounded-2xl border border-emerald-500/25 p-5" data-testid="clan-invites">
-            <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-emerald-300 mb-3"><UserPlus size={16} /> Invitaciones</h3>
-            <div className="space-y-2">
-              {me.invites.map((iv) => (
-                <div key={iv.clan_id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
-                  <TagBadge tag={iv.tag} color={iv.color} />
-                  <span className="flex-1 font-bold text-sm truncate">{iv.name}</span>
-                  <button data-testid={`invite-accept-${iv.clan_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanInviteAccept(iv.clan_id)), "¡Te uniste al clan!")} className="text-xs font-black px-3 py-1.5 rounded-lg bg-emerald-400 text-black">Aceptar</button>
-                  <button onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanInviteDecline(iv.clan_id)))} className="p-1.5 rounded-lg text-white/40 hover:text-red-300"><X size={15} /></button>
+    <motion.div className="fixed inset-0 z-[120] flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-testid="found-modal">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <motion.div initial={{ scale: 0.94, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 8 }}
+        className="relative w-full max-w-lg forge-panel rounded-2xl border border-amber-500/30 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+          <span className="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-400/40 flex items-center justify-center"><Shield className="text-amber-400" size={20} /></span>
+          <h2 className="font-display font-black uppercase tracking-tight text-xl flex-1">Fundar un clan</h2>
+          <button onClick={onClose} data-testid="found-close" className="p-2 rounded-lg text-white/50 hover:bg-white/10 hover:text-white"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Vista previa */}
+          <div className="flex items-center gap-3 rounded-xl border border-white/12 bg-black/40 px-4 py-3.5">
+            <TagBadge tag={f.tag || "????"} color={f.color} size="md" />
+            <span className="font-display font-black text-lg truncate">{f.name.trim() || "Nombre de tu clan"}</span>
+          </div>
+
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 flex justify-between"><span>Nombre del clan</span><span className="text-white/35">{f.name.length}/28</span></span>
+            <input data-testid="found-name" className={input} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="La Manada Ápice" maxLength={28} />
+          </label>
+
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">Tag (4 caracteres, letras/números, único)</span>
+            <input data-testid="found-tag" className={input + " uppercase font-black tracking-[0.3em]"} value={f.tag}
+              onChange={(e) => setF({ ...f, tag: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) })} placeholder="APEX" />
+            {f.tag.length > 0 && f.tag.length < 4 && <span className="text-[10px] text-amber-300 mt-1 block">El tag debe tener exactamente 4 caracteres.</span>}
+          </label>
+
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-2 block">Color</span>
+            <div className="flex flex-wrap gap-2.5" data-testid="found-colors">
+              {CLAN_COLORS.map((c) => (
+                <button key={c} data-testid={`found-color-${c.replace("#", "")}`} onClick={() => setF({ ...f, color: c })}
+                  className={`w-9 h-9 rounded-md transition-transform ${f.color === c ? "ring-2 ring-white ring-offset-2 ring-offset-black scale-105" : "hover:scale-110"}`}
+                  style={{ background: c }} aria-label={c} />
+              ))}
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">Descripción (opcional)</span>
+            <input className={input} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={120} placeholder="Domina los territorios de La Isla" />
+          </label>
+
+          {!cfg.creation_enabled && <p className="text-red-300 text-sm">La creación de clanes está deshabilitada temporalmente.</p>}
+
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="text-sm"><span className="text-[11px] uppercase tracking-wider text-white/45 block">Costo</span>
+              <span className="font-mono font-black text-amber-300 text-lg">{(cfg.founding_cost ?? 20000).toLocaleString()} {cfg.founding_currency_label || "Amberium"}</span></div>
+            <button data-testid="found-submit" disabled={busy || !valid} onClick={() => { play?.("click"); found(); }}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black uppercase tracking-wide text-black bg-gradient-to-r from-emerald-300 to-emerald-500 disabled:opacity-40 hover:brightness-105 transition">
+              <Shield size={18} /> Fundar clan
+            </button>
+          </div>
+          <p className="text-[11px] text-white/40">Necesitas mínimo {cfg.min_members ?? 20} miembros para activar el clan en Turf Wars.</p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ═══════════ Sin clan: estado vacío / fundar / invitaciones / directorio ═══════════
+function NoClan() {
+  const { me, act } = useClan();
+  const cfg = me?.config || {};
+  const [dir, setDir] = useState([]);
+  const [showFound, setShowFound] = useState(false);
+  useEffect(() => { import("@/lib/api").then(({ api }) => api.clanDirectory().then(({ data }) => setDir(data.clans || [])).catch(() => {})); }, [me]);
+
+  return (
+    <div className="space-y-6">
+      {/* Estado vacío */}
+      <div className="rounded-2xl border border-white/10 forge-panel px-6 py-14 text-center" data-testid="no-clan-empty">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center mb-5">
+          <div className="relative"><Shield className="text-amber-400/70" size={30} /><Plus className="text-amber-300 absolute -bottom-0.5 -right-0.5 bg-black rounded-full" size={13} /></div>
+        </div>
+        <h2 className="font-display font-black uppercase tracking-tight text-2xl sm:text-3xl">No estás en un clan aún</h2>
+        <p className="text-sm text-white/55 max-w-md mx-auto mt-3">Funda tu propio clan con un tag único, o espera la invitación de un líder. Los clanes son solo por invitación.</p>
+        <button data-testid="open-found-modal" disabled={!cfg.creation_enabled} onClick={() => setShowFound(true)}
+          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black uppercase tracking-wide text-black bg-gradient-to-r from-amber-300 to-amber-500 disabled:opacity-40 hover:brightness-105 transition">
+          <Shield size={18} /> Fundar un clan · {(cfg.founding_cost ?? 20000).toLocaleString()}
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 space-y-6">
+          {(me?.invites || []).length > 0 && (
+            <div className="forge-panel rounded-2xl border border-emerald-500/25 p-5" data-testid="clan-invites">
+              <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-emerald-300 mb-3"><UserPlus size={16} /> Invitaciones</h3>
+              <div className="space-y-2">
+                {me.invites.map((iv) => (
+                  <div key={iv.clan_id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
+                    <TagBadge tag={iv.tag} color={iv.color} />
+                    <span className="flex-1 font-bold text-sm truncate">{iv.name}</span>
+                    <button data-testid={`invite-accept-${iv.clan_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanInviteAccept(iv.clan_id)), "¡Te uniste al clan!")} className="text-xs font-black px-3 py-1.5 rounded-lg bg-emerald-400 text-black">Aceptar</button>
+                    <button onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanInviteDecline(iv.clan_id)))} className="p-1.5 rounded-lg text-white/40 hover:text-red-300"><X size={15} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-2">
+          <div className="forge-panel rounded-2xl border border-white/10 p-5" data-testid="clan-directory">
+            <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-white/80 mb-3"><Swords size={16} className="text-amber-400" /> Clanes de La Isla</h3>
+            <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+              {dir.length === 0 && <p className="text-sm text-white/40 py-6 text-center">Aún no hay clanes. ¡Sé el primero!</p>}
+              {dir.map((c) => (
+                <div key={c.id} data-testid={`directory-card-${c.id}`} className="flex items-center gap-3 rounded-xl border p-2.5 bg-black/30" style={{ borderColor: `${c.color}44` }}>
+                  <TagBadge tag={c.tag} color={c.color} />
+                  <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-[11px] text-white/45"><Users size={10} className="inline mr-1" />{c.member_count} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
+                  {c.active ? <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">Activo</span> : <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/45">Reclutando</span>}
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-        <div className="forge-panel rounded-2xl border border-amber-500/25 p-6" data-testid="found-form">
-          <div className="flex items-center gap-3 mb-1"><Shield className="text-amber-400" size={26} /><h2 className="font-display font-black uppercase tracking-tighter text-2xl sm:text-3xl">Funda tu clan</h2></div>
-          <p className="text-sm text-white/55 mb-5">Reúne a tu manada, domina territorios y gana notoriedad en La Isla.</p>
-          {!cfg.creation_enabled && <p className="text-red-300 text-sm mb-3">La creación de clanes está deshabilitada temporalmente.</p>}
-          <div className="grid sm:grid-cols-2 gap-3">
-            <label className="block"><span className="text-xs text-white/50 mb-1 block">Nombre del clan</span><input data-testid="found-name" className={input} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Raptores del Norte" maxLength={28} /></label>
-            <label className="block"><span className="text-xs text-white/50 mb-1 block">Tag (2-5, A-Z 0-9)</span><input data-testid="found-tag" className={input + " uppercase font-black tracking-widest"} value={f.tag} onChange={(e) => setF({ ...f, tag: e.target.value.toUpperCase().slice(0, 5) })} placeholder="RN" /></label>
-            <label className="block"><span className="text-xs text-white/50 mb-1 block">Color del clan</span>
-              <div className="flex items-center gap-2"><input type="color" data-testid="found-color" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} className="h-11 w-14 rounded-lg bg-transparent border border-white/12 cursor-pointer" /><TagBadge tag={f.tag || "TAG"} color={f.color} size="lg" /></div>
-            </label>
-            <label className="block"><span className="text-xs text-white/50 mb-1 block">Descripción (opcional)</span><input className={input} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={120} /></label>
-          </div>
-          <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
-            <div className="text-sm"><span className="text-white/50">Costo: </span><span className="font-mono font-black text-amber-300">{(cfg.founding_cost ?? 20000).toLocaleString()} {cfg.founding_currency_label || "Amberium"}</span></div>
-            <button data-testid="found-submit" disabled={busy || !cfg.creation_enabled || f.name.length < 3 || f.tag.length < 2} onClick={() => { play?.("click"); found(); }}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black uppercase tracking-wide text-black bg-gradient-to-r from-amber-300 to-amber-500 disabled:opacity-40 hover:brightness-105 transition">
-              <Shield size={18} /> Fundar clan
-            </button>
-          </div>
-          <p className="text-[11px] text-white/40 mt-3">Necesitas mínimo {cfg.min_members ?? 20} miembros para activar el clan en Turf Wars.</p>
         </div>
       </div>
 
-      <div className="lg:col-span-2">
-        <div className="forge-panel rounded-2xl border border-white/10 p-5" data-testid="clan-directory">
-          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-white/80 mb-3"><Swords size={16} className="text-amber-400" /> Clanes de La Isla</h3>
-          <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-            {dir.length === 0 && <p className="text-sm text-white/40 py-6 text-center">Aún no hay clanes. ¡Sé el primero!</p>}
-            {dir.map((c) => (
-              <div key={c.id} data-testid={`directory-card-${c.id}`} className="flex items-center gap-3 rounded-xl border p-2.5 bg-black/30" style={{ borderColor: `${c.color}44` }}>
-                <TagBadge tag={c.tag} color={c.color} />
-                <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-[11px] text-white/45"><Users size={10} className="inline mr-1" />{c.member_count} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
-                {c.active ? <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">Activo</span> : <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/45">Reclutando</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <AnimatePresence>{showFound && <FoundModal cfg={cfg} onClose={() => setShowFound(false)} />}</AnimatePresence>
     </div>
   );
 }
