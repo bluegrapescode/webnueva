@@ -1,0 +1,29 @@
+{
+  "summary": "Turf Wars (Phase 2) + Clan founding-rule regression. Backend pytest 15/15 PASS (state shape, simulation progress over 35s, rally requires clan / 429 duplicate / rally chat msg, admin settings/capture/reset, tag rule length 3/4/5 + uniqueness 409 + name too short). Frontend E2E: no-clan-empty → open modal → validate submit-disabled matrix (tag<4 disabled, tag=4 enabled, tag input clamps to 4 uppercase A-Z0-9) → color swatch → found → Clan Hub shown. /my-dino?tab=map: live-map + map-offline-note + map-toggle-turf + turf-panel + turf-leaderboard all visible; 10 turf-zone-* markers, 10 turf-zone-rally-btn-* panel buttons, 10 turf-rally-* clickable map zones; rally button click succeeds (backend receipt + capture toasts visible).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Rally click → active banner", "issue": "After clicking turf-zone-rally-btn, the [data-testid=turf-rally-active] banner did not appear within 2.5s in the automation run. The rally endpoint itself succeeded (verified via backend pytest) and toast fired; the panel banner depends on the next state refresh from useTurf.load() and can lag briefly. Not blocking, but consider optimistic setState of my_rally right after api.turfRally() resolves so the banner is immediate.", "affected_selectors": ["turf-rally-active"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_turf.py", "/app/test_reports/pytest/turf.xml"],
+  "action_items": [
+    "Optional: in useTurf.rally(), on success set my_rally optimistically (zone_id + seconds_left = data.seconds) so the [data-testid=turf-rally-active] banner shows immediately without waiting for /state refresh."
+  ],
+  "critical_code_review_comments": [
+    "turfwars.py:_rally is a module-level in-memory dict — if uvicorn is restarted or scaled to >1 worker, rallies are lost / not shared. Fine for preview, but note before multi-worker deploys (move to Mongo TTL doc).",
+    "turfwars.py:_tick_count is a module global — same multi-worker caveat for the 60s notoriety income cadence (each worker would tick independently).",
+    "turfwars.py:_compute_presence simulation uses random.Random(f\"{cid}:{window}\") with `deploy_window`; if admin sets deploy_window<15 the code silently clamps to 15 (max(15,...)) — this is intentional but not surfaced in the admin UI/response.",
+    "turfwars.py:admin_capture forces owner but skips notoriety awarding? Actually it awards via _apply_capture which does the $inc — verified. No issue, just note that force-capture from admin also generates a clan chat message (may be undesirable if used for corrections; consider a silent=true flag).",
+    "Clans.jsx FoundModal: color palette is hard-coded [C08B5C, E11D48, F59E0B, 22C55E, 38BDF8, A855F7, EC4899, 7C3AED] but SettingsPanel uses <input type=\"color\"> (full picker) — mild inconsistency; either allow free color on found or restrict edit to same 8 swatches."
+  ],
+  "updated_files": ["/app/backend/tests/test_turf.py"],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "~95% (all data-testids render + interactions work; rally-active banner timing is the only lag)"},
+  "test_credentials": "POST /api/auth/demo → JWT (demo admin, user id 3c45966b9bbf4bf59035ebae8237faa4). urllib from python fails 403 on preview URL from container — call POST /api/auth/demo via page.evaluate(fetch(...)) instead.",
+  "seed_data_creation": "Founded/disbanded TEST_-prefixed clans during pytest and Playwright runs. Final _disband ran; demo user should end without a clan. Rival AI clans ALBA/OBSD/CNBR seeded by turfwars.ensure_seed() persist (expected).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend suite at /app/backend/tests/test_turf.py — run with `-n 0` because pytest.ini forces -n 2 --dist loadscope and this file assumes sequential shared state (founding, disband, single-token). Simulation test sleeps 35s; expect ~42s total. Preview URL blocks direct urllib POST /api/auth/demo (403 Cloudflare); from Playwright fetch works fine. Rally is in-memory keyed by clan_id — after any disband/refound, previous rally is orphaned harmlessly. Demo user starts with 10M amberium so founding_cost of 20k is trivial across many test runs."
+}

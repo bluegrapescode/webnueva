@@ -10,6 +10,11 @@
 
 Base preview URL: https://synced-animations.preview.emergentagent.com
 
+## Estado de la cuenta demo (2026-06, Turf Wars)
+- La cuenta demo (`POST /api/auth/demo`, steam demo_0000000001, id 3c45966b9bbf4bf59035ebae8237faa4) tiene **10,000,000 Amberium (vip_coins)** y 10,000,000 coins para pruebas, y quedó **SIN clan** (para ver el estado vacío + modal de creación en /clanes).
+- Regla de creación: el TAG del clan debe ser **exactamente 4 caracteres** (A-Z 0-9) y único en el servidor.
+- Turf Wars: clanes rivales IA seed con tags **ALBA / OBSD / CNBR** luchan por 10 zonas en el mapa (Dino en Vivo > Mapa). Rally: POST /api/turf/rally requiere estar en un clan.
+
 ## Notes
 - Real login is Steam OAuth (needs the live game server / not available in preview).
 - No standard email/password accounts exist; use the demo login above.

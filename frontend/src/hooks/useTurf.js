@@ -42,7 +42,7 @@ export function useTurf(enabled = true) {
   const rally = useCallback(async (zoneId) => {
     if (busy) return;
     setBusy(true);
-    try { const { data } = await api.turfRally(zoneId); toast.success(`📣 ¡Rally lanzado! Refuerza la zona ${data.seconds}s`); await load(); }
+    try { const { data } = await api.turfRally(zoneId); setState((s) => ({ ...s, my_rally: { zone_id: zoneId, seconds_left: data.seconds } })); toast.success(`📣 ¡Rally lanzado! Refuerza la zona ${data.seconds}s`); await load(); }
     catch (e) { toast.error(e?.response?.data?.detail || "No se pudo lanzar el rally"); }
     finally { setBusy(false); }
   }, [busy, load]);
