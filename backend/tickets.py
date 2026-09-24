@@ -271,27 +271,31 @@ async def _estimate_response():
 
 def _welcome_message(cat_id, eta, queue, help_url=""):
     lines = [
-        "👋 ¡Gracias por abrir tu ticket! Ten TODA la evidencia a la mano e insértala aquí antes de que te atienda el staff.",
+        "👋 ¡Gracias por abrir tu ticket! Ten **toda la evidencia a la mano** e insértala aquí antes de que te atienda el staff.",
+        f"⏱️ **Tiempo estimado actual:** {eta} · hay {queue} ticket(s) en cola.",
         "",
-        f"⏱️ Tiempo de respuesta estimado: {eta}  (hay {queue} ticket(s) en cola).",
-        "Respondemos la mayoría de tickets en 24–48 horas. Para agilizar la atención:",
-        "• Abre un solo ticket por problema.",
-        "• El spam o abuso del sistema puede derivar en advertencias o restricciones temporales de soporte.",
+        "## Tiempo de Respuesta",
+        "Respondemos la mayoría de tickets en **24–48 horas**.",
+        "Para agilizar la atención:",
+        "• Abre **un solo ticket** por problema.",
+        "!• El spam o abuso del sistema puede resultar en advertencias o restricciones temporales de soporte.",
     ]
     if cat_id in ("report_player", "report_staff"):
         lines += [
             "",
-            "📋 Requisitos para reportes — incluye toda la evidencia necesaria:",
+            "## Requisitos para Reportes de Jugadores",
+            "Los reportes deben incluir **toda la evidencia necesaria**:",
             "• Replay desde el menú F2",
             "• Clip POV del jugador",
             "• Descripción clara de lo ocurrido",
-            "• No aceptamos clips sueltos ni archivos directos en el ticket: envía las pruebas mediante un enlace (ej. Medal u otra plataforma similar).",
-            "• Los reportes sin evidencia suficiente podrán ser rechazados.",
+            "!• No aceptamos clips sueltos ni archivos directamente en el ticket.",
+            "Las pruebas deben enviarse mediante un **enlace** (ej. Medal u otra plataforma similar).",
+            "!Los reportes sin evidencia suficiente podrán ser rechazados.",
         ]
     if help_url:
         lines += [
             "",
-            f"🆘 ¿Crees que el staff está tardando mucho? Puedes pedir ayuda más rápido en nuestro canal de ayuda: {help_url}",
+            f"🆘 ¿Crees que el staff está tardando mucho? Pide ayuda más rápido en nuestro **canal de ayuda**: {help_url}",
         ]
     return "\n".join(lines)
 

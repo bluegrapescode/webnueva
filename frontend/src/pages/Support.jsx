@@ -24,6 +24,33 @@ const linkify = (text) => String(text || "").split(/(https?:\/\/[^\s]+)/g).map((
     ? <a key={i} href={p} target="_blank" rel="noreferrer" className="text-emerald-300 underline break-all hover:text-emerald-200">{p}</a>
     : <span key={i}>{p}</span>);
 
+// Render inline: **negrita** + enlaces clicables.
+const inlineRender = (text, kb) => {
+  const out = [];
+  String(text).split(/(https?:\/\/[^\s]+)/g).forEach((chunk, ci) => {
+    if (/^https?:\/\//i.test(chunk)) {
+      out.push(<a key={`${kb}-u${ci}`} href={chunk} target="_blank" rel="noreferrer" className="text-emerald-300 underline break-all hover:text-emerald-200 font-semibold">{chunk}</a>);
+    } else {
+      chunk.split(/(\*\*[^*]+\*\*)/g).forEach((seg, si) => {
+        if (/^\*\*[^*]+\*\*$/.test(seg)) out.push(<strong key={`${kb}-b${ci}-${si}`} className="text-white font-black">{seg.slice(2, -2)}</strong>);
+        else if (seg) out.push(<span key={`${kb}-s${ci}-${si}`}>{seg}</span>);
+      });
+    }
+  });
+  return out;
+};
+
+// Render del aviso: '## título', '!advertencia', '• viñeta', **negrita**, enlaces.
+const renderNotice = (text) => String(text || "").split("\n").map((line, i) => {
+  if (!line.trim()) return <div key={i} className="h-2" />;
+  if (line.startsWith("## ")) return <p key={i} className="text-[13px] font-black text-emerald-300 uppercase tracking-wide mt-2.5 mb-1 flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-emerald-400" />{inlineRender(line.slice(3), `h${i}`)}</p>;
+  let warn = false; let body = line;
+  if (line.startsWith("!• ")) { warn = true; body = "• " + line.slice(3); }
+  else if (line.startsWith("!")) { warn = true; body = line.slice(1); }
+  const bullet = body.startsWith("• ");
+  return <p key={i} className={`text-[13px] leading-relaxed ${warn ? "text-amber-300 font-bold" : "text-white/80"} ${bullet ? "pl-3.5" : ""}`}>{inlineRender(body, `l${i}`)}</p>;
+});
+
 function Copyable({ value, label, testid }) {
   const [ok, setOk] = useState(false);
   if (!value) return null;
@@ -323,7 +350,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
                 <div key={m.id} className="my-1" data-testid="notice-message">
                   <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.06] px-3.5 py-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-emerald-300 flex items-center gap-1.5 mb-1.5"><LifeBuoy size={13} /> Aviso de soporte</p>
-                    <p className="text-[13px] text-white/80 whitespace-pre-wrap leading-relaxed">{linkify(m.text)}</p>
+                    <div className="space-y-0.5">{renderNotice(m.text)}</div>
                   </div>
                 </div>
               );
