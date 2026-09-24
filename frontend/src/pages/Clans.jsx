@@ -638,14 +638,14 @@ function ClansInner() {
   return (
     <div className="relative isolate min-h-screen" data-testid="clan-page">
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <img src={PAGE_BG} alt="" className="w-full h-full object-cover opacity-[0.6]" style={{ objectPosition: "center top" }} />
-        {/* Vignette oscuro para mantener legible el HUD, dejando el follaje visible en los bordes */}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(115% 75% at 50% 0%, rgba(5,7,10,0.30) 0%, rgba(5,7,10,0.78) 55%, rgba(5,7,10,0.94) 100%)" }} />
-        {/* Sombras laterales para enmarcar */}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(5,7,10,0.55) 0%, transparent 22%, transparent 78%, rgba(5,7,10,0.55) 100%)" }} />
+        <img src={PAGE_BG} alt="" className="w-full h-full object-cover opacity-[0.92]" style={{ objectPosition: "center top" }} />
+        {/* Vignette suave: deja el bosque bien visible pero mantiene legible el HUD */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(125% 95% at 50% 0%, rgba(5,7,10,0.05) 0%, rgba(5,7,10,0.30) 55%, rgba(5,7,10,0.60) 100%)" }} />
+        {/* Sombras laterales leves para enmarcar */}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(5,7,10,0.30) 0%, transparent 16%, transparent 84%, rgba(5,7,10,0.30) 100%)" }} />
         {/* Brillo verde agresivo superior */}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.14), transparent 60%)" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.16), transparent 60%)" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]/70" />
       </div>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
