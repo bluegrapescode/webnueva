@@ -1,0 +1,24 @@
+{
+  "summary": "Regression tested Clan Hub redesign + join-requests backend. Backend (11/11 new tests): /clans/me returns level, xp_into, xp_needed, code, territories, language, clan_type, online_count, sent_invites, join_requests; /clans/players/search returns proper shape; invite + cancel round-trip works; /clans/request/accept and /decline work with seeded clan_requests rows; /clans/request returns 409 when already in clan; edit persists language/clan_type; bad tag length returns 400; global chat channel round-trips. Frontend (desktop + mobile): all 9 tab-* testids present, sidebar has 8 side-* buttons (hidden on mobile as designed), banner shows tag/level/XP + 4 stats, Chat toggle flips between clan and global (placeholder changes to 'Mensaje a todos los clanes…', global messages tagged with [TEST]), invite via search from panel works (Demo Trader → 'Invitación enviada' toast → appears in Invitaciones Pendientes → cancel removes it), Solicitudes para Unirse panel renders empty state, EDITAR CLAN button opens SettingsPanel with Idioma/Tipo/Nombre/Color/Tag inputs and save button.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_clans_hub.py",
+    "/app/test_reports/pytest/clans_hub.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "clans.py at 761 lines is nearing the recommended 700-line threshold; consider splitting router + logic into submodules on next iteration.",
+    "search_players uses a full-scan async iteration over clan_members to build in_clan set; fine for demo scale but should be replaced with indexed $lookup or precomputed cache once user count grows.",
+    "do_request_join swallows all upsert exceptions silently — a legitimate DB error would be masked as success. Consider catching only DuplicateKeyError.",
+    "_pub_clan reads turf_zones.count_documents per /me call; consider caching or storing on clan doc for performance."
+  ],
+  "updated_files": ["/app/backend/tests/test_clans_hub.py"],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "100% of tested flows"},
+  "test_credentials": "POST /api/auth/demo → token stored in localStorage['primal_token']. Demo user is leader of clan Escuadron Prueba [TEST].",
+  "seed_data_creation": "test_request_accept_flow inserts a clan_requests doc via direct MongoDB then cleans up by kicking the added member. No lingering test data expected.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests are in /app/backend/tests/test_clans_hub.py (uses pymongo to seed clan_requests for accept/decline tests). Demo account is the leader of [TEST] Escuadron Prueba. All redesigned Clan Hub features validated: tab-{resumen,miembros,chat,invitaciones,rangos,territorios,turfwars,estadisticas,config}, side-* sidebar (lg: only), invite-search/invite-player-*/pending-invites/cancel-invite-*/join-requests/accept-request-*/decline-request-*/chat-channel-toggle/edit-clan-btn/save-settings-btn all wired correctly to backend.",
+  "rca of the issue": "N/A — no defects found."
+}
