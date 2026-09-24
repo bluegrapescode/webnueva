@@ -270,8 +270,12 @@ async def _estimate_response():
 
 
 def _welcome_message(cat_id, eta, queue, help_url=""):
+    is_report = cat_id in ("report_player", "report_staff")
+    greet = ("👋 ¡Gracias por abrir tu ticket! Ten **toda la evidencia a la mano** e insértala aquí antes de que te atienda el staff."
+             if is_report else
+             "👋 ¡Gracias por contactarnos! Cuéntanos tu consulta con el mayor detalle posible y el staff te ayudará lo antes posible.")
     lines = [
-        "👋 ¡Gracias por abrir tu ticket! Ten **toda la evidencia a la mano** e insértala aquí antes de que te atienda el staff.",
+        greet,
         f"⏱️ **Tiempo estimado actual:** {eta} · hay {queue} ticket(s) en cola.",
         "",
         "## Tiempo de Respuesta",
@@ -280,7 +284,7 @@ def _welcome_message(cat_id, eta, queue, help_url=""):
         "• Abre **un solo ticket** por problema.",
         "!• El spam o abuso del sistema puede resultar en advertencias o restricciones temporales de soporte.",
     ]
-    if cat_id in ("report_player", "report_staff"):
+    if is_report:
         lines += [
             "",
             "## Requisitos para Reportes de Jugadores",
@@ -291,6 +295,36 @@ def _welcome_message(cat_id, eta, queue, help_url=""):
             "!• No aceptamos clips sueltos ni archivos directamente en el ticket.",
             "Las pruebas deben enviarse mediante un **enlace** (ej. Medal u otra plataforma similar).",
             "!Los reportes sin evidencia suficiente podrán ser rechazados.",
+        ]
+    elif cat_id == "appeal":
+        lines += [
+            "",
+            "## Sobre tu Apelación",
+            "Explica con claridad **por qué crees que la sanción debe revisarse**.",
+            "• Indica tu SteamID y, si lo conoces, el motivo mostrado.",
+            "• Si tienes pruebas (clips o capturas), compártelas por **enlace** — no son obligatorias, pero ayudan a resolver más rápido.",
+        ]
+    elif cat_id in ("patreon", "membership"):
+        lines += [
+            "",
+            "## Sobre tu Consulta",
+            "Este ticket es para **preguntas y problemas de membresía/Patreon** — no necesitas adjuntar pruebas.",
+            "• Indícanos tu **SteamID** y tu **usuario de Discord**.",
+            "• Si tu caso es un pago o beneficio, comparte el **comprobante** por enlace (si aplica).",
+        ]
+    elif cat_id == "battlepass":
+        lines += [
+            "",
+            "## Sobre tu Battle Pass",
+            "Este ticket es para **preguntas del Battle Pass** — no necesitas adjuntar pruebas.",
+            "• Cuéntanos qué ocurre con tu **progreso, recompensas, tokens o compra** e incluye tu **SteamID**.",
+        ]
+    else:  # general
+        lines += [
+            "",
+            "## Sobre tu Consulta",
+            "Este ticket es para **dudas y preguntas generales** — no necesitas adjuntar pruebas.",
+            "• Describe tu duda o problema con el mayor detalle posible y el staff te responderá.",
         ]
     if help_url:
         lines += [
@@ -396,25 +430,50 @@ async def _discord_notify_new(t):
     ev = fields.get("evidence") or ""
     link = f"{PUBLIC_URL}/soporte?t={t['id']}" if PUBLIC_URL else "Abrir en la web"
     thread_id = await _discord_create_channel(f"ticket-{t['code']}")
+
+    CAT_COLORS = {"report_player": 0xEF4444, "report_staff": 0xF59E0B, "appeal": 0x8B5CF6,
+                  "membership": 0x22D3EE, "patreon": 0xF96854, "battlepass": 0xEAB308, "general": 0x22C55E}
+    PRIO_EMOJI = {"normal": "🟢", "media": "🟡", "alta": "🟠", "urgente": "🔴"}
+    color = CAT_COLORS.get(t["category"], 0x22C55E)
+    emoji = cat.get("emoji", "🎫")
+    cat_name = cat.get("name", t["category"])
+    avatar = t.get("user_avatar") or ""
+    avatar = avatar if isinstance(avatar, str) and avatar.startswith("http") else None
+    prio = t.get("priority", "normal")
+
+    is_report = t["category"] in ("report_player", "report_staff")
+    inline_fields = [
+        {"name": "🏷️ Prioridad", "value": f"{PRIO_EMOJI.get(prio,'🟢')} {prio.capitalize()}", "inline": True},
+        {"name": "🎮 SteamID", "value": f"`{t.get('steam_id')}`" if t.get("steam_id") else "—", "inline": True},
+    ]
+    if is_report or t.get("server_name"):
+        inline_fields.append({"name": "🗺️ Servidor", "value": t.get("server_name") or "—", "inline": True})
+    if is_report:
+        inline_fields.append({"name": "📅 Fecha / Hora", "value": f"{t.get('incident_date') or '—'} {t.get('incident_time') or ''}".strip(), "inline": True})
+    if t.get("discord_id"):
+        inline_fields.append({"name": "💬 Discord", "value": f"<@{t['discord_id']}>", "inline": True})
+
     embed = {
-        "title": f"NUEVO TICKET — {t['code']}",
-        "color": 0x22C55E,
-        "fields": [
-            {"name": "Categoría", "value": f"{cat.get('emoji','')} {cat.get('name', t['category'])}", "inline": True},
-            {"name": "Usuario", "value": t.get("user_name", "?"), "inline": True},
-            {"name": "Prioridad", "value": t.get("priority", "normal").capitalize(), "inline": True},
-            {"name": "SteamID", "value": t.get("steam_id") or "—", "inline": True},
-            {"name": "Servidor", "value": t.get("server_name") or "—", "inline": True},
-            {"name": "Fecha/Hora", "value": f"{t.get('incident_date') or '—'} {t.get('incident_time') or ''}", "inline": True},
-            {"name": "Descripción", "value": (t.get("description") or "—")[:1000], "inline": False},
-            {"name": "💬 Responder", "value": "Escribe en este hilo y tu respuesta le llegará al usuario en la web en tiempo real.", "inline": False},
+        "author": {"name": f"{t.get('user_name','Superviviente')} abrió un ticket", **({"icon_url": avatar} if avatar else {})},
+        "title": f"{emoji}  {cat_name}",
+        "url": link if PUBLIC_URL else None,
+        "description": f"**`{t['code']}`**\n>>> {(t.get('description') or '—')[:900]}",
+        "color": color,
+        "fields": inline_fields + [
+            {"name": "\u200b", "value": f"📩 **[Abrir el ticket en la web]({link})**" if PUBLIC_URL else "📩 Abrir en la web", "inline": False},
+            {"name": "💬 ¿Cómo responder?", "value": "Escribe **en este canal** y tu mensaje le llegará al usuario en la web en tiempo real.", "inline": False},
         ],
-        "footer": {"text": "La Isla Nublar · Soporte"},
+        "footer": {"text": "La Isla Nublar · Sistema de Soporte"},
+        "timestamp": _iso(),
     }
+    if avatar:
+        embed["thumbnail"] = {"url": avatar}
     if ev:
-        embed["fields"].insert(-1, {"name": "Evidencias", "value": ev[:1000], "inline": False})
+        embed["fields"].insert(len(inline_fields), {"name": "🔗 Evidencias", "value": ev[:1000], "inline": False})
+    embed = {k: v for k, v in embed.items() if v is not None}
+
     target = thread_id or TICKETS_CHANNEL_ID
-    content = f"🎫 **{t['code']}** · [Abrir Ticket en la Web]({link})"
+    content = f"{PRIO_EMOJI.get(prio,'🟢')} Nuevo ticket **{t['code']}** — {emoji} {cat_name}"
     msg = await _discord_post(target, content=content, embeds=[embed])
     upd = {}
     if thread_id:
