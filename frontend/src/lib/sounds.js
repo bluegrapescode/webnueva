@@ -614,4 +614,18 @@ export const SOUNDS = {
     voice({ freq: 160, type: "sine", dur: 0.6, gain: 0.04, slideTo: 110, delay: 0.05, filterType: "lowpass", filterFreq: 800 });
     noise({ dur: 0.5, gain: 0.018, delay: 0.32, filterType: "highpass", filterFreq: 5200, filterQ: 0.4 });
   },
+
+  // ─── Chat de Clan (💬) — sonidos propios, distintos al resto de la web ───
+  // ENVIAR: "whoosh" ascendente corto (aire saliendo) + tick agudo de confirmación.
+  chatSend: () => {
+    voice({ freq: 380, type: "sine", dur: 0.13, gain: 0.038, slideTo: 1020, attack: 0.004, release: 0.07, filterType: "lowpass", filterFreq: 5200 });
+    noise({ dur: 0.06, gain: 0.02, filterType: "highpass", filterFreq: 4200, filterQ: 0.6 });
+    voice({ freq: 1650, type: "triangle", dur: 0.05, gain: 0.02, delay: 0.055, attack: 0.001, release: 0.035 });
+  },
+  // RECIBIR: doble "blip pop" suave ascendente + shimmer tenue (no campana pesada).
+  chatReceive: () => {
+    voice({ freq: 620, type: "sine", dur: 0.07, gain: 0.034, slideTo: 540, attack: 0.002, release: 0.05, filterType: "lowpass", filterFreq: 3200 });
+    voice({ freq: 1040, type: "sine", dur: 0.11, gain: 0.03, delay: 0.065, slideTo: 1240, attack: 0.002, release: 0.08, filterType: "lowpass", filterFreq: 4400 });
+    bell({ freq: 1760, dur: 0.18, gain: 0.014, delay: 0.065, ratio: 2, index: 55 });
+  },
 };

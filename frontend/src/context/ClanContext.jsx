@@ -47,10 +47,11 @@ export function ClanProvider({ children }) {
         switch (m.event) {
           case "clan:message":
             setMessages((s) => [...s.slice(-99), m.data]);
-            if (!m.data.system) play?.("click");
+            if (!m.data.system && m.data.user_id !== user?.id) play?.("chatReceive");
             break;
           case "clan:global":
             setGlobalMessages((s) => [...s.slice(-99), m.data]);
+            if (!m.data.system && m.data.user_id !== user?.id) play?.("chatReceive");
             break;
           case "clan:updated": refresh(); break;
           case "clan:removed": toast.message("Ya no perteneces al clan."); refresh(); setMessages([]); setGlobalMessages([]); break;

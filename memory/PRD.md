@@ -475,3 +475,9 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - **Auto-scroll de página eliminado**: `ClanChat` usaba `endRef.scrollIntoView()` que arrastraba TODA la ventana al fondo cada vez que entraba un mensaje WS o se remontaba el chat (se notaba al pulsar cualquier pestaña). Ahora usa `listRef` y hace scroll SOLO dentro del contenedor de mensajes (`el.scrollTop = el.scrollHeight`). Verificado: `window.scrollY` queda en 0 al navegar pestañas.
 - **Burbujas de chat por rango**: cada mensaje de miembro se muestra en una burbuja `rounded-2xl` tintada con el color del rango (`${rc}14`) + borde izquierdo del color, y el nombre coloreado por rango. Diferencia visualmente a cada emisor. Global usa `clan_color`.
 
+
+## 2026-06-24 — Sonidos de chat + legibilidad del Hub
+- **Sonidos nuevos** en `/app/frontend/src/lib/sounds.js`: `chatSend` (whoosh ascendente + tick) y `chatReceive` (doble blip pop suave). Distintos a `message`/`notification`/`click`.
+- Cableado: `ClanChat.send()` → `chatSend`; WS `clan:message`/`clan:global` → `chatReceive` SOLO si `m.data.user_id !== user?.id` (no suena en el eco de tus propios mensajes).
+- **Legibilidad**: banner (labels de stats `text-[8px]/45`→`text-[10px]/70`, valores `text-lg`; meta row `text-[11px]/60`→`text-xs/80`; Nivel/XP más grandes), sublabels de jugadores `text-[10px]/45`→`text-[11px]/65`, timestamps de chat `/35`→`/55`, contadores de Panel y "Ver todas" con más contraste.
+

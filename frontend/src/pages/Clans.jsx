@@ -170,7 +170,7 @@ function NoClan() {
               {dir.map((c) => (
                 <div key={c.id} data-testid={`directory-card-${c.id}`} className="flex items-center gap-3 rounded-xl border p-2.5 bg-black/30" style={{ borderColor: `${c.color}44` }}>
                   <TagBadge tag={c.tag} color={c.color} />
-                  <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-[11px] text-white/45"><Users size={10} className="inline mr-1" />{c.member_count} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
+                  <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-xs text-white/65"><Users size={10} className="inline mr-1" />{c.member_count} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
                   {c.active ? <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">Activo</span> : <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/45">Reclutando</span>}
                 </div>
               ))}
@@ -196,7 +196,7 @@ function ClanChat() {
   const isGlobal = channel === "global";
   const list = isGlobal ? globalMessages : messages;
   useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; }, [list.length, channel]);
-  const send = () => { const t = text.trim(); if (!t) return; play?.("click"); sendChat(t, channel); setText(""); };
+  const send = () => { const t = text.trim(); if (!t) return; play?.("chatSend"); sendChat(t, channel); setText(""); };
   const toggle = () => { play?.("click"); setChannel(isGlobal ? "clan" : "global"); };
   const accent = isGlobal ? "#38BDF8" : "#22C55E";
   const roleOf = (uid) => { const m = (me?.members || []).find((x) => x.user_id === uid); return { rankId: m?.rank_id || "member", isLeader: clan.leader_id === uid }; };
@@ -236,7 +236,7 @@ function ClanChat() {
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className="text-[13px] font-bold truncate" style={{ color: rc }}>{m.name}</span>
                   {isGlobal ? (m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />) : <RoleBadge clan={clan} rankId={r.rankId} isLeader={r.isLeader} />}
-                  <span className="ml-auto text-[10px] text-white/35 font-mono shrink-0">{fmtTime(m.created_at)}</span>
+                  <span className="ml-auto text-[11px] text-white/55 font-mono shrink-0">{fmtTime(m.created_at)}</span>
                 </div>
                 <div className="inline-block max-w-full rounded-2xl rounded-tl-md px-3 py-2 border-l-2" style={{ background: `${rc}14`, borderColor: rc }}>
                   <p className="text-sm text-white/90 break-words leading-snug">{m.text}</p>
@@ -291,7 +291,7 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
           <div className="min-w-0">
             <h1 className="font-brush text-white text-4xl sm:text-6xl leading-[0.95] flex items-center gap-3 drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={30} /></h1>
             <p className="text-sm sm:text-base font-bold uppercase tracking-wide mt-1.5" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[11px] text-white/60">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-xs text-white/80">
               <span className="inline-flex items-center gap-1"><Calendar size={11} /> Fundado {fmtDate(clan.created_at)}</span>
               <span className="inline-flex items-center gap-1"><Hash size={11} /> ID del Clan: {clan.code}</span>
               <span className="inline-flex items-center gap-1"><Globe size={11} /> Idioma: {clan.language}</span>
@@ -306,16 +306,16 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
               <Hexagon className="absolute inset-0 m-auto opacity-25" size={54} style={{ color: clan.color }} />{clan.level}
             </div>
             <div className="w-44">
-              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Nivel del clan</p>
-              <div className="h-2 rounded-full bg-black/60 overflow-hidden mt-1"><div className="h-full rounded-full" style={{ width: `${xpPct}%`, background: clan.color, boxShadow: `0 0 8px ${clan.color}` }} /></div>
-              <p className="text-[10px] text-white/55 mt-1 font-mono">{clan.xp_into.toLocaleString()} / {clan.xp_needed.toLocaleString()} XP</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/75 font-bold">Nivel del clan</p>
+              <div className="h-2.5 rounded-full bg-black/60 overflow-hidden mt-1"><div className="h-full rounded-full" style={{ width: `${xpPct}%`, background: clan.color, boxShadow: `0 0 8px ${clan.color}` }} /></div>
+              <p className="text-[11px] text-white/70 mt-1 font-mono">{clan.xp_into.toLocaleString()} / {clan.xp_needed.toLocaleString()} XP</p>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-2 w-full">
             {stats.map((s) => (
               <div key={s.label} className="rounded-xl bg-black/45 border border-white/10 px-2.5 py-2 backdrop-blur flex items-center gap-2">
                 <s.icon size={16} className="shrink-0" style={{ color: clan.color }} />
-                <div className="min-w-0 leading-none"><p className="font-mono font-black text-base leading-none truncate">{s.val}</p><p className="text-[8px] uppercase tracking-widest text-white/45 mt-1">{s.label}</p></div>
+                <div className="min-w-0 leading-none"><p className="font-mono font-black text-lg leading-none truncate">{s.val}</p><p className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mt-1">{s.label}</p></div>
               </div>
             ))}
           </div>
@@ -360,14 +360,14 @@ function Panel({ title, icon: Icon, count, children, testid, accent = "#22C55E",
   return (
     <div className="forge-panel rounded-2xl border border-white/10 p-4" data-testid={testid}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest" style={{ color: accent }}><Icon size={15} /> {title}{count != null && <span className="text-white/40">({count})</span>}</h3>
+        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest" style={{ color: accent }}><Icon size={15} /> {title}{count != null && <span className="text-white/60">({count})</span>}</h3>
         {right}
       </div>
       {children}
     </div>
   );
 }
-const VerTodas = () => <span className="text-[10px] font-bold text-white/40 hover:text-white/70 inline-flex items-center gap-0.5 cursor-pointer">Ver todas <ChevronRight size={12} /></span>;
+const VerTodas = () => <span className="text-[11px] font-bold text-white/60 hover:text-white inline-flex items-center gap-0.5 cursor-pointer">Ver todas <ChevronRight size={12} /></span>;
 
 // Panel: Invitar jugadores (búsqueda en vivo)
 function InvitePlayersPanel({ act }) {
@@ -386,7 +386,7 @@ function InvitePlayersPanel({ act }) {
         {rows.map((p) => (
           <div key={p.id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
             <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
-            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45 flex items-center gap-1.5">Nivel {p.level}<span className="w-1 h-1 rounded-full" style={{ background: STATUS_COLOR[p.status] }} /><span style={{ color: STATUS_COLOR[p.status] }}>{p.status}</span></p></div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[11px] text-white/65 flex items-center gap-1.5">Nivel {p.level}<span className="w-1 h-1 rounded-full" style={{ background: STATUS_COLOR[p.status] }} /><span style={{ color: STATUS_COLOR[p.status] }}>{p.status}</span></p></div>
             <button data-testid={`invite-player-${p.id}`} disabled={p.in_clan || p.invited} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanInvite({ user_id: p.id })), "Invitación enviada")} className="text-xs font-black px-3 py-1.5 rounded-lg bg-emerald-400 text-black disabled:opacity-40 disabled:bg-white/10 disabled:text-white/40">{p.in_clan ? "En clan" : p.invited ? "Invitado" : "Invitar"}</button>
           </div>
         ))}
@@ -406,7 +406,7 @@ function RightPanels({ me, canManage, act }) {
           {(me.sent_invites || []).map((p) => (
             <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
               <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
-              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[11px] text-white/65">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
               <button data-testid={`cancel-invite-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanCancelInvite(p.user_id)), "Invitación cancelada")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
             </div>
           ))}
@@ -418,7 +418,7 @@ function RightPanels({ me, canManage, act }) {
           {(me.join_requests || []).map((p) => (
             <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
               <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
-              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[11px] text-white/65">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
               <button data-testid={`accept-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestAccept(p.user_id)), "¡Miembro aceptado!")} className="p-1.5 rounded-lg text-emerald-300 bg-emerald-500/15 border border-emerald-400/30"><Check size={14} /></button>
               <button data-testid={`decline-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestDecline(p.user_id)))} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
             </div>
@@ -481,7 +481,7 @@ function Hub() {
         {(me.join_requests || []).map((p) => (
           <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
             <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
-            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[11px] text-white/65">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
             <button data-testid={`accept-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestAccept(p.user_id)), "¡Miembro aceptado!")} className="p-1.5 rounded-lg text-emerald-300 bg-emerald-500/15 border border-emerald-400/30"><Check size={14} /></button>
             <button data-testid={`decline-request-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanRequestDecline(p.user_id)))} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
           </div>
@@ -494,7 +494,7 @@ function Hub() {
         {(me.sent_invites || []).map((p) => (
           <div key={p.user_id} className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-black/30 p-2">
             <div className="h-8 w-8 rounded-full overflow-hidden bg-white/10 shrink-0">{p.avatar && <img src={p.avatar} alt="" className="w-full h-full object-cover" />}</div>
-            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[10px] text-white/45">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.name}</p><p className="text-[11px] text-white/65">Nivel {p.level} · {fmtAgo(p.created_at)}</p></div>
             <button data-testid={`cancel-invite-${p.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanCancelInvite(p.user_id)), "Invitación cancelada")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300 border border-white/10"><X size={14} /></button>
           </div>
         ))}</div>
@@ -579,7 +579,7 @@ function DirectoryList({ ranking }) {
           <div key={c.id} className="flex items-center gap-3 rounded-xl border p-2.5 bg-black/30" style={{ borderColor: `${c.color}44` }}>
             {ranking && <span className="w-5 text-center font-black text-white/50">{i === 0 ? <Crown size={14} className="text-amber-400 inline" /> : i + 1}</span>}
             <TagBadge tag={c.tag} color={c.color} />
-            <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-[11px] text-white/45"><Users size={10} className="inline mr-1" />{c.member_count} · Nvl {c.level} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
+            <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{c.name}</p><p className="text-xs text-white/65"><Users size={10} className="inline mr-1" />{c.member_count} · Nvl {c.level} · <Flame size={10} className="inline mx-1 text-amber-400" />{c.notoriety}</p></div>
             {c.active ? <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">Activo</span> : <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/45">Reclutando</span>}
           </div>
         ))}
