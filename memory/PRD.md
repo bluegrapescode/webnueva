@@ -470,3 +470,8 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - **Selector de emojis** en el chat del clan: popover con 24 emojis (`data-testid=emoji-toggle`/`emoji-panel`) que inserta el emoji en el input. Botón Smile ahora funcional.
 - Verificado en 1920/2560/390. STATS banner: 16/20 · Online 15 · 74.450 · Territorios 3.
 
+
+## 2026-06-24 — Fix auto-scroll + burbujas de chat por rango
+- **Auto-scroll de página eliminado**: `ClanChat` usaba `endRef.scrollIntoView()` que arrastraba TODA la ventana al fondo cada vez que entraba un mensaje WS o se remontaba el chat (se notaba al pulsar cualquier pestaña). Ahora usa `listRef` y hace scroll SOLO dentro del contenedor de mensajes (`el.scrollTop = el.scrollHeight`). Verificado: `window.scrollY` queda en 0 al navegar pestañas.
+- **Burbujas de chat por rango**: cada mensaje de miembro se muestra en una burbuja `rounded-2xl` tintada con el color del rango (`${rc}14`) + borde izquierdo del color, y el nombre coloreado por rango. Diferencia visualmente a cada emisor. Global usa `clan_color`.
+

@@ -192,10 +192,10 @@ function ClanChat() {
   const [channel, setChannel] = useState("clan");
   const [text, setText] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
-  const endRef = useRef(null);
+  const listRef = useRef(null);
   const isGlobal = channel === "global";
   const list = isGlobal ? globalMessages : messages;
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [list.length, channel]);
+  useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; }, [list.length, channel]);
   const send = () => { const t = text.trim(); if (!t) return; play?.("click"); sendChat(t, channel); setText(""); };
   const toggle = () => { play?.("click"); setChannel(isGlobal ? "clan" : "global"); };
   const accent = isGlobal ? "#38BDF8" : "#22C55E";
@@ -218,7 +218,7 @@ function ClanChat() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-3 space-y-2" data-testid="chat-messages">
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 space-y-2" data-testid="chat-messages">
         {list.length === 0 && <p className="text-sm text-white/35 text-center py-10">{isGlobal ? "Aún nadie ha escrito en el chat global de clanes. 🌐" : "Sé el primero en escribir. 💬"}</p>}
         {list.map((m) => m.system ? (
           <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border-l-2 border-emerald-400 bg-emerald-500/[0.08] px-3 py-2 flex items-start gap-2">
@@ -227,21 +227,24 @@ function ClanChat() {
           </motion.div>
         ) : (() => {
           const r = roleOf(m.user_id);
+          const rankObj = (clan.ranks || []).find((x) => x.id === r.rankId) || {};
+          const rc = isGlobal ? (m.clan_color || "#38BDF8") : roleColor(rankObj.order ?? 5, r.isLeader);
           return (
             <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5">
               <Avatar src={m.avatar} size={34} />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] font-bold text-white/90 truncate">{m.name}</span>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[13px] font-bold truncate" style={{ color: rc }}>{m.name}</span>
                   {isGlobal ? (m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />) : <RoleBadge clan={clan} rankId={r.rankId} isLeader={r.isLeader} />}
                   <span className="ml-auto text-[10px] text-white/35 font-mono shrink-0">{fmtTime(m.created_at)}</span>
                 </div>
-                <p className="text-sm text-white/85 break-words leading-snug mt-0.5">{m.text}</p>
+                <div className="inline-block max-w-full rounded-2xl rounded-tl-md px-3 py-2 border-l-2" style={{ background: `${rc}14`, borderColor: rc }}>
+                  <p className="text-sm text-white/90 break-words leading-snug">{m.text}</p>
+                </div>
               </div>
             </motion.div>
           );
         })())}
-        <div ref={endRef} />
       </div>
 
       <div className="p-3 border-t border-white/8 flex items-center gap-2 relative">
