@@ -429,3 +429,9 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - FONDO del banner: generado con IA para igualar el mockup (selva verde vibrante a la izquierda → montaña/volcán gris con pterosaurios volando a la derecha). Imagen a color (ya no grayscale) + gradiente oscuro de izquierda para legibilidad. T-Rex del sidebar también regenerado (cabeza realista en selva oscura).
 - tabs internos ahora: miclan (banner+chat+paneles Invitar/Invitaciones/Solicitudes), explorar, solicitudes, invitaciones, territorios/turfwars, ranking, config. data-testids: side-<tab>, clan-mobile-nav, config-tab.
 - Verificado por screenshots desktop 1920 (sin overflow, idéntico al mockup) y móvil 390 (banner apila, nav horizontal). Funcionalidad de endpoints sin cambios (validada en iteration_35).
+
+## Actualización 27 (Jun 2026) — Fidelidad exacta al mockup (layout + colores verdes)
+- Quitado el título de página extra ("HUB DE CLANES / CLANES") — el hub empieza directo con sidebar+banner como el mockup.
+- Banner reestructurado a 2 columnas: IZQUIERDA identidad ([TAG]+nombre+lema+meta), DERECHA Editar clan + Nivel/XP + las 4 stats EN FILA (Miembros/Online/Notoriedad/Territorios) con iconos del color del clan (antes iban a lo ancho abajo).
+- Color de acento del clan puesto en VERDE (#3BE854) para demo (Escuadron Prueba/TEST) y para el clan real del usuario (Bluecito/BLUE) para igualar el mockup. Lema en verde mayúsculas. tag/nivel/XP/stats usan clan.color.
+- Verificado por screenshot desktop: coincide con el mockup (m3).

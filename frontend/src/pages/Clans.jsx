@@ -246,12 +246,12 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
       <div className="absolute inset-0"><img src={BANNER_IMG} alt="" className="w-full h-full object-cover" /></div>
       <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(6,9,13,0.94) 0%, rgba(6,9,13,0.6) 38%, rgba(6,9,13,0.2) 68%, transparent 100%)" }} />
       <div className="absolute inset-0 bg-gradient-to-t from-[#06090d] via-transparent to-transparent" />
-      <div className="relative p-5 sm:p-6">
-        <div className="flex flex-wrap items-start gap-4">
+      <div className="relative p-5 sm:p-6 flex flex-col md:flex-row md:items-start gap-5">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
           <div className="font-brush text-4xl sm:text-5xl px-4 py-2 rounded-xl shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.4)", border: `2px solid ${clan.color}`, boxShadow: `0 0 22px ${clan.color}, inset 0 0 14px ${clan.color}44`, textShadow: `0 0 12px ${clan.color}` }}>{clan.tag}</div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-brush text-white text-5xl sm:text-7xl leading-[0.95] flex items-center gap-3 drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={34} /></h1>
-            <p className="text-sm sm:text-base font-semibold mt-1.5" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
+          <div className="min-w-0">
+            <h1 className="font-brush text-white text-4xl sm:text-6xl leading-[0.95] flex items-center gap-3 drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={30} /></h1>
+            <p className="text-sm sm:text-base font-bold uppercase tracking-wide mt-1.5" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3 text-[11px] text-white/60">
               <span>Fundado {fmtDate(clan.created_at)}</span><span className="text-white/25">·</span>
               <span>ID del Clan: {clan.code}</span><span className="text-white/25">·</span>
@@ -259,27 +259,28 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
               <span>Tipo: {clan.clan_type}</span>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            {canEdit && <button data-testid="edit-clan-btn" onClick={onEdit} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black uppercase bg-black/50 border border-white/15 hover:bg-black/70 backdrop-blur"><Settings2 size={14} /> Editar clan</button>}
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 flex items-center justify-center rounded-xl font-display font-black text-2xl relative shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.55)", border: `2px solid ${clan.color}` }}>
-                <Hexagon className="absolute inset-0 m-auto opacity-20" size={54} style={{ color: clan.color }} />{clan.level}
-              </div>
-              <div className="w-40">
-                <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Nivel del clan</p>
-                <div className="h-2 rounded-full bg-black/60 overflow-hidden mt-1"><div className="h-full rounded-full" style={{ width: `${xpPct}%`, background: clan.color }} /></div>
-                <p className="text-[10px] text-white/55 mt-1 font-mono">{clan.xp_into.toLocaleString()} / {clan.xp_needed.toLocaleString()} XP</p>
-              </div>
+        </div>
+        <div className="flex flex-col md:items-end gap-3 md:w-[440px] shrink-0">
+          {canEdit && <button data-testid="edit-clan-btn" onClick={onEdit} className="self-start md:self-end inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black uppercase bg-black/55 border border-white/15 hover:bg-black/75 backdrop-blur"><Settings2 size={14} /> Editar clan</button>}
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 flex items-center justify-center rounded-xl font-display font-black text-2xl relative shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.55)", border: `2px solid ${clan.color}` }}>
+              <Hexagon className="absolute inset-0 m-auto opacity-25" size={54} style={{ color: clan.color }} />{clan.level}
+            </div>
+            <div className="w-44">
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Nivel del clan</p>
+              <div className="h-2 rounded-full bg-black/60 overflow-hidden mt-1"><div className="h-full rounded-full" style={{ width: `${xpPct}%`, background: clan.color, boxShadow: `0 0 8px ${clan.color}` }} /></div>
+              <p className="text-[10px] text-white/55 mt-1 font-mono">{clan.xp_into.toLocaleString()} / {clan.xp_needed.toLocaleString()} XP</p>
             </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-xl bg-black/45 border border-white/10 px-3 py-2 backdrop-blur flex items-center gap-2.5">
-              <s.icon size={17} className="text-white/50 shrink-0" />
-              <div className="leading-tight"><p className="font-mono font-black text-lg">{s.val}</p><p className="text-[9px] uppercase tracking-widest text-white/45">{s.label}</p></div>
-            </div>
-          ))}
+          <div className="grid grid-cols-4 gap-2 w-full">
+            {stats.map((s) => (
+              <div key={s.label} className="rounded-xl bg-black/45 border border-white/10 px-2.5 py-2 backdrop-blur text-center">
+                <s.icon size={16} className="mx-auto mb-1" style={{ color: clan.color }} />
+                <p className="font-mono font-black text-base leading-none">{s.val}</p>
+                <p className="text-[8px] uppercase tracking-widest text-white/45 mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -588,11 +589,7 @@ function InvitePanel() {
 function ClansInner() {
   const { me, loading } = useClan();
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="clan-page" style={{ background: "radial-gradient(1200px 460px at 50% -6%, rgba(124,168,66,0.08), transparent 60%)" }}>
-      <div className="mb-6">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-emerald-400/90 font-bold flex items-center gap-2"><Shield size={13} /> Hub de clanes · La Isla Nublar</p>
-        <h1 className="font-display font-black uppercase tracking-tighter text-3xl sm:text-4xl lg:text-5xl leading-none mt-1 flex items-center gap-3"><Swords className="text-emerald-400" size={38} /> <span className="text-gold-clip">Clanes</span></h1>
-      </div>
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="clan-page">
       {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
     </div>
   );
