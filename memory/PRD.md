@@ -458,3 +458,8 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - **Turf Wars fix (anti-spam de chat)**: en `turfwars.py::_compute_presence` los clanes de jugadores (con `leader_id`) YA NO participan de la simulación pasiva; solo entran al hacer rally. Las IA (ALBA/OBSD/CNBR) siguen peleando entre sí. Esto evita que el chat del clan del jugador se inunde de "Capturamos/Perdimos".
 - Verificado por screenshots: desktop 1536/1920 y móvil 390. Pendiente verificación visual final del usuario.
 
+
+## 2026-06-24 — Ajustes finales Clan Hub (dino + responsividad)
+- **Dino eliminado**: se quitó el T-Rex decorativo del fondo (al usuario no le gustó; imagen fuente de baja resolución 385×220). El fondo de bosque queda limpio.
+- **Responsividad / uso de pantalla**: el contenedor pasó de `max-w-[1400px]` a `max-w-[2100px]` con padding responsivo (`px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16`). Grid del Hub: `lg:[220px_1fr] 2xl:[260px_1fr]`. Grid chat/panel: `xl:[1fr_360px] 2xl:[1fr_440px]`. Chat más alto en 2xl (`h-[720px]`). Verificado en 1920, 2560 y 390px.
+

@@ -200,7 +200,7 @@ function ClanChat() {
   const roleOf = (uid) => { const m = (me?.members || []).find((x) => x.user_id === uid); return { rankId: m?.rank_id || "member", isLeader: clan.leader_id === uid }; };
 
   return (
-    <div className="forge-panel rounded-2xl border flex flex-col h-[600px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
+    <div className="forge-panel rounded-2xl border flex flex-col h-[600px] 2xl:h-[720px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
       <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b border-white/8 flex-wrap">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest" style={{ color: accent }}>
           {isGlobal ? <Globe size={16} /> : <MessageSquare size={16} />} {isGlobal ? "Chat Global" : "Chat del clan"}
@@ -484,7 +484,7 @@ function Hub() {
   );
 
   return (
-    <div className="grid lg:grid-cols-[210px_1fr] gap-6" data-testid="clan-hub">
+    <div className="grid lg:grid-cols-[220px_1fr] 2xl:grid-cols-[260px_1fr] gap-5 lg:gap-6 2xl:gap-8" data-testid="clan-hub">
       <aside className="hidden lg:flex flex-col rounded-2xl border border-white/10 forge-panel overflow-hidden self-start sticky top-24">
         <div className="p-4 border-b border-white/10 flex items-center gap-2"><Swords size={18} className="text-emerald-400" /><span className="font-display font-black uppercase tracking-tight">Clanes</span></div>
         <nav className="p-2 space-y-0.5">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, false))}</nav>
@@ -505,7 +505,7 @@ function Hub() {
         <nav className="lg:hidden flex gap-1.5 overflow-x-auto pb-1" data-testid="clan-mobile-nav">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, true))}</nav>
 
         {(tab === "chat" || tab === "resumen") && (
-          <div className="grid xl:grid-cols-[1fr_340px] gap-5">
+          <div className="grid xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_440px] gap-5 2xl:gap-6">
             <ClanChat />
             {canManage ? <RightPanels me={me} canManage={canManage} act={act} /> : (
               <Panel title="Miembros" icon={Users} count={clan.member_count}><div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">{(me.members || []).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={{}} isLeader={false} user={user} act={act} />)}</div></Panel>
@@ -646,7 +646,7 @@ function ClansInner() {
         <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.16), transparent 60%)" }} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]/70" />
       </div>
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full max-w-[2100px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
         {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
       </div>
     </div>
