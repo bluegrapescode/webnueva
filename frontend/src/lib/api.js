@@ -87,6 +87,13 @@ export function craftingWsUrl() {
   return `${base}/api/crafting/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Sistema de Clanes — WebSocket para /api/clans/ws (chat + estado en vivo).
+export function clansWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/clans/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -538,6 +545,30 @@ export const api = {
   craftAdminSaveSettings: (body) => client.put("/crafting/admin/settings", body),
   craftAdminGrant:  (body) => client.post("/crafting/admin/grant", body),
   craftAdminLogs:   (kind, limit = 100) => client.get(`/crafting/admin/logs${kind ? `?kind=${kind}&limit=${limit}` : `?limit=${limit}`}`),
+
+  // ── Sistema de Clanes (🛡️) ──
+  clansWsUrl,
+  clanMe:           () => client.get("/clans/me"),
+  clanConfig:       () => client.get("/clans/config"),
+  clanDirectory:    () => client.get("/clans/directory"),
+  clanFound:        (body) => client.post("/clans/found", body),
+  clanEdit:         (body) => client.post("/clans/edit", body),
+  clanSaveRank:     (body) => client.post("/clans/ranks", body),
+  clanDeleteRank:   (id) => client.delete(`/clans/ranks/${id}`),
+  clanAssign:       (user_id, rank_id) => client.post("/clans/assign", { user_id, rank_id }),
+  clanInvite:       (body) => client.post("/clans/invite", body),
+  clanInviteAccept: (clan_id) => client.post("/clans/invite/accept", { clan_id }),
+  clanInviteDecline:(clan_id) => client.post("/clans/invite/decline", { clan_id }),
+  clanKick:         (user_id) => client.post("/clans/kick", { user_id }),
+  clanTransfer:     (user_id) => client.post("/clans/transfer", { user_id }),
+  clanLeave:        () => client.post("/clans/leave"),
+  clanDisband:      () => client.post("/clans/disband"),
+  clanChatHistory:  (limit = 50) => client.get(`/clans/chat?limit=${limit}`),
+  clanChatSend:     (text) => client.post("/clans/chat", { text }),
+  clanAdminGetSettings: () => client.get("/clans/admin/settings"),
+  clanAdminSaveSettings: (body) => client.put("/clans/admin/settings", body),
+  clanAdminList:    () => client.get("/clans/admin/list"),
+  clanAdminDelete:  (clan_id) => client.post("/clans/admin/delete", { clan_id }),
 };
 
 // GLB/webp dino asset files live OUTSIDE /api (same convention as the donor skin sites).

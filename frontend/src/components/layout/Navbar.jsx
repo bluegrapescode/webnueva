@@ -5,7 +5,7 @@ import {
   Volume2, VolumeX, Menu, X, LogOut, User as UserIcon,
   ChevronDown, Ticket, Home, LayoutDashboard, Bone, Store, Tag, ArrowLeftRight,
   Gamepad2, Swords, Target, BarChart3, Radio, Video, Palette, ShieldCheck,
-  Spade, Dices, Gift, Package, Activity, MapPin, Dna, Skull, Sparkles, Crosshair, Hammer,
+  Spade, Dices, Gift, Package, Activity, MapPin, Dna, Skull, Sparkles, Crosshair, Hammer, Shield,
 } from "lucide-react";
 
 // True when the given "to" (which may carry a ?query) matches current location.
@@ -60,6 +60,7 @@ function buildNav(user) {
       children: [
         { to: "/proximity-voice", id: "proximity-voice", label: "Radio de Proximidad", icon: Radio, desc: "Voz por cercanía en el juego" },
         { to: "/bounty", id: "bounty", label: "Bounty Global", icon: Crosshair, desc: "Objetivo global ☠️ — elimínalo y gana" },
+        { to: "/clanes", id: "clanes", label: "Clanes", icon: Shield, desc: "Funda tu clan, chatea y domina territorios" },
         { to: "/creator/dashboard", id: "creator", label: "Creators", icon: Video, desc: "Programa de creadores de contenido" },
         ...(user ? [{ to: "/skin-editor", id: "skin-lab", label: "Patreon", icon: Palette, desc: "Editor de skins para Patreons" }] : []),
       ],
