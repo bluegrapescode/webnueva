@@ -421,3 +421,11 @@ El usuario pidió (con mockup) rediseñar el Hub para verse como un panel de cla
 - api.js: clanPlayerSearch, clanCancelInvite, clanRequestJoin/Cancel/Accept/Decline. ClanContext maneja evento WS clan:invite_cancelled.
 ### Verificación: curl E2E (payload con level/xp/code/territories/language/type/online; players/search; flujo de solicitud insertar→payload→accept añade miembro y limpia solicitud) + screenshots desktop 1920 (sin overflow) y móvil 390 (banner apila, tabs con scroll horizontal por diseño). Testing_agent pendiente para flujos UI.
 ### data-testids clave: clan-hub, clan-header, clan-tabs, tab-<id>, side-<tab>-<label>, invite-players, invite-search, invite-player-<id>, pending-invites, cancel-invite-<id>, join-requests, accept-request-<id>, decline-request-<id>, member-row-<id>, edit-clan-btn, save-settings-btn.
+
+## Actualización 26 (Jun 2026) — Ajuste fiel al mockup del Hub de Clanes
+El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) y que el diseño sea EXACTO al mockup (fondo + tipografías).
+- QUITADA la barra de tabs superior (ClanTabs). El SIDEBAR izquierdo (8 ítems del mockup: Mi Clan, Explorar Clanes, Solicitudes, Invitaciones, Territorios, Turf Wars, Ranking, Configuración) es ahora la única navegación; en móvil se muestra como nav horizontal (data-testid=clan-mobile-nav). Estado activo estilo mockup (verde sólido + glow interior). Miembros y Rangos se movieron dentro de Configuración.
+- FUENTE tipo brocha/graffiti: agregado import de Google Font "Bangers" + clase `.font-brush` en index.css. Aplicada al nombre del clan (grande) y al badge [TAG] (con glow neón del color del clan).
+- FONDO del banner: generado con IA para igualar el mockup (selva verde vibrante a la izquierda → montaña/volcán gris con pterosaurios volando a la derecha). Imagen a color (ya no grayscale) + gradiente oscuro de izquierda para legibilidad. T-Rex del sidebar también regenerado (cabeza realista en selva oscura).
+- tabs internos ahora: miclan (banner+chat+paneles Invitar/Invitaciones/Solicitudes), explorar, solicitudes, invitaciones, territorios/turfwars, ranking, config. data-testids: side-<tab>, clan-mobile-nav, config-tab.
+- Verificado por screenshots desktop 1920 (sin overflow, idéntico al mockup) y móvil 390 (banner apila, nav horizontal). Funcionalidad de endpoints sin cambios (validada en iteration_35).

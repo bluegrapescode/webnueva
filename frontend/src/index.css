@@ -1,5 +1,6 @@
 @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500&f[]=clash-display@700,600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -64,6 +65,7 @@ body {
 
 @layer utilities {
     .font-display { font-family: 'Cabinet Grotesk', 'Clash Display', sans-serif; }
+    .font-brush { font-family: 'Bangers', 'Cabinet Grotesk', cursive; letter-spacing: 0.03em; }
     .label-overline {
         font-family: 'Manrope', sans-serif;
         font-weight: 700;
