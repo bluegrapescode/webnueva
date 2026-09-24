@@ -57,6 +57,14 @@ export function creatorWsUrl() {
   return `${base}/api/creator/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Tickets / Soporte — WebSocket para /api/tickets/ws (chat en vivo, typing, presencia).
+export function ticketsWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/tickets/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
+
 // Tienda de Skins — same-origin WebSocket URL for /api/shop/ws (live drops,
 // countdowns, sold-out and purchase_success pushes to the buyer).
 export function shopWsUrl() {
@@ -577,6 +585,16 @@ export const api = {
   clanLeave:        () => client.post("/clans/leave"),
   clanDisband:      () => client.post("/clans/disband"),
   clanChatHistory:  (limit = 50, channel = "clan") => client.get(`/clans/chat?limit=${limit}&channel=${channel}`),
+  // ─── Tickets / Soporte ───
+  ticketConfig:    () => client.get("/tickets/config"),
+  ticketCreate:    (category, fields) => client.post("/tickets", { category, fields }),
+  ticketMine:      (status) => client.get(`/tickets/mine${status ? `?status=${status}` : ""}`),
+  ticketStaff:     (box = "new", search = "") => client.get(`/tickets/staff?box=${box}&search=${encodeURIComponent(search)}`),
+  ticketGet:       (id) => client.get(`/tickets/${id}`),
+  ticketMessage:   (id, text, attachments = [], internal = false) => client.post(`/tickets/${id}/message`, { text, attachments, internal }),
+  ticketTake:      (id) => client.post(`/tickets/${id}/take`),
+  ticketUpdate:    (id, changes) => client.post(`/tickets/${id}/update`, changes),
+
   clanChatSend:     (text, channel = "clan") => client.post("/clans/chat", { text, channel }),
   clanAnnouncement: (text) => client.post("/clans/announcement", { text }),
   clanReact:        (message_id, emoji) => client.post("/clans/react", { message_id, emoji }),

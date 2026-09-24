@@ -18999,6 +18999,13 @@ turfwars.configure(
     presence_provider=_turf_presence_provider, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
 app.include_router(turfwars.build_router(get_current_user, get_admin_user), prefix="/api")
 
+# ─────────────────────── Sistema de Tickets / Soporte en tiempo real ───────────────────────
+import tickets
+
+tickets.configure(db, admin_ids=ADMIN_STEAM_IDS, add_log=add_log, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO,
+                  is_staff_fn=lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {"owner", "admin", "mod", "helper"}) or (u.get("steam_id") in ADMIN_STEAM_IDS))
+app.include_router(tickets.build_router(get_current_user, get_admin_user), prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19627,6 +19634,10 @@ async def on_startup():
         await clans.ensure_indexes()
     except Exception:
         logger.warning("[clans] startup init skipped", exc_info=True)
+    try:
+        await tickets.ensure_indexes()
+    except Exception:
+        logger.warning("[tickets] startup init skipped", exc_info=True)
     # Turf Wars (⚔️): seed de zonas/rivales + arranque del motor de captura.
     try:
         turfwars.start_loops()

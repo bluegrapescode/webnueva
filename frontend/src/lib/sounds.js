@@ -640,4 +640,18 @@ export const SOUNDS = {
     [880, 1174.66, 1567.98].forEach((f, i) => bell({ freq: f, dur: 0.34, gain: 0.05, delay: i * 0.05, ratio: 2, index: 90 }));
     voice({ freq: 200, type: "sine", dur: 0.28, gain: 0.028, slideTo: 150, delay: 0.03, filterType: "lowpass", filterFreq: 900 });
   },
+  // ─── Tickets / Soporte (Diiing! moderno, original) ───
+  ticketNew: () => {
+    voice({ freq: 523.25, type: "sine", dur: 0.09, gain: 0.045, slideTo: 784, attack: 0.003, release: 0.06, filterType: "lowpass", filterFreq: 5000 });
+    bell({ freq: 1046.5, dur: 0.42, gain: 0.05, delay: 0.05, ratio: 2, index: 90 });
+    bell({ freq: 1568, dur: 0.5, gain: 0.03, delay: 0.12, ratio: 2, index: 60 });
+  },
+  ticketMsg: () => {
+    voice({ freq: 700, type: "sine", dur: 0.07, gain: 0.03, slideTo: 560, attack: 0.002, release: 0.05, filterType: "lowpass", filterFreq: 3400 });
+    bell({ freq: 1320, dur: 0.16, gain: 0.02, delay: 0.05, ratio: 2, index: 45 });
+  },
+  ticketUrgent: () => {
+    [1046.5, 1046.5, 1318.5].forEach((f, i) => bell({ freq: f, dur: 0.3, gain: 0.055, delay: i * 0.13, ratio: 2, index: 110 }));
+    voice({ freq: 180, type: "triangle", dur: 0.5, gain: 0.03, slideTo: 130, delay: 0.02, filterType: "lowpass", filterFreq: 800 });
+  },
 };
