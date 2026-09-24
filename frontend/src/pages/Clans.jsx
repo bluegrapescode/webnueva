@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Crown, Users, Send, Swords, Settings2, LogOut, Trash2, UserPlus, Star, Check, X, Plus, ArrowUpRight, Flame } from "lucide-react";
+import { Shield, Crown, Users, Send, Swords, Settings2, LogOut, Trash2, UserPlus, Star, Check, X, Plus, ArrowUpRight, Flame, MessageSquare, Globe } from "lucide-react";
 import { ClanProvider, useClan } from "@/context/ClanContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
@@ -153,31 +153,54 @@ function NoClan() {
   );
 }
 
-// ═══════════ Chat en vivo ═══════════
+// ═══════════ Chat en vivo (Clan / Global de clanes) ═══════════
 function ClanChat() {
-  const { messages, sendChat } = useClan();
+  const { messages, globalMessages, sendChat } = useClan();
+  const [channel, setChannel] = useState("clan");
   const [text, setText] = useState("");
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-  const send = () => { const t = text.trim(); if (!t) return; sendChat(t); setText(""); };
+  const isGlobal = channel === "global";
+  const list = isGlobal ? globalMessages : messages;
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [list.length, channel]);
+  const send = () => { const t = text.trim(); if (!t) return; sendChat(t, channel); setText(""); };
+  const accent = isGlobal ? "#38BDF8" : "#22C55E";
+
   return (
-    <div className="forge-panel rounded-2xl border border-emerald-500/20 flex flex-col h-[560px]" data-testid="clan-chat">
-      <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-emerald-300 p-4 pb-2"><Users size={16} /> Chat del clan</h3>
-      <div className="flex-1 overflow-y-auto px-4 space-y-2.5" data-testid="chat-messages">
-        {messages.length === 0 && <p className="text-sm text-white/35 text-center py-10">Sé el primero en escribir. 💬</p>}
-        {messages.map((m) => m.system ? (
+    <div className="forge-panel rounded-2xl border flex flex-col h-[560px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
+      <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b border-white/8 flex-wrap">
+        <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest" style={{ color: accent }}>
+          {isGlobal ? <Globe size={16} /> : <MessageSquare size={16} />} {isGlobal ? "Chat Global" : "Chat del clan"}
+        </h3>
+        {/* Switch Clan <-> Global */}
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide select-none">
+          <span className={!isGlobal ? "text-emerald-300" : "text-white/35"}>Chat del Clan</span>
+          <button type="button" role="switch" aria-checked={isGlobal} data-testid="chat-channel-toggle" onClick={() => setChannel(isGlobal ? "clan" : "global")}
+            className="relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0" style={{ background: accent }}>
+            <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200" style={{ left: isGlobal ? 22 : 2 }} />
+          </button>
+          <span className={isGlobal ? "text-sky-300" : "text-white/35"}>Chat Global (Clanes)</span>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 pt-3 space-y-2.5" data-testid="chat-messages">
+        {list.length === 0 && <p className="text-sm text-white/35 text-center py-10">{isGlobal ? "Aún nadie ha escrito en el chat global de clanes. 🌐" : "Sé el primero en escribir. 💬"}</p>}
+        {list.map((m) => m.system ? (
           <p key={m.id} className="text-center text-[11px] text-amber-300/70 italic py-1">{m.text}</p>
         ) : (
           <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
-            <span className="text-[11px] font-bold text-emerald-300/90">{m.name}</span>
+            <span className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: isGlobal ? "#7dd3fc" : "#86efac" }}>
+              {isGlobal && m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />}
+              {m.name}
+            </span>
             <span className="text-sm text-white/85 break-words">{m.text}</span>
           </motion.div>
         ))}
         <div ref={endRef} />
       </div>
+
       <div className="p-3 border-t border-white/8 flex gap-2">
-        <input data-testid="chat-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Escribe un mensaje…" className={input} maxLength={500} />
-        <button data-testid="chat-send" onClick={send} className="px-4 rounded-lg bg-emerald-400 text-black font-bold"><Send size={16} /></button>
+        <input data-testid="chat-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={isGlobal ? "Mensaje a todos los clanes…" : "Escribe un mensaje…"} className={input} maxLength={500} />
+        <button data-testid="chat-send" onClick={send} className="px-4 rounded-lg text-black font-bold" style={{ background: accent }}><Send size={16} /></button>
       </div>
     </div>
   );

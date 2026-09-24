@@ -13,6 +13,7 @@ export function ClanProvider({ children }) {
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
+  const [globalMessages, setGlobalMessages] = useState([]);
   const [busy, setBusy] = useState(false);
   const wsRef = useRef(null);
 
@@ -23,11 +24,14 @@ export function ClanProvider({ children }) {
   }, []);
 
   const loadChat = useCallback(async () => {
-    try { const { data } = await api.clanChatHistory(60); setMessages(data.messages || []); } catch { /* no clan */ }
+    try { const { data } = await api.clanChatHistory(60, "clan"); setMessages(data.messages || []); } catch { /* no clan */ }
+  }, []);
+  const loadGlobalChat = useCallback(async () => {
+    try { const { data } = await api.clanChatHistory(60, "global"); setGlobalMessages(data.messages || []); } catch { /* no clan */ }
   }, []);
 
   useEffect(() => { if (user) refresh(); else { setMe(null); setLoading(false); } }, [user, refresh]);
-  useEffect(() => { if (me?.clan) loadChat(); else setMessages([]); }, [me?.clan?.id]);  // eslint-disable-line
+  useEffect(() => { if (me?.clan) { loadChat(); loadGlobalChat(); } else { setMessages([]); setGlobalMessages([]); } }, [me?.clan?.id]);  // eslint-disable-line
 
   useEffect(() => {
     if (!user) return;
@@ -45,8 +49,11 @@ export function ClanProvider({ children }) {
             setMessages((s) => [...s.slice(-99), m.data]);
             if (!m.data.system) play?.("click");
             break;
+          case "clan:global":
+            setGlobalMessages((s) => [...s.slice(-99), m.data]);
+            break;
           case "clan:updated": refresh(); break;
-          case "clan:removed": toast.message("Ya no perteneces al clan."); refresh(); setMessages([]); break;
+          case "clan:removed": toast.message("Ya no perteneces al clan."); refresh(); setMessages([]); setGlobalMessages([]); break;
           case "clan:invited": play?.("open"); toast.info(`Invitación al clan [${m.data.tag}] ${m.data.name}`); refresh(); break;
           case "clan:config": refresh(); break;
           default: break;
@@ -68,12 +75,12 @@ export function ClanProvider({ children }) {
     finally { setBusy(false); }
   }, [busy, refresh, refreshAuth, play]);
 
-  const sendChat = useCallback(async (text) => {
-    try { await api.clanChatSend(text); } catch (e) { toast.error(e?.response?.data?.detail || "No se pudo enviar"); }
+  const sendChat = useCallback(async (text, channel = "clan") => {
+    try { await api.clanChatSend(text, channel); } catch (e) { toast.error(e?.response?.data?.detail || "No se pudo enviar"); }
   }, []);
 
   return (
-    <ClanCtx.Provider value={{ me, loading, busy, messages, refresh, sendChat, act, api }}>
+    <ClanCtx.Provider value={{ me, loading, busy, messages, globalMessages, refresh, sendChat, act, api }}>
       {children}
     </ClanCtx.Provider>
   );

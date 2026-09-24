@@ -82,6 +82,14 @@ class ClanHub:
         for uid in uids:
             await self.send_to(uid, event, data)
 
+    async def broadcast_all(self, event, data):
+        for ws in list(self.conns):
+            try: await ws.send_json({"event": event, "data": data})
+            except Exception: self.remove(ws)
+
+
+GLOBAL_ROOM = "__global__"
+
 
 hub = ClanHub()
 
@@ -215,6 +223,7 @@ class ClanIdIn(BaseModel):
 
 class ChatIn(BaseModel):
     text: str
+    channel: str = "clan"
 
 
 # ─────────────── Lógica ───────────────
@@ -443,17 +452,31 @@ async def _post_message(clan_id, uid, name, text, system=False):
     return msg
 
 
-async def do_chat(user, text):
+async def _post_global_message(user, clan, text):
+    msg = {"id": _nid(), "clan_id": GLOBAL_ROOM, "user_id": user["id"],
+           "name": user.get("persona_name") or "Superviviente", "text": text, "system": False,
+           "clan_tag": clan.get("tag"), "clan_color": clan.get("color"), "sender_clan_id": clan.get("id"),
+           "created_at": _iso(_now())}
+    await _db.clan_messages.insert_one(dict(msg))
+    await hub.broadcast_all("clan:global", {k: msg[k] for k in ("id", "user_id", "name", "text", "system", "clan_tag", "clan_color", "sender_clan_id", "created_at")})
+    return msg
+
+
+async def do_chat(user, text, channel="clan"):
     mem, clan = await _require_clan(user["id"])
     text = (text or "").strip()[:500]
     if not text: raise HTTPException(400, "Mensaje vacío.")
-    await _post_message(clan["id"], user["id"], user.get("persona_name") or "Superviviente", text)
+    if channel == "global":
+        await _post_global_message(user, clan, text)
+    else:
+        await _post_message(clan["id"], user["id"], user.get("persona_name") or "Superviviente", text)
     return {"success": True}
 
 
-async def get_chat_history(user, limit=50):
+async def get_chat_history(user, limit=50, channel="clan"):
     mem, clan = await _require_clan(user["id"])
-    rows = await _db.clan_messages.find({"clan_id": clan["id"]}, {"_id": 0}).sort("created_at", -1).to_list(min(100, limit))
+    room = GLOBAL_ROOM if channel == "global" else clan["id"]
+    rows = await _db.clan_messages.find({"clan_id": room}, {"_id": 0}).sort("created_at", -1).to_list(min(100, limit))
     return {"messages": list(reversed(rows))}
 
 
@@ -515,10 +538,10 @@ def build_router(get_current_user, get_admin_user):
     async def disband(user=Depends(get_current_user)): return await do_disband(user)
 
     @router.get("/chat")
-    async def chat_history(limit: int = 50, user=Depends(get_current_user)): return await get_chat_history(user, limit)
+    async def chat_history(limit: int = 50, channel: str = "clan", user=Depends(get_current_user)): return await get_chat_history(user, limit, channel)
 
     @router.post("/chat")
-    async def chat_send(data: ChatIn, user=Depends(get_current_user)): return await do_chat(user, data.text)
+    async def chat_send(data: ChatIn, user=Depends(get_current_user)): return await do_chat(user, data.text, data.channel or "clan")
 
     @router.websocket("/ws")
     async def clan_ws(ws: WebSocket):
