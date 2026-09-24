@@ -18,8 +18,9 @@ function TagBadge({ tag, color, size = "md" }) {
 }
 
 const CLAN_COLORS = ["#C08B5C", "#E11D48", "#F59E0B", "#22C55E", "#38BDF8", "#A855F7", "#EC4899", "#7C3AED"];
-const BANNER_IMG = "https://static.prod-images.emergentagent.com/jobs/306794df-9995-4a77-8b12-a03738746894/images/936210a7c87b24e8d01ee394875ceab50963b0aeb56ea55cebb4c23694796799.jpeg";
-const TREX_IMG = "https://static.prod-images.emergentagent.com/jobs/306794df-9995-4a77-8b12-a03738746894/images/03099005672a29723b27a8bed33144d70392c828db3ca0a3e539597faed6ae6d.jpeg";
+const BANNER_IMG = "/clan/banner.jpg";
+const TREX_IMG = "/clan/trex.jpg";
+const PAGE_BG = "/clan/pagebg.jpg";
 
 function roleColor(order, isLeader) {
   if (isLeader) return "#F5B841";
@@ -613,8 +614,16 @@ function InvitePanel() {
 function ClansInner() {
   const { me, loading } = useClan();
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="clan-page">
-      {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
+    <div className="relative isolate min-h-screen" data-testid="clan-page">
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <img src={PAGE_BG} alt="" className="w-full h-full object-cover opacity-[0.28]" style={{ position: "sticky", top: 0, height: "100vh" }} />
+        <div className="absolute inset-0 bg-[#05070a]/80" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -8%, rgba(59,232,84,0.10), transparent 60%)" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#05070a]/60 via-transparent to-[#05070a]" />
+      </div>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
+      </div>
     </div>
   );
 }

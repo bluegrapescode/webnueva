@@ -442,3 +442,10 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - Panels: enlace "Ver todas ›" en Invitaciones Pendientes y Solicitudes (Panel acepta prop `right`).
 - Sonidos (useSound synth): clic al navegar en sidebar/móvil, al enviar mensaje y al alternar canal. Animaciones framer-motion de entrada en banner y mensajes.
 - Helpers añadidos: fmtTime, Avatar. Verificado por screenshot desktop: coincide con el mockup (m3) incluyendo chat con roles/horas y mensajes de sistema.
+
+## Actualización 29 (Jun 2026) — Assets propios del usuario + fondo de página
+- El usuario envió un sprite sheet (artifact 4BA83F88...webp, 2000x667) con sus assets. Recorté con PIL y guardé en /app/frontend/public/clan/: banner.jpg (montaña+selva+pterosaurios), trex.jpg (T-Rex rugiendo), pagebg.jpg (textura selva oscura).
+- Clans.jsx: BANNER_IMG=/clan/banner.jpg, TREX_IMG=/clan/trex.jpg, PAGE_BG=/clan/pagebg.jpg.
+- ClansInner ahora tiene FONDO DE PÁGINA a pantalla completa (capa -z-10 sticky con PAGE_BG opacity .28 + overlays oscuros + glow verde). El hub va encima, como el mockup.
+- Verificado por screenshot: banner y T-Rex son los assets del usuario; el hub se ve sobre el fondo de selva.
+- Assets adicionales disponibles en el sheet para futuro (badges de rango en dorado/verde/púrpura/rojo, marcos hexagonales, texturas de botón con garras, banderas, huevo) si se quiere reemplazar iconos por sprites.
