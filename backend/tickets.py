@@ -442,6 +442,24 @@ def _build_discord_client():
     return client
 
 
+async def _discord_ticket_state(t, closed, who):
+    """Avisa en el canal de Discord del ticket que se cerró/reabrió y renombra el canal."""
+    if not DISCORD_BOT_TOKEN:
+        return
+    ch = t.get("discord_thread_id")
+    if not ch:
+        return
+    await _discord_post(ch, content=(f"🔒 **Ticket cerrado** por {who}. Enviado al historial." if closed
+                                     else f"🔓 **Ticket reabierto** por {who}."))
+    try:
+        code = (t.get("code") or "").replace("#", "").lower()
+        newname = _slug_channel(f"cerrado-{code}" if closed else f"ticket-{code}")
+        async with httpx.AsyncClient(timeout=10) as c:
+            await c.patch(f"{DISCORD_API}/channels/{ch}", headers=_bot_headers(), json={"name": newname})
+    except Exception:
+        pass
+
+
 async def _discord_runner():
     global _discord_client
     if not DISCORD_BOT_TOKEN:
@@ -651,6 +669,7 @@ async def set_open_state(user, tid, closed):
     await hub.send_many(list(targets), "message:new", {"ticket_id": tid, "message": sysmsg})
     await hub.send_staff("ticket:updated", _pub_ticket(t2, True))
     await hub.send(t["user_id"], "ticket:updated", _pub_ticket(t2))
+    await _discord_ticket_state(t2, closed, who)
     return {"success": True, "ticket": _pub_ticket(t2, True)}
 
 

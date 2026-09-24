@@ -8,6 +8,10 @@ import {
 import { api, ticketsWsUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 const PRIORITY = { normal: { label: "Normal", color: "#22C55E" }, media: { label: "Media", color: "#EAB308" }, alta: { label: "Alta", color: "#F97316" }, urgente: { label: "Urgente", color: "#EF4444" } };
 const STATUS = { open: "Abierto", in_process: "En proceso", waiting_user: "Esperando usuario", resolved: "Resuelto", closed: "Cerrado" };
@@ -242,6 +246,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
   const [internal, setInternal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(0);
+  const [confirmClose, setConfirmClose] = useState(false);
   const fileRef = useRef(null);
   const endRef = useRef(null);
   const typingTO = useRef(null);
@@ -291,8 +296,22 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
           <span className="text-[11px] font-bold px-2 py-1 rounded" style={{ color: PRIORITY[t.priority]?.color, background: `${PRIORITY[t.priority]?.color}22` }}>{PRIORITY[t.priority]?.label}</span>
           {canToggle && (t.status === "closed"
             ? <button data-testid="reopen-ticket" onClick={reopenTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/25 transition"><Check size={13} /> Reabrir</button>
-            : <button data-testid="close-ticket" onClick={closeTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-red-500/15 text-red-300 border border-red-400/40 hover:bg-red-500/25 transition"><Lock size={13} /> Cerrar</button>)}
+            : <button data-testid="close-ticket" onClick={() => setConfirmClose(true)} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-red-500/15 text-red-300 border border-red-400/40 hover:bg-red-500/25 transition"><Lock size={13} /> Cerrar</button>)}
         </div>
+        <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+          <AlertDialogContent data-testid="confirm-close-dialog" className="bg-[#0d0f15] border border-white/10 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-white"><Lock size={18} className="text-red-400" /> ¿Cerrar este ticket?</AlertDialogTitle>
+              <AlertDialogDescription className="text-white/60">
+                El ticket <b className="text-white/90 font-mono">{t.code}</b> se marcará como cerrado y pasará al historial. También se avisará en Discord. Podrás reabrirlo más tarde si lo necesitas.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="confirm-close-cancel" className="bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white">Cancelar</AlertDialogCancel>
+              <AlertDialogAction data-testid="confirm-close-accept" onClick={closeTicket} className="bg-red-500 text-white hover:bg-red-600">Sí, cerrar ticket</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3" data-testid="ticket-messages">
           {data.messages.map((m) => {
             if (m.role === "system") {
