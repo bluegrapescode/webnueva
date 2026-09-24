@@ -159,7 +159,7 @@ DEFAULT_CATEGORIES = [
 def _now(): return datetime.now(timezone.utc)
 def _iso(dt=None): return (dt or _now()).astimezone(timezone.utc).isoformat()
 def _nid(): return uuid.uuid4().hex
-def _clean(s): return re.sub(r"[\x00-\x1f\x7f]", "", str(s or "")).strip()
+def _clean(s): return re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "", str(s or "")).strip()
 
 
 # ─────────────── Hub WebSocket ───────────────
@@ -250,6 +250,44 @@ def _pub_ticket(t, is_staff=False):
                                "assigned_name", "fields", "created_at", "updated_at", "last_activity", "unread")}
     d["fields"] = t.get("fields") or {}
     return d
+
+
+async def _estimate_response():
+    """Estimación dinámica del tiempo de respuesta según cuántos tickets activos hay en cola."""
+    n = await _db.tickets.count_documents({"status": {"$in": ["open", "in_process", "waiting_user"]}})
+    if n <= 5:
+        eta = "2–6 horas"
+    elif n <= 12:
+        eta = "6–12 horas"
+    elif n <= 25:
+        eta = "12–24 horas"
+    elif n <= 45:
+        eta = "24–48 horas"
+    else:
+        eta = "48–72 horas"
+    return eta, n
+
+
+def _welcome_message(cat_id, eta, queue):
+    lines = [
+        "👋 ¡Gracias por abrir tu ticket! Ten TODA la evidencia a la mano e insértala aquí antes de que te atienda el staff.",
+        "",
+        f"⏱️ Tiempo de respuesta estimado: {eta}  (hay {queue} ticket(s) en cola).",
+        "Respondemos la mayoría de tickets en 24–48 horas. Para agilizar la atención:",
+        "• Abre un solo ticket por problema.",
+        "• El spam o abuso del sistema puede derivar en advertencias o restricciones temporales de soporte.",
+    ]
+    if cat_id in ("report_player", "report_staff"):
+        lines += [
+            "",
+            "📋 Requisitos para reportes — incluye toda la evidencia necesaria:",
+            "• Replay desde el menú F2",
+            "• Clip POV del jugador",
+            "• Descripción clara de lo ocurrido",
+            "• No aceptamos clips sueltos ni archivos directos en el ticket: envía las pruebas mediante un enlace (ej. Medal u otra plataforma similar).",
+            "• Los reportes sin evidencia suficiente podrán ser rechazados.",
+        ]
+    return "\n".join(lines)
 
 
 DISCORD_API = "https://discord.com/api/v10"
@@ -553,6 +591,10 @@ async def create_ticket(user, data):
         "created_at": _iso(), "updated_at": _iso(), "last_activity": _iso(),
     }
     await _db.tickets.insert_one(dict(t))
+    # Aviso del sistema (requisitos + tiempo estimado dinámico) como PRIMER mensaje
+    eta, queue = await _estimate_response()
+    await _add_message(t, {"id": None, "name": "Soporte La Isla Nublar", "avatar": ""},
+                       _welcome_message(t["category"], eta, queue), role="notice", notify=False)
     # primer mensaje del sistema con el resumen
     await _add_message(t, {"id": user["id"], "name": t["user_name"], "avatar": t["user_avatar"]},
                        t["description"] or t["subject"], role="user", notify=False)

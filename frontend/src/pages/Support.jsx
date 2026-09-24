@@ -314,6 +314,16 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
         </AlertDialog>
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3" data-testid="ticket-messages">
           {data.messages.map((m) => {
+            if (m.role === "notice") {
+              return (
+                <div key={m.id} className="my-1" data-testid="notice-message">
+                  <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.06] px-3.5 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-emerald-300 flex items-center gap-1.5 mb-1.5"><LifeBuoy size={13} /> Aviso de soporte</p>
+                    <p className="text-[13px] text-white/80 whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                  </div>
+                </div>
+              );
+            }
             if (m.role === "system") {
               return (
                 <div key={m.id} className="flex justify-center my-1" data-testid="system-message">
