@@ -412,9 +412,35 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
       <div className="forge-panel rounded-2xl border border-white/10 p-4 overflow-y-auto space-y-3" data-testid="ticket-info">
         <div className="flex items-center gap-2.5"><div className="h-10 w-10 rounded-full overflow-hidden bg-white/10">{t.user_avatar && <img src={t.user_avatar} alt="" className="w-full h-full object-cover" />}</div><div className="min-w-0"><p className="font-black text-white truncate">{t.user_name}</p><p className="text-[11px] text-white/45">{cat?.name}</p></div></div>
         <Copyable label="SteamID" value={t.steam_id} testid="copy-steamid" />
-        <Copyable label="Servidor" value={t.server_name} testid="copy-server" />
-        <Copyable label="Fecha / Hora del incidente" value={[t.incident_date, t.incident_time].filter(Boolean).join(" ")} testid="copy-incident" />
-        {t.discord_id && <Copyable label="Discord ID" value={t.discord_id} testid="copy-discord" />}
+        {!(isStaff && data.can_manage) && (
+          <div className="flex items-center justify-between gap-2 py-1" data-testid="info-priority">
+            <span className="text-[10px] uppercase text-white/45">Prioridad</span>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded" style={{ color: PRIORITY[t.priority]?.color, background: `${PRIORITY[t.priority]?.color}22` }}>{PRIORITY[t.priority]?.label}</span>
+          </div>
+        )}
+        {!(isStaff && data.can_manage) && (
+          <div className="flex items-center justify-between gap-2 py-1" data-testid="info-status">
+            <span className="text-[10px] uppercase text-white/45">Estado</span>
+            <span className="text-[11px] font-bold text-white/80">{STATUS[t.status]}</span>
+          </div>
+        )}
+        <div className="pt-2 border-t border-white/10 space-y-2" data-testid="ticket-fields">
+          <p className="text-[10px] uppercase tracking-wide text-white/45 flex items-center gap-1"><Tag size={11} /> Detalles del ticket</p>
+          {(cat?.fields || []).filter((f) => !["subject", "description", "steam_id"].includes(f.key) && (t.fields?.[f.key] || t[f.key])).map((f) => {
+            const val = t.fields?.[f.key] ?? t[f.key] ?? "";
+            if (f.type === "server") return <Copyable key={f.key} label={f.label} value={t.server_name || val} testid={`field-${f.key}`} />;
+            if (f.type === "evidence") return (
+              <div key={f.key} data-testid={`field-${f.key}`}>
+                <p className="text-[10px] uppercase text-white/45 mb-1">{f.label}</p>
+                {String(val).split(/\s+/).filter(Boolean).map((u, i) => /^https?:\/\//i.test(u)
+                  ? <a key={i} href={u} target="_blank" rel="noreferrer" className="block text-emerald-300 text-xs underline break-all">🔗 {u}</a>
+                  : <span key={i} className="block text-white/70 text-xs break-words">{u}</span>)}
+              </div>
+            );
+            return <Copyable key={f.key} label={f.label} value={String(val)} testid={`field-${f.key}`} />;
+          })}
+          {t.discord_id && <Copyable label="Discord ID" value={t.discord_id} testid="copy-discord" />}
+        </div>
         {isStaff && data.can_manage && (
           <div className="space-y-2 pt-2 border-t border-white/10" data-testid="staff-actions">
             {!t.assigned_to && <button data-testid="take-ticket" onClick={take} className="w-full py-2 rounded-lg bg-emerald-500 text-black font-black text-sm">Tomar ticket</button>}

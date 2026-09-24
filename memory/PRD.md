@@ -542,6 +542,9 @@ Verificado por testing_agent (iteration_38.json): **backend 5/5 fase-2 + 24/24 f
 - **Mensaje automático por categoría** (`_welcome_message`): texto DISTINTO para general, report_player, report_staff, appeal, membership, patreon, battlepass. Solo reportes piden evidencias; el resto son consultas. Se quitó el enlace directo al canal de ayuda (ahora solo texto "visita el canal de ayuda"). Marcadores `##`/`**`/`!` renderizados en el frontend (`renderNotice`).
 - **Embed de Discord rediseñado**: autor + avatar, título con emoji y color por categoría, prioridad con emoji, campos condicionales (Servidor/Fecha solo reportes), Evidencias, botón web y timestamp.
 - ENV: `TICKETS_CLOSED_CHANNEL_ID` (categoría cerrados), `TICKETS_HELP_CHANNEL_ID` (ya no se usa como enlace).
+- **Prioridad automática por categoría** (`_default_priority`/`CAT_PRIORITY`): reportes=urgente(rojo), apelación=media(amarillo), preguntas=normal(verde). El staff puede cambiarla.
+- **Relay web→Discord con estilo**: cada mensaje se envía como embed (autor+avatar, color por rol staff/usuario, imágenes incrustadas, footer+timestamp).
+- **Panel de info del ticket muestra TODOS los campos** del formulario según la categoría (render dinámico desde `cat.fields`: jugador reportado, motivo, servidor, fecha/hora, evidencias con enlace, tier, etc.) + prioridad/estado visibles para el dueño (badge) y editables para staff. Historial (Cerrados) conserva toda la info y la conversación completa. Verificado.
 
 ## 2026-06 (fork) — Tickets: mejoras de UX
 - **Altura del chat**: el panel del chat crecía hacia abajo indefinidamente. Fix en `Support.jsx`: grid `xl:grid-rows-[minmax(0,1fr)]` + `min-h-0` en panel y contenedor de mensajes + altura explícita móvil (`h-[calc(100vh-190px)] xl:h-full`). Ahora altura fija con scroll interno. Verificado desktop y móvil.
