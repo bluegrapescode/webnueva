@@ -22,6 +22,7 @@ _is_staff_fn = lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {
 
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
 TICKETS_CHANNEL_ID = os.environ.get("TICKETS_DISCORD_CHANNEL_ID", "").strip()
+TICKETS_CLOSED_CATEGORY_ID = os.environ.get("TICKETS_CLOSED_CHANNEL_ID", "").strip()
 PUBLIC_URL = (os.environ.get("PUBLIC_APP_URL") or os.environ.get("PUBLIC_BASE_URL") or os.environ.get("FRONTEND_URL") or "").strip()
 
 # ─────────────── Object Storage (subida real de evidencias) ───────────────
@@ -454,8 +455,14 @@ async def _discord_ticket_state(t, closed, who):
     try:
         code = (t.get("code") or "").replace("#", "").lower()
         newname = _slug_channel(f"cerrado-{code}" if closed else f"ticket-{code}")
+        payload = {"name": newname}
+        # Mover el canal: a la categoría de cerrados al cerrar, de vuelta a la de tickets al reabrir.
+        if closed and TICKETS_CLOSED_CATEGORY_ID:
+            payload["parent_id"] = TICKETS_CLOSED_CATEGORY_ID
+        elif (not closed) and TICKETS_CHANNEL_ID:
+            payload["parent_id"] = TICKETS_CHANNEL_ID
         async with httpx.AsyncClient(timeout=10) as c:
-            await c.patch(f"{DISCORD_API}/channels/{ch}", headers=_bot_headers(), json={"name": newname})
+            await c.patch(f"{DISCORD_API}/channels/{ch}", headers=_bot_headers(), json=payload)
     except Exception:
         pass
 
