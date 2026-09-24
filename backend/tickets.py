@@ -452,6 +452,44 @@ async def _discord_post(channel_id, content=None, embeds=None):
         return None
 
 
+async def _discord_create_webhook(channel_id):
+    """Crea un webhook en el canal del ticket para poder publicar mensajes 'como el jugador'."""
+    if not (DISCORD_BOT_TOKEN and channel_id):
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(f"{DISCORD_API}/channels/{channel_id}/webhooks",
+                             headers=_bot_headers(), json={"name": "Soporte Web"})
+            if r.status_code >= 300:
+                logger.warning("[tickets] crear webhook %s: %s", r.status_code, r.text[:200])
+                return None
+            d = r.json()
+            return f"{DISCORD_API}/webhooks/{d['id']}/{d['token']}"
+    except Exception as e:
+        logger.warning("[tickets] crear webhook err: %r", e)
+        return None
+
+
+async def _discord_webhook_send(url, username, avatar, content):
+    """Publica un mensaje vía webhook: aparece con el nombre y foto del jugador, texto normal."""
+    if not (url and content is not None):
+        return None
+    uname = (username or "Usuario")[:80]
+    payload = {"content": content[:1950], "username": uname, "allowed_mentions": {"parse": []}}
+    if avatar and isinstance(avatar, str) and avatar.startswith("http"):
+        payload["avatar_url"] = avatar
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(url, json=payload)
+            if r.status_code >= 300:
+                logger.warning("[tickets] webhook send %s: %s", r.status_code, r.text[:200])
+                return None
+            return True
+    except Exception as e:
+        logger.warning("[tickets] webhook send err: %r", e)
+        return None
+
+
 def _welcome_to_embed_fields(text):
     """Convierte el aviso automático (marcadores internos) en campos de embed de Discord.
     '## Título' → nombre de campo; el resto de líneas → valor. '!'/'!•' → ⚠️. La línea 🆘 va aparte."""
@@ -546,6 +584,9 @@ async def _discord_notify_new(t, welcome_text=""):
     upd = {}
     if thread_id:
         upd["discord_thread_id"] = thread_id
+        wh = await _discord_create_webhook(thread_id)
+        if wh:
+            upd["discord_webhook_url"] = wh
     if msg and msg.get("id"):
         upd["discord_opening_message_id"] = str(msg["id"])
     if upd:
@@ -554,7 +595,8 @@ async def _discord_notify_new(t, welcome_text=""):
 
 
 async def _discord_relay_message(t, author, text, attachments=None, role="user"):
-    """Reenvía a Discord un mensaje escrito desde la web (al canal del ticket), con estilo (embed)."""
+    """Reenvía a Discord un mensaje de la web. Aparece como el propio jugador (webhook):
+    su nombre y foto arriba, texto normal debajo. Fallback a mensaje simple si no hay webhook."""
     if not DISCORD_BOT_TOKEN:
         return
     target = t.get("discord_thread_id")
@@ -565,24 +607,26 @@ async def _discord_relay_message(t, author, text, attachments=None, role="user")
     avatar = a.get("avatar") or ""
     avatar = avatar if isinstance(avatar, str) and avatar.startswith("http") else None
     is_staff = role == "staff"
+    display = f"{name} · Staff" if is_staff else name
     atts = attachments or []
-    imgs = [u for u in atts if _is_img_url(u)]
-    others = [u for u in atts if not _is_img_url(u)]
-    desc = text or ""
-    if others:
-        desc += ("\n\n" if desc else "") + "\n".join(f"🔗 {u}" for u in others)
-    if len(imgs) > 1:
-        desc += ("\n\n" if desc else "") + "\n".join(imgs[1:])
-    embed = {
-        "author": {"name": f"{name}{'  ·  Staff' if is_staff else ''}", **({"icon_url": avatar} if avatar else {})},
-        "description": (desc or "*(sin texto)*")[:4000],
-        "color": 0x5865F2 if is_staff else 0x22C55E,
-        "footer": {"text": "💬 Respuesta del staff" if is_staff else "📨 Mensaje del usuario (web)"},
-        "timestamp": _iso(),
-    }
-    if imgs:
-        embed["image"] = {"url": imgs[0]}
-    await _discord_post(target, embeds=[embed])
+    # Los adjuntos van como URLs en el texto: Discord los previsualiza igual que un mensaje normal.
+    body = (text or "").strip()
+    if atts:
+        body += ("\n" if body else "") + "\n".join(atts)
+    body = body or "(sin texto)"
+
+    webhook = t.get("discord_webhook_url")
+    if not webhook and target:
+        webhook = await _discord_create_webhook(target)
+        if webhook:
+            await _db.tickets.update_one({"id": t["id"]}, {"$set": {"discord_webhook_url": webhook}})
+            t["discord_webhook_url"] = webhook
+    if webhook:
+        ok = await _discord_webhook_send(webhook, display, avatar, body)
+        if ok:
+            return
+    # Fallback (sin permiso de webhooks): mensaje simple del bot.
+    await _discord_post(target, content=f"**{display}:** {body}")
 
 
 # ─────────────── Discord Gateway (Discord -> Web) ───────────────
