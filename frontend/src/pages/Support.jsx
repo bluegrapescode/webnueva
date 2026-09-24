@@ -248,9 +248,9 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
   const cat = cfg.categories.find((c) => c.id === t.category);
 
   return (
-    <div className="grid xl:grid-cols-[1fr_300px] gap-4 h-[calc(100vh-190px)]">
+    <div className="grid xl:grid-cols-[1fr_300px] xl:grid-rows-[minmax(0,1fr)] gap-4 h-[calc(100vh-190px)] min-h-0">
       {/* Chat central */}
-      <div className="forge-panel rounded-2xl border border-white/10 flex flex-col min-w-0" data-testid="ticket-chat">
+      <div className="forge-panel rounded-2xl border border-white/10 flex flex-col min-w-0 min-h-0 h-[calc(100vh-190px)] xl:h-full" data-testid="ticket-chat">
         <div className="flex items-center gap-3 p-3 border-b border-white/10">
           <button className="lg:hidden text-white/50" onClick={() => setActive(null)}><ChevronLeft size={18} /></button>
           <div className="min-w-0 flex-1"><p className="font-black text-white truncate">{cat?.emoji} {t.subject}</p><p className="text-[11px] text-white/45 font-mono">{t.code} · {STATUS[t.status]}</p></div>
@@ -259,7 +259,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
             ? <button data-testid="reopen-ticket" onClick={reopenTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/25 transition"><Check size={13} /> Reabrir</button>
             : <button data-testid="close-ticket" onClick={closeTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-red-500/15 text-red-300 border border-red-400/40 hover:bg-red-500/25 transition"><Lock size={13} /> Cerrar</button>)}
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3" data-testid="ticket-messages">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3" data-testid="ticket-messages">
           {data.messages.map((m) => {
             if (m.role === "system") {
               return (
