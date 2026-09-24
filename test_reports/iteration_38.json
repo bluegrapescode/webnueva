@@ -1,0 +1,29 @@
+{
+  "summary": "Verified 3 reported bug fixes + Phase 2 (real file uploads, Discord bidirectional gateway wiring). Backend pytest phase-2 suite (5 tests) all pass. Frontend Playwright E2E on /soporte confirms: (1) real-time chat sends produce EXACTLY 1 bubble per send (sent 4, got 4, each text count=1) — triplication bug is fixed; (2) close/reopen buttons work end-to-end (input hides/returns, system messages 🔒 cerró / 🔓 reabrió appear); (3) server dropdown for report_player shows 'LA ISLA NUBLAR - X3 - SEMI-REALISMO - VC - ESP/LATAM'; (4) real file upload via [data-testid=upload-btn]/[data-testid=file-input] uploads a PNG, chip appears, sending renders inline <img> that loads (naturalWidth>0) from /api/tickets/files/{id}.png; (5) staff panel toggle exposes all 7 queue boxes. Discord gateway starts on backend boot (log 'Discord gateway conectado como ASISTOSAURIO#6822'). Ticket creation was flaky in one run due to 12s per-user cooldown overlapping with pytest run — not a bug, expected behavior.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_tickets_phase2.py",
+    "/app/backend/tests/test_tickets.py",
+    "/app/test_reports/pytest/tickets_phase2.xml",
+    "/app/test_reports/pytest/pytest_tickets.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "tickets.py _pub_ticket ignores is_staff flag — 'fields' dict (which may include steam_id / reported_player / evidence links) is always returned. Currently gated by _can_view/_can_manage in the endpoints, but the parameter is misleading; either drop it or actually strip staff-only fields for non-staff.",
+    "tickets.py serve_file endpoint /api/tickets/files/{fname} is fully PUBLIC (no auth). Uploaded evidence from private tickets (SteamIDs, reports, appeals) is world-readable by anyone who guesses the 32-hex id. Consider signed URLs with short-lived JWT tokens, or auth+ownership check inside serve_file. This is a privacy concern more than a security hole (ids are unguessable), but worth calling out.",
+    "tickets.py _create_cooldown is an unbounded in-memory dict without eviction — leaks over long uptimes. Add periodic prune or use TTL cache.",
+    "tickets.py TicketHub is process-local; multi-worker deployments will not broadcast typing/viewing/staff events across workers. Fine for uvicorn --workers 1, but document it.",
+    "Support.jsx TicketView.send: after the POST succeeds, it appends the returned message optimistically, but the WS 'message:new' event will also fire for the same message. Dedup by msg.id (implemented via .filter((x) => x.id !== r.message.id)) — good, but ensure that pattern is preserved on future refactors as it is the crux of the triplication fix.",
+    "Support.jsx WebSocket useEffect deps are [user?.id] — comment already explains this is intentional. Please keep the eslint-disable comment.",
+    "tickets.py upload_evidence: the PUBLIC_URL is optional; when unset the returned URL becomes '/api/tickets/files/<id>.png' (no origin), which currently works because the frontend calls it same-origin, but Discord relay would break. Consider raising if PUBLIC_URL is unset or falling back to request.base_url."
+  ],
+  "updated_files": ["/app/backend/tests/test_tickets_phase2.py"],
+  "success_rate": {"backend": "100% (5/5 phase-2, 24/24 phase-1)", "frontend": "100% for all requested flows"},
+  "test_credentials": "POST /api/auth/demo -> JWT; localStorage.primal_token. Demo user is admin/staff.",
+  "seed_data_creation": "Created 2 additional 'TEST_phase2 subject' tickets via pytest and several TEST_dup_v2_* / TEST_msg_with_image messages + one uploaded 68-byte PNG stored under laislanublar/tickets/{tid}/ in Emergent object storage. Safe to leave for further inspection or delete via mongo (tickets where code in {#NBL-29762, #NBL-84732} and any TEST_Phase2_UI).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend: pytest /app/backend/tests/test_tickets_phase2.py -v (5 tests, ~50s including 13s cooldown). Note: test_tickets_phase2.test_upload_and_serve_image failed once (30s read timeout on the ingress route) but retry passed and manual 3x curl of the same URL returned 200 image/png in ~280ms — treat as flaky ingress, not app bug. Frontend testids validated for phase 2: close-ticket, reopen-ticket, system-message, upload-btn, file-input, upload-progress, attach-link-btn, attachment-video, discord-badge, take-ticket, set-priority, set-status, box-new/unassigned/mine/in_process/waiting_user/resolved/closed. Discord gateway is live but tests do NOT hit Discord.",
+  "rca_of_the_issue": "N/A — all 3 reported bugs verified fixed. Triplication root cause (per code comment) was WebSocket useEffect depending on [user, mode], which reconnected on every mode/balance change and left stale sockets receiving+dispatching duplicate 'message:new' events. Fix: depend on [user?.id] only + dedup incoming messages by id in both the optimistic append and WS handler."
+}
