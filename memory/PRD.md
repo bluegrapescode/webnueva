@@ -435,3 +435,10 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - Banner reestructurado a 2 columnas: IZQUIERDA identidad ([TAG]+nombre+lema+meta), DERECHA Editar clan + Nivel/XP + las 4 stats EN FILA (Miembros/Online/Notoriedad/Territorios) con iconos del color del clan (antes iban a lo ancho abajo).
 - Color de acento del clan puesto en VERDE (#3BE854) para demo (Escuadron Prueba/TEST) y para el clan real del usuario (Bluecito/BLUE) para igualar el mockup. Lema en verde mayúsculas. tag/nivel/XP/stats usan clan.color.
 - Verificado por screenshot desktop: coincide con el mockup (m3).
+
+## Actualización 28 (Jun 2026) — Pulido fiel al mockup (chat, stats, animaciones, sonidos)
+- ClanChat rehecho EXACTO al mockup: avatares por mensaje, nombre + RoleBadge de color (Líder dorado/Comandante púrpura/Veterano azul/etc, derivado de me.members), timestamp a la derecha (fmtTime), mensajes de "Sistema · HH:MM" en caja con borde-izq verde + icono engranaje. Barra de envío con Paperclip + input + Smile + botón verde (hover scale). Switch Clan/Global con glow + icono gear.
+- Banner: fila de meta con iconitos (Calendar/Hash/Globe/Swords); stat cells con icono a la IZQUIERDA (no centrado) en la columna derecha.
+- Panels: enlace "Ver todas ›" en Invitaciones Pendientes y Solicitudes (Panel acepta prop `right`).
+- Sonidos (useSound synth): clic al navegar en sidebar/móvil, al enviar mensaje y al alternar canal. Animaciones framer-motion de entrada en banner y mensajes.
+- Helpers añadidos: fmtTime, Avatar. Verificado por screenshot desktop: coincide con el mockup (m3) incluyendo chat con roles/horas y mensajes de sistema.

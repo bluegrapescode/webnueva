@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Crown, Users, Send, Swords, Settings2, LogOut, Trash2, UserPlus, Star, Check, X, Plus, ArrowUpRight, Flame, MessageSquare, Globe, Search, MapPin, BarChart3, Inbox, Clock, Hexagon, ChevronRight, Bell } from "lucide-react";
+import { Shield, Crown, Users, Send, Swords, Settings2, LogOut, Trash2, UserPlus, Star, Check, X, Plus, ArrowUpRight, Flame, MessageSquare, Globe, Search, MapPin, BarChart3, Inbox, Clock, Hexagon, ChevronRight, Bell, Calendar, Hash, Paperclip, Smile } from "lucide-react";
 import { useTurf } from "@/hooks/useTurf";
 import { ClanProvider, useClan } from "@/context/ClanContext";
 import { useAuth } from "@/context/AuthContext";
@@ -29,6 +29,10 @@ function roleColor(order, isLeader) {
   return "#7CA842";
 }
 function fmtDate(iso) { try { return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }); } catch { return "—"; } }
+function fmtTime(iso) { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } }
+function Avatar({ src, size = 34 }) {
+  return <div className="rounded-full overflow-hidden bg-white/10 shrink-0 ring-1 ring-white/10" style={{ width: size, height: size }}>{src ? <img src={src} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full grid place-items-center text-white/30"><Users size={size * 0.5} /></div>}</div>;
+}
 function fmtAgo(iso) {
   try { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
     if (s < 60) return "Ahora"; if (s < 3600) return `Hace ${Math.floor(s / 60)} min`;
@@ -180,52 +184,68 @@ function NoClan() {
 
 // ═══════════ Chat en vivo (Clan / Global de clanes) ═══════════
 function ClanChat() {
-  const { messages, globalMessages, sendChat } = useClan();
+  const { me, messages, globalMessages, sendChat } = useClan();
+  const { play } = useSound();
+  const clan = me?.clan || {};
   const [channel, setChannel] = useState("clan");
   const [text, setText] = useState("");
   const endRef = useRef(null);
   const isGlobal = channel === "global";
   const list = isGlobal ? globalMessages : messages;
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [list.length, channel]);
-  const send = () => { const t = text.trim(); if (!t) return; sendChat(t, channel); setText(""); };
+  const send = () => { const t = text.trim(); if (!t) return; play?.("click"); sendChat(t, channel); setText(""); };
+  const toggle = () => { play?.("click"); setChannel(isGlobal ? "clan" : "global"); };
   const accent = isGlobal ? "#38BDF8" : "#22C55E";
+  const roleOf = (uid) => { const m = (me?.members || []).find((x) => x.user_id === uid); return { rankId: m?.rank_id || "member", isLeader: clan.leader_id === uid }; };
 
   return (
-    <div className="forge-panel rounded-2xl border flex flex-col h-[560px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
+    <div className="forge-panel rounded-2xl border flex flex-col h-[600px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
       <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b border-white/8 flex-wrap">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest" style={{ color: accent }}>
           {isGlobal ? <Globe size={16} /> : <MessageSquare size={16} />} {isGlobal ? "Chat Global" : "Chat del clan"}
         </h3>
-        {/* Switch Clan <-> Global */}
         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide select-none">
           <span className={!isGlobal ? "text-emerald-300" : "text-white/35"}>Chat del Clan</span>
-          <button type="button" role="switch" aria-checked={isGlobal} data-testid="chat-channel-toggle" onClick={() => setChannel(isGlobal ? "clan" : "global")}
-            className="relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0" style={{ background: accent }}>
+          <button type="button" role="switch" aria-checked={isGlobal} data-testid="chat-channel-toggle" onClick={toggle}
+            className="relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0" style={{ background: accent, boxShadow: `0 0 10px ${accent}88` }}>
             <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200" style={{ left: isGlobal ? 22 : 2 }} />
           </button>
           <span className={isGlobal ? "text-sky-300" : "text-white/35"}>Chat Global (Clanes)</span>
+          <Settings2 size={15} className="text-white/30 ml-1" />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-3 space-y-2.5" data-testid="chat-messages">
+      <div className="flex-1 overflow-y-auto px-4 pt-3 space-y-2" data-testid="chat-messages">
         {list.length === 0 && <p className="text-sm text-white/35 text-center py-10">{isGlobal ? "Aún nadie ha escrito en el chat global de clanes. 🌐" : "Sé el primero en escribir. 💬"}</p>}
         {list.map((m) => m.system ? (
-          <p key={m.id} className="text-center text-[11px] text-amber-300/70 italic py-1">{m.text}</p>
-        ) : (
-          <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
-            <span className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: isGlobal ? "#7dd3fc" : "#86efac" }}>
-              {isGlobal && m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />}
-              {m.name}
-            </span>
-            <span className="text-sm text-white/85 break-words">{m.text}</span>
+          <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border-l-2 border-emerald-400 bg-emerald-500/[0.08] px-3 py-2 flex items-start gap-2">
+            <Settings2 size={15} className="text-emerald-400 mt-0.5 shrink-0" />
+            <div className="min-w-0"><span className="text-emerald-300 font-bold text-[11px]">Sistema · {fmtTime(m.created_at)}</span><p className="text-sm text-white/75 break-words">{m.text}</p></div>
           </motion.div>
-        ))}
+        ) : (() => {
+          const r = roleOf(m.user_id);
+          return (
+            <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5">
+              <Avatar src={m.avatar} size={34} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-bold text-white/90 truncate">{m.name}</span>
+                  {isGlobal ? (m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />) : <RoleBadge clan={clan} rankId={r.rankId} isLeader={r.isLeader} />}
+                  <span className="ml-auto text-[10px] text-white/35 font-mono shrink-0">{fmtTime(m.created_at)}</span>
+                </div>
+                <p className="text-sm text-white/85 break-words leading-snug mt-0.5">{m.text}</p>
+              </div>
+            </motion.div>
+          );
+        })())}
         <div ref={endRef} />
       </div>
 
-      <div className="p-3 border-t border-white/8 flex gap-2">
-        <input data-testid="chat-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={isGlobal ? "Mensaje a todos los clanes…" : "Escribe un mensaje…"} className={input} maxLength={500} />
-        <button data-testid="chat-send" onClick={send} className="px-4 rounded-lg text-black font-bold" style={{ background: accent }}><Send size={16} /></button>
+      <div className="p-3 border-t border-white/8 flex items-center gap-2">
+        <button type="button" className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"><Paperclip size={17} /></button>
+        <input data-testid="chat-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={isGlobal ? "Mensaje a todos los clanes…" : "Escribe un mensaje…"} className={input + " flex-1"} maxLength={500} />
+        <button type="button" className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"><Smile size={17} /></button>
+        <button data-testid="chat-send" onClick={send} className="px-4 py-2.5 rounded-lg text-black font-bold transition-transform hover:scale-105 active:scale-95" style={{ background: accent, boxShadow: `0 4px 16px -4px ${accent}` }}><Send size={16} /></button>
       </div>
     </div>
   );
@@ -252,11 +272,11 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
           <div className="min-w-0">
             <h1 className="font-brush text-white text-4xl sm:text-6xl leading-[0.95] flex items-center gap-3 drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]"><span className="truncate">{clan.name}</span><Crown className="text-amber-400 shrink-0" size={30} /></h1>
             <p className="text-sm sm:text-base font-bold uppercase tracking-wide mt-1.5" style={{ color: clan.color }}>“{clan.description || "Fuerza · Unión · Dominio"}”</p>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3 text-[11px] text-white/60">
-              <span>Fundado {fmtDate(clan.created_at)}</span><span className="text-white/25">·</span>
-              <span>ID del Clan: {clan.code}</span><span className="text-white/25">·</span>
-              <span>Idioma: {clan.language}</span><span className="text-white/25">·</span>
-              <span>Tipo: {clan.clan_type}</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[11px] text-white/60">
+              <span className="inline-flex items-center gap-1"><Calendar size={11} /> Fundado {fmtDate(clan.created_at)}</span>
+              <span className="inline-flex items-center gap-1"><Hash size={11} /> ID del Clan: {clan.code}</span>
+              <span className="inline-flex items-center gap-1"><Globe size={11} /> Idioma: {clan.language}</span>
+              <span className="inline-flex items-center gap-1"><Swords size={11} /> Tipo: {clan.clan_type}</span>
             </div>
           </div>
         </div>
@@ -274,10 +294,9 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
           </div>
           <div className="grid grid-cols-4 gap-2 w-full">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-xl bg-black/45 border border-white/10 px-2.5 py-2 backdrop-blur text-center">
-                <s.icon size={16} className="mx-auto mb-1" style={{ color: clan.color }} />
-                <p className="font-mono font-black text-base leading-none">{s.val}</p>
-                <p className="text-[8px] uppercase tracking-widest text-white/45 mt-1">{s.label}</p>
+              <div key={s.label} className="rounded-xl bg-black/45 border border-white/10 px-2.5 py-2 backdrop-blur flex items-center gap-2">
+                <s.icon size={16} className="shrink-0" style={{ color: clan.color }} />
+                <div className="min-w-0 leading-none"><p className="font-mono font-black text-base leading-none truncate">{s.val}</p><p className="text-[8px] uppercase tracking-widest text-white/45 mt-1">{s.label}</p></div>
               </div>
             ))}
           </div>
@@ -318,14 +337,18 @@ function MemberRow({ m, clan, perms, isLeader, user, act }) {
   );
 }
 
-function Panel({ title, icon: Icon, count, children, testid, accent = "#22C55E" }) {
+function Panel({ title, icon: Icon, count, children, testid, accent = "#22C55E", right }) {
   return (
     <div className="forge-panel rounded-2xl border border-white/10 p-4" data-testid={testid}>
-      <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest mb-3" style={{ color: accent }}><Icon size={15} /> {title}{count != null && <span className="text-white/40">({count})</span>}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest" style={{ color: accent }}><Icon size={15} /> {title}{count != null && <span className="text-white/40">({count})</span>}</h3>
+        {right}
+      </div>
       {children}
     </div>
   );
 }
+const VerTodas = () => <span className="text-[10px] font-bold text-white/40 hover:text-white/70 inline-flex items-center gap-0.5 cursor-pointer">Ver todas <ChevronRight size={12} /></span>;
 
 // Panel: Invitar jugadores (búsqueda en vivo)
 function InvitePlayersPanel({ act }) {
@@ -358,7 +381,7 @@ function RightPanels({ me, canManage, act }) {
   return (
     <div className="space-y-4" data-testid="hub-right">
       <InvitePlayersPanel act={act} />
-      <Panel title="Invitaciones Pendientes" icon={Inbox} count={(me.sent_invites || []).length} testid="pending-invites" accent="#38BDF8">
+      <Panel title="Invitaciones Pendientes" icon={Inbox} count={(me.sent_invites || []).length} testid="pending-invites" accent="#38BDF8" right={<VerTodas />}>
         <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
           {(me.sent_invites || []).length === 0 && <p className="text-xs text-white/35 py-3 text-center">Sin invitaciones pendientes.</p>}
           {(me.sent_invites || []).map((p) => (
@@ -370,7 +393,7 @@ function RightPanels({ me, canManage, act }) {
           ))}
         </div>
       </Panel>
-      <Panel title="Solicitudes para Unirse" icon={Bell} count={(me.join_requests || []).length} testid="join-requests" accent="#F5B841">
+      <Panel title="Solicitudes para Unirse" icon={Bell} count={(me.join_requests || []).length} testid="join-requests" accent="#F5B841" right={<VerTodas />}>
         <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
           {(me.join_requests || []).length === 0 && <p className="text-xs text-white/35 py-3 text-center">Sin solicitudes.</p>}
           {(me.join_requests || []).map((p) => (
@@ -404,6 +427,7 @@ function DangerZone({ isLeader, act }) {
 // ═══════════ Hub del clan ═══════════
 function Hub() {
   const { me, act } = useClan();
+  const { play } = useSound();
   const { user } = useAuth();
   const clan = me.clan; const perms = me.my_perms || {}; const isLeader = me.is_leader;
   const canManage = isLeader || perms.invite || perms.manage_members;
@@ -419,7 +443,7 @@ function Hub() {
     ["ranking", "Ranking", BarChart3], ["config", "Configuración", Settings2],
   ];
   const navBtn = (t, label, Icon, mobile) => (
-    <button key={label} data-testid={`side-${t}`} onClick={() => setTab(t)}
+    <button key={label} data-testid={`side-${t}`} onClick={() => { play?.("click"); setTab(t); }}
       className={`flex items-center gap-2.5 rounded-lg text-sm font-bold transition ${mobile ? "shrink-0 px-3 py-2 whitespace-nowrap" : "w-full px-3 py-2.5"} ${tab === t ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 shadow-[inset_0_0_22px_rgba(34,197,94,0.18)]" : "text-white/55 hover:text-white hover:bg-white/[0.04] border border-transparent"}`}>
       <Icon size={16} /><span className="truncate">{label}</span>
       {t === "solicitudes" && reqCount > 0 && <span className="ml-auto text-[10px] bg-red-500 text-white rounded-full px-1.5">{reqCount}</span>}
