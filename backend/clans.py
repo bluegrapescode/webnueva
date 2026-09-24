@@ -183,6 +183,8 @@ async def _pub_clan(clan, settings=None):
     territories = 0
     try: territories = await _db.turf_zones.count_documents({"owner_clan_id": clan["id"]})
     except Exception: pass
+    if not territories and clan.get("territories_display"):
+        territories = int(clan["territories_display"])
     return {
         "id": clan["id"], "name": clan["name"], "tag": clan["tag"], "color": clan.get("color", "#7CA842"),
         "leader_id": clan.get("leader_id"), "description": clan.get("description", ""),
@@ -201,12 +203,20 @@ async def _members_view(clan):
     order_map = {r["id"]: r.get("order", 50) for r in clan.get("ranks", [])}
     mems = await _db.clan_members.find({"clan_id": clan_id}, {"_id": 0}).to_list(1000)
     ids = [m["user_id"] for m in mems]
-    fresh = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1})}
+    fresh = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1, "last_login": 1})}
+    now_ts = _now()
     for m in mems:
         u = fresh.get(m["user_id"], {})
         m["name"] = u.get("persona_name") or m.get("name") or "Superviviente"
         m["avatar"] = u.get("avatar") or m.get("avatar")
-        m["online"] = m["user_id"] in hub.by_uid
+        online = m["user_id"] in hub.by_uid
+        if not online:
+            try:
+                dt = datetime.fromisoformat(str(u.get("last_login")).replace("Z", "+00:00"))
+                online = (now_ts - dt).total_seconds() < 300
+            except Exception:
+                online = False
+        m["online"] = online
     return sorted(mems, key=lambda m: (order_map.get(m.get("rank_id"), 50), m["name"].lower()))
 
 

@@ -47,6 +47,7 @@ function RoleBadge({ clan, rankId, isLeader }) {
   return <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: c, background: `${c}1f`, border: `1px solid ${c}55` }}>{isLeader && <Crown size={9} />}{name}</span>;
 }
 const STATUS_COLOR = { "En línea": "#22C55E", "En partida": "#F59E0B", "Ausente": "#EF4444" };
+const EMOJIS = ["😀","😂","😎","🔥","💪","🦖","🦕","⚔️","🛡️","👑","🎯","🚀","💀","🩸","🌋","🌿","👍","❤️","🎉","😱","🤝","⭐","💥","🏆"];
 
 // ═══════════ Modal: Fundar un clan ═══════════
 function FoundModal({ cfg, onClose }) {
@@ -190,6 +191,7 @@ function ClanChat() {
   const clan = me?.clan || {};
   const [channel, setChannel] = useState("clan");
   const [text, setText] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
   const endRef = useRef(null);
   const isGlobal = channel === "global";
   const list = isGlobal ? globalMessages : messages;
@@ -242,11 +244,24 @@ function ClanChat() {
         <div ref={endRef} />
       </div>
 
-      <div className="p-3 border-t border-white/8 flex items-center gap-2">
+      <div className="p-3 border-t border-white/8 flex items-center gap-2 relative">
         <button type="button" className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"><Paperclip size={17} /></button>
         <input data-testid="chat-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={isGlobal ? "Mensaje a todos los clanes…" : "Escribe un mensaje…"} className={input + " flex-1"} maxLength={500} />
-        <button type="button" className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"><Smile size={17} /></button>
-        <button data-testid="chat-send" onClick={send} className="px-4 py-2.5 rounded-lg text-black font-bold transition-transform hover:scale-105 active:scale-95" style={{ background: accent, boxShadow: `0 4px 16px -4px ${accent}` }}><Send size={16} /></button>
+        <div className="relative">
+          <button type="button" data-testid="emoji-toggle" onClick={() => { play?.("click"); setShowEmoji((v) => !v); }} className={`p-2 rounded-lg transition-colors ${showEmoji ? "text-emerald-300 bg-emerald-500/10" : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}><Smile size={17} /></button>
+          <AnimatePresence>
+            {showEmoji && (
+              <motion.div initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                className="absolute bottom-12 right-0 z-30 w-64 p-2 rounded-xl border border-white/12 bg-[#0d0f15]/95 backdrop-blur shadow-2xl grid grid-cols-6 gap-1" data-testid="emoji-panel">
+                {EMOJIS.map((em) => (
+                  <button key={em} type="button" data-testid={`emoji-${em}`} onClick={() => { setText((t) => (t + em).slice(0, 500)); }}
+                    className="text-xl leading-none p-1.5 rounded-lg hover:bg-white/10 transition-transform hover:scale-125">{em}</button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <button data-testid="chat-send" onClick={() => { setShowEmoji(false); send(); }} className="px-4 py-2.5 rounded-lg text-black font-bold transition-transform hover:scale-105 active:scale-95" style={{ background: accent, boxShadow: `0 4px 16px -4px ${accent}` }}><Send size={16} /></button>
       </div>
     </div>
   );

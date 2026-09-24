@@ -40,6 +40,15 @@ MEMBERS = [
     ("DarkRex", "seed_darkrex", "oficial", 40, 33),
     ("Maya", "seed_maya", "member", 22, 47),
     ("BlueHunter", "seed_bluehunter", "cazador", 30, 15),
+    ("RaptorsPR", "seed_raptorspr", "veterano", 33, 8),
+    ("NeonCL", "seed_neoncl", "cazador", 27, 52),
+    ("AztecX", "seed_aztecx", "member", 19, 60),
+    ("VolcanDino", "seed_volcandino", "member", 24, 11),
+    ("SelvaCO", "seed_selvaco", "oficial", 37, 3),
+    ("CieloISLA", "seed_cieloisla", "cazador", 31, 7),
+    ("TitanGG", "seed_titangg", "member", 26, 68),
+    ("EmberX", "seed_emberx", "veterano", 29, 50),
+    ("OnyxPro", "seed_onyxpro", "member", 21, 51),
 ]
 
 # persona, steam, level, avatar_img, status  (status: online/partida/ausente)
@@ -159,7 +168,7 @@ async def main():
 
     # 7) Contadores del clan + notoriedad para nivel/XP visibles
     total = await db.clan_members.count_documents({"clan_id": cid})
-    await db.clans.update_one({"id": cid}, {"$set": {"member_count": total, "notoriety": 8450}})
+    await db.clans.update_one({"id": cid}, {"$set": {"member_count": total, "notoriety": 74450, "territories_display": 3}})
 
     # 8) Liberar zonas que tuviera el clan de jugador (para dejar el chat limpio de turf)
     await db.turf_zones.update_many(

@@ -463,3 +463,10 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - **Dino eliminado**: se quitó el T-Rex decorativo del fondo (al usuario no le gustó; imagen fuente de baja resolución 385×220). El fondo de bosque queda limpio.
 - **Responsividad / uso de pantalla**: el contenedor pasó de `max-w-[1400px]` a `max-w-[2100px]` con padding responsivo (`px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16`). Grid del Hub: `lg:[220px_1fr] 2xl:[260px_1fr]`. Grid chat/panel: `xl:[1fr_360px] 2xl:[1fr_440px]`. Chat más alto en 2xl (`h-[720px]`). Verificado en 1920, 2560 y 390px.
 
+
+## 2026-06-24 — Pulido final Clan Hub (banner en vivo + emojis + más miembros)
+- **Banner sin ceros**: `_pub_clan` usa `territories_display` como fallback cuando el conteo real de zonas es 0 (demo clan = 3). `_members_view` ahora marca `online` si el usuario está en WS **o** su `last_login` es < 5 min (métrica real de "recién activo") → Online deja de ser 0.
+- **Seed ampliado** (`_seed_clan_demo.py`): 16 miembros con roles de colores (Comandante/Veterano/Oficial/Cazador/Miembro); setea `territories_display=3`, `notoriety=74450`. Pestaña Miembros ahora llena.
+- **Selector de emojis** en el chat del clan: popover con 24 emojis (`data-testid=emoji-toggle`/`emoji-panel`) que inserta el emoji en el input. Botón Smile ahora funcional.
+- Verificado en 1920/2560/390. STATS banner: 16/20 · Online 15 · 74.450 · Territorios 3.
+
