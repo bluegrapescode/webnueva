@@ -181,7 +181,7 @@ export default function Support() {
             </div>
 
             {/* Centro + derecha */}
-            {active ? <TicketView key={active.ticket.id} data={active} setActive={setActive} isStaff={isStaff} user={user} typing={typing} wsSend={wsSend} onChanged={() => (mode === "staff" ? loadStaff() : loadList())} play={play} cfg={cfg} />
+            {active ? <TicketView key={active.ticket.id} data={active} setActive={setActive} isStaff={isStaff} user={user} typing={typing} wsSend={wsSend} onChanged={() => (mode === "staff" ? loadStaff() : loadList())} goToHistory={() => { setActive(null); if (mode === "staff") setStaffBox("closed"); else setStatusFilter("closed"); }} play={play} cfg={cfg} />
               : <div className="forge-panel rounded-2xl border border-white/10 grid place-items-center h-[calc(100vh-190px)] text-white/40"><div className="text-center"><LifeBuoy size={40} className="mx-auto mb-2 text-white/20" /><p>Selecciona un ticket o crea uno nuevo.</p></div></div>}
           </div>
         )}
@@ -243,7 +243,7 @@ function NewTicket({ cfg, onDone, onCancel }) {
   );
 }
 
-function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged, play, cfg }) {
+function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged, goToHistory, play, cfg }) {
   const t = data.ticket;
   const [text, setText] = useState("");
   const [atts, setAtts] = useState([]);
@@ -283,7 +283,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
   };
   const doUpdate = async (changes, sound) => { try { await api.ticketUpdate(t.id, changes); if (sound) play?.(sound); onChanged?.(); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const take = async () => { try { await api.ticketTake(t.id); play?.("ticketMsg"); onChanged?.(); } catch (e) { toast.error("Error"); } };
-  const closeTicket = async () => { try { await api.ticketClose(t.id); play?.("ticketMsg"); onChanged?.(); toast.success("Ticket cerrado"); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
+  const closeTicket = async () => { try { await api.ticketClose(t.id); play?.("ticketMsg"); toast.success("Ticket cerrado y enviado al historial"); goToHistory?.(); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const reopenTicket = async () => { try { await api.ticketReopen(t.id); play?.("ticketMsg"); onChanged?.(); toast.success("Ticket reabierto"); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const isOwner = t.user_id === user?.id;
   const canToggle = isOwner || data.can_manage;
@@ -298,9 +298,9 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
           <button className="lg:hidden text-white/50" onClick={() => setActive(null)}><ChevronLeft size={18} /></button>
           <div className="min-w-0 flex-1"><p className="font-black text-white truncate">{cat?.emoji} {t.subject}</p><p className="text-[11px] text-white/45 font-mono">{t.code} · {STATUS[t.status]}</p></div>
           <span className="text-[11px] font-bold px-2 py-1 rounded" style={{ color: PRIORITY[t.priority]?.color, background: `${PRIORITY[t.priority]?.color}22` }}>{PRIORITY[t.priority]?.label}</span>
-          {canToggle && (t.status === "closed"
-            ? <button data-testid="reopen-ticket" onClick={reopenTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/25 transition"><Check size={13} /> Reabrir</button>
-            : <button data-testid="close-ticket" onClick={() => setConfirmClose(true)} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-red-500/15 text-red-300 border border-red-400/40 hover:bg-red-500/25 transition"><Lock size={13} /> Cerrar</button>)}
+          {t.status === "closed"
+            ? (data.can_manage && <button data-testid="reopen-ticket" onClick={reopenTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/25 transition"><Check size={13} /> Reabrir</button>)
+            : (canToggle && <button data-testid="close-ticket" onClick={() => setConfirmClose(true)} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-red-500/15 text-red-300 border border-red-400/40 hover:bg-red-500/25 transition"><Lock size={13} /> Cerrar</button>)}
         </div>
         <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
           <AlertDialogContent data-testid="confirm-close-dialog" className="bg-[#0d0f15] border border-white/10 text-white">

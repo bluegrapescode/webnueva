@@ -707,8 +707,14 @@ async def set_open_state(user, tid, closed):
     if not t:
         raise HTTPException(404, "Ticket no encontrado.")
     is_owner = t.get("user_id") == user["id"]
-    if not (is_owner or _can_manage(t, user)):
-        raise HTTPException(403, "No tienes acceso a este ticket.")
+    if closed:
+        # Cerrar: lo puede hacer el dueño del ticket o el staff.
+        if not (is_owner or _can_manage(t, user)):
+            raise HTTPException(403, "No tienes acceso a este ticket.")
+    else:
+        # Reabrir: SOLO staff (un usuario no puede alternar el ticket a voluntad).
+        if not _can_manage(t, user):
+            raise HTTPException(403, "Solo el staff puede reabrir un ticket. Si necesitas ayuda, abre un ticket nuevo.")
     new_status = "closed" if closed else "open"
     if t.get("status") == new_status:
         return {"success": True, "ticket": _pub_ticket(t, True)}
