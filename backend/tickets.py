@@ -270,10 +270,16 @@ async def _estimate_response():
 
 
 def _welcome_message(cat_id, eta, queue, help_url=""):
-    is_report = cat_id in ("report_player", "report_staff")
-    greet = ("👋 ¡Gracias por abrir tu ticket! Ten **toda la evidencia a la mano** e insértala aquí antes de que te atienda el staff."
-             if is_report else
-             "👋 ¡Gracias por contactarnos! Cuéntanos tu consulta con el mayor detalle posible y el staff te ayudará lo antes posible.")
+    greet = {
+        "general": "👋 ¡Hola! Cuéntanos tu duda con el mayor detalle posible y te ayudaremos enseguida.",
+        "report_player": "👋 Gracias por reportar. Ten **toda la evidencia a la mano** e insértala aquí para que el staff pueda actuar.",
+        "report_staff": "👋 Gracias por tu reporte. Este canal es **confidencial**: describe lo ocurrido con el mayor detalle y aporta pruebas si las tienes.",
+        "appeal": "👋 Vamos a revisar tu caso. Explica con calma por qué crees que tu sanción debería revisarse.",
+        "membership": "👋 ¡Hola! Cuéntanos qué necesitas con tu membresía y lo revisamos lo antes posible.",
+        "patreon": "👋 ¡Gracias por tu apoyo! Cuéntanos tu consulta de Patreon y te ayudamos con tus beneficios.",
+        "battlepass": "👋 ¡Hola! Cuéntanos qué ocurre con tu Battle Pass y lo revisamos.",
+    }.get(cat_id, "👋 ¡Gracias por contactarnos! Cuéntanos tu consulta y el staff te ayudará.")
+
     lines = [
         greet,
         f"⏱️ **Tiempo estimado actual:** {eta} · hay {queue} ticket(s) en cola.",
@@ -283,10 +289,16 @@ def _welcome_message(cat_id, eta, queue, help_url=""):
         "Para agilizar la atención:",
         "• Abre **un solo ticket** por problema.",
         "!• El spam o abuso del sistema puede resultar en advertencias o restricciones temporales de soporte.",
+        "",
     ]
-    if is_report:
-        lines += [
-            "",
+
+    sections = {
+        "general": [
+            "## Sobre tu Consulta",
+            "Este ticket es para **dudas y preguntas generales** — no necesitas adjuntar pruebas.",
+            "• Describe tu duda o problema con el mayor detalle posible y el staff te responderá.",
+        ],
+        "report_player": [
             "## Requisitos para Reportes de Jugadores",
             "Los reportes deben incluir **toda la evidencia necesaria**:",
             "• Replay desde el menú F2",
@@ -295,42 +307,47 @@ def _welcome_message(cat_id, eta, queue, help_url=""):
             "!• No aceptamos clips sueltos ni archivos directamente en el ticket.",
             "Las pruebas deben enviarse mediante un **enlace** (ej. Medal u otra plataforma similar).",
             "!Los reportes sin evidencia suficiente podrán ser rechazados.",
-        ]
-    elif cat_id == "appeal":
-        lines += [
-            "",
+        ],
+        "report_staff": [
+            "## Requisitos para Reportes de Staff",
+            "Este reporte se trata con **total confidencialidad y discreción**.",
+            "• Indica **qué miembro del staff**, la **fecha/hora** y el **servidor**.",
+            "• Describe con claridad lo ocurrido.",
+            "• Si tienes pruebas (clips o capturas), compártelas por **enlace** (ej. Medal).",
+            "!Los reportes falsos o malintencionados pueden conllevar sanciones.",
+        ],
+        "appeal": [
             "## Sobre tu Apelación",
             "Explica con claridad **por qué crees que la sanción debe revisarse**.",
-            "• Indica tu SteamID y, si lo conoces, el motivo mostrado.",
-            "• Si tienes pruebas (clips o capturas), compártelas por **enlace** — no son obligatorias, pero ayudan a resolver más rápido.",
-        ]
-    elif cat_id in ("patreon", "membership"):
-        lines += [
-            "",
-            "## Sobre tu Consulta",
-            "Este ticket es para **preguntas y problemas de membresía/Patreon** — no necesitas adjuntar pruebas.",
-            "• Indícanos tu **SteamID** y tu **usuario de Discord**.",
-            "• Si tu caso es un pago o beneficio, comparte el **comprobante** por enlace (si aplica).",
-        ]
-    elif cat_id == "battlepass":
-        lines += [
-            "",
+            "• Indica tu **SteamID** y, si lo conoces, el **motivo** mostrado.",
+            "• Si tienes pruebas a tu favor, compártelas por **enlace** — no son obligatorias, pero ayudan.",
+            "!Mantén un tono respetuoso: insultar o presionar al staff no acelerará tu apelación.",
+        ],
+        "membership": [
+            "## Sobre tu Membresía",
+            "Este ticket es para **preguntas y problemas de membresía** — no necesitas adjuntar pruebas.",
+            "• Indícanos tu **SteamID** y describe qué ocurre (acceso, beneficios, renovación…).",
+            "• Si tu caso es un **pago**, comparte el **comprobante** por enlace (si aplica).",
+        ],
+        "patreon": [
+            "## Sobre tu Patreon",
+            "Este ticket es para **tus beneficios de Patreon** — no necesitas adjuntar pruebas.",
+            "• Indícanos tu **usuario de Discord** y tu **nivel/tier** de Patreon.",
+            "• Cuéntanos qué necesitas: **roles, vinculación, recompensas o beneficios**.",
+            "• Si es un pago, comparte el **comprobante** por enlace (si aplica).",
+        ],
+        "battlepass": [
             "## Sobre tu Battle Pass",
             "Este ticket es para **preguntas del Battle Pass** — no necesitas adjuntar pruebas.",
-            "• Cuéntanos qué ocurre con tu **progreso, recompensas, tokens o compra** e incluye tu **SteamID**.",
-        ]
-    else:  # general
-        lines += [
-            "",
-            "## Sobre tu Consulta",
-            "Este ticket es para **dudas y preguntas generales** — no necesitas adjuntar pruebas.",
-            "• Describe tu duda o problema con el mayor detalle posible y el staff te responderá.",
-        ]
-    if help_url:
-        lines += [
-            "",
-            f"🆘 ¿Crees que el staff está tardando mucho? Pide ayuda más rápido en nuestro **canal de ayuda**: {help_url}",
-        ]
+            "• Incluye tu **SteamID** y cuéntanos qué ocurre con tu **progreso, recompensas, tokens o compra**.",
+        ],
+    }
+    lines += sections.get(cat_id, sections["general"])
+
+    lines += [
+        "",
+        "!🆘 ¿Necesitas ayuda más rápida? Visita el **canal de ayuda** en nuestro Discord mientras un miembro del staff atiende tu ticket.",
+    ]
     return "\n".join(lines)
 
 
@@ -662,13 +679,8 @@ async def create_ticket(user, data):
     await _db.tickets.insert_one(dict(t))
     # Aviso del sistema (requisitos + tiempo estimado dinámico) como PRIMER mensaje
     eta, queue = await _estimate_response()
-    help_url = ""
-    if TICKETS_HELP_CHANNEL_ID:
-        gid = await _resolve_guild_id()
-        if gid:
-            help_url = f"https://discord.com/channels/{gid}/{TICKETS_HELP_CHANNEL_ID}"
     await _add_message(t, {"id": None, "name": "Soporte La Isla Nublar", "avatar": ""},
-                       _welcome_message(t["category"], eta, queue, help_url), role="notice", notify=False)
+                       _welcome_message(t["category"], eta, queue), role="notice", notify=False)
     # primer mensaje del sistema con el resumen
     await _add_message(t, {"id": user["id"], "name": t["user_name"], "avatar": t["user_avatar"]},
                        t["description"] or t["subject"], role="user", notify=False)

@@ -536,7 +536,12 @@ Verificado por testing_agent (iteration_38.json): **backend 5/5 fase-2 + 24/24 f
 **Fase 2B — Subida real de archivos (Emergent Object Storage):**
 - `tickets.py` helpers `_storage_init/_storage_put/_storage_get` (INTEGRATION_PROXY_URL + EMERGENT_LLM_KEY, prefijo `laislanublar/tickets/{tid}/`). Endpoints `POST /api/tickets/{tid}/upload` (multipart, valida ext imagen/vídeo y ≤25MB, guarda en col `ticket_files`) y `GET /api/tickets/files/{fname}` (público, sirve bytes con content-type). Devuelve URL absoluta con PUBLIC_URL.
 - Frontend: `api.ticketUpload` (multipart + onUploadProgress); botón `upload-btn` (📎 abre file picker `file-input`) + `attach-link-btn` (🔗 URL); barra de progreso `upload-progress`; render de imágenes inline y **vídeos** (`attachment-video` con <video controls>).
-**Notas de code-review (no bloqueantes):** `serve_file` es público (ids uuid4 de 128 bits, no adivinables) — mejora futura: auth por token firmado si se quiere blindar evidencias de reportes/apelaciones. `_create_cooldown` in-memory sin evicción. TicketHub es process-local (ok con `--workers 1`).
+## 2026-06 (fork) — Tickets: mensajes por categoría, cierre→historial, sonido, embed Discord
+- **Cierre definitivo → historial**: al cerrar (con confirmación), la vista se cierra y salta a "Cerrados"; solo staff puede reabrir (frontend + backend 403). Historial muestra la conversación completa (verificado UI).
+- **Sonido de nuevo ticket** (`ticketNew` en `sounds.js`): alerta tipo campana de recepción ascendente (E5→B5→E6) para que el admin note la apertura.
+- **Mensaje automático por categoría** (`_welcome_message`): texto DISTINTO para general, report_player, report_staff, appeal, membership, patreon, battlepass. Solo reportes piden evidencias; el resto son consultas. Se quitó el enlace directo al canal de ayuda (ahora solo texto "visita el canal de ayuda"). Marcadores `##`/`**`/`!` renderizados en el frontend (`renderNotice`).
+- **Embed de Discord rediseñado**: autor + avatar, título con emoji y color por categoría, prioridad con emoji, campos condicionales (Servidor/Fecha solo reportes), Evidencias, botón web y timestamp.
+- ENV: `TICKETS_CLOSED_CHANNEL_ID` (categoría cerrados), `TICKETS_HELP_CHANNEL_ID` (ya no se usa como enlace).
 
 ## 2026-06 (fork) — Tickets: mejoras de UX
 - **Altura del chat**: el panel del chat crecía hacia abajo indefinidamente. Fix en `Support.jsx`: grid `xl:grid-rows-[minmax(0,1fr)]` + `min-h-0` en panel y contenedor de mensajes + altura explícita móvil (`h-[calc(100vh-190px)] xl:h-full`). Ahora altura fija con scroll interno. Verificado desktop y móvil.

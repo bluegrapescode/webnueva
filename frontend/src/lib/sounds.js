@@ -640,11 +640,14 @@ export const SOUNDS = {
     [880, 1174.66, 1567.98].forEach((f, i) => bell({ freq: f, dur: 0.34, gain: 0.05, delay: i * 0.05, ratio: 2, index: 90 }));
     voice({ freq: 200, type: "sine", dur: 0.28, gain: 0.028, slideTo: 150, delay: 0.03, filterType: "lowpass", filterFreq: 900 });
   },
-  // ─── Tickets / Soporte (Diiing! moderno, original) ───
+  // ─── Tickets / Soporte ───
+  // Alerta de NUEVO TICKET: timbre de recepción ascendente (¡ding-dong-diing!), claro y llamativo.
   ticketNew: () => {
-    voice({ freq: 523.25, type: "sine", dur: 0.09, gain: 0.045, slideTo: 784, attack: 0.003, release: 0.06, filterType: "lowpass", filterFreq: 5000 });
-    bell({ freq: 1046.5, dur: 0.42, gain: 0.05, delay: 0.05, ratio: 2, index: 90 });
-    bell({ freq: 1568, dur: 0.5, gain: 0.03, delay: 0.12, ratio: 2, index: 60 });
+    noise({ dur: 0.02, gain: 0.035, delay: 0, filterType: "highpass", filterFreq: 3000 });
+    bell({ freq: 659.25, dur: 0.5, gain: 0.075, delay: 0.0, ratio: 2, index: 90 });    // E5
+    bell({ freq: 987.77, dur: 0.55, gain: 0.075, delay: 0.16, ratio: 2, index: 90 });  // B5
+    bell({ freq: 1318.51, dur: 0.85, gain: 0.07, delay: 0.34, ratio: 2, index: 80 });  // E6
+    voice({ freq: 523.25, type: "triangle", dur: 0.2, gain: 0.035, slideTo: 880, attack: 0.004, release: 0.16, delay: 0.34, filterType: "lowpass", filterFreq: 4200 });
   },
   ticketMsg: () => {
     voice({ freq: 700, type: "sine", dur: 0.07, gain: 0.03, slideTo: 560, attack: 0.002, release: 0.05, filterType: "lowpass", filterFreq: 3400 });
