@@ -438,7 +438,20 @@ async def _discord_post(channel_id, content=None, embeds=None):
         return None
 
 
-async def _discord_notify_new(t):
+def _welcome_to_discord(text):
+    """Adapta el aviso automático (marcadores internos) a markdown de Discord."""
+    out = []
+    for line in str(text or "").split("\n"):
+        if line.startswith("!• "):
+            out.append("⚠️ " + line[3:])
+        elif line.startswith("!"):
+            out.append("⚠️ " + line[1:])
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+async def _discord_notify_new(t, welcome_text=""):
     if not (DISCORD_BOT_TOKEN and TICKETS_CHANNEL_ID):
         return
     cats = {c["id"]: c for c in (await get_config())["categories"]}
@@ -492,6 +505,9 @@ async def _discord_notify_new(t):
     target = thread_id or TICKETS_CHANNEL_ID
     content = f"{PRIO_EMOJI.get(prio,'🟢')} Nuevo ticket **{t['code']}** — {emoji} {cat_name}"
     msg = await _discord_post(target, content=content, embeds=[embed])
+    # Publica el MISMO mensaje automático del ticket también en el canal de Discord.
+    if welcome_text and thread_id:
+        await _discord_post(thread_id, content=_welcome_to_discord(welcome_text))
     upd = {}
     if thread_id:
         upd["discord_thread_id"] = thread_id
@@ -679,13 +695,14 @@ async def create_ticket(user, data):
     await _db.tickets.insert_one(dict(t))
     # Aviso del sistema (requisitos + tiempo estimado dinámico) como PRIMER mensaje
     eta, queue = await _estimate_response()
+    welcome = _welcome_message(t["category"], eta, queue)
     await _add_message(t, {"id": None, "name": "Soporte La Isla Nublar", "avatar": ""},
-                       _welcome_message(t["category"], eta, queue), role="notice", notify=False)
+                       welcome, role="notice", notify=False)
     # primer mensaje del sistema con el resumen
     await _add_message(t, {"id": user["id"], "name": t["user_name"], "avatar": t["user_avatar"]},
                        t["description"] or t["subject"], role="user", notify=False)
     await _log_event(tid, t["user_name"], "Ticket creado")
-    await _discord_notify_new(t)
+    await _discord_notify_new(t, welcome)
     pub = _pub_ticket(t, True)
     await hub.send_staff("ticket:created", pub)
     await hub.send(user["id"], "ticket:created", pub)
