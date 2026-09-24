@@ -438,17 +438,38 @@ async def _discord_post(channel_id, content=None, embeds=None):
         return None
 
 
-def _welcome_to_discord(text):
-    """Adapta el aviso automático (marcadores internos) a markdown de Discord."""
-    out = []
-    for line in str(text or "").split("\n"):
+def _welcome_to_embed_fields(text):
+    """Convierte el aviso automático (marcadores internos) en campos de embed de Discord.
+    '## Título' → nombre de campo; el resto de líneas → valor. '!'/'!•' → ⚠️. La línea 🆘 va aparte."""
+    intro = []
+    sections = []  # [ [name, [lines]] ]
+    help_line = None
+    for raw in str(text or "").split("\n"):
+        line = raw
         if line.startswith("!• "):
-            out.append("⚠️ " + line[3:])
+            line = "⚠️ " + line[3:]
         elif line.startswith("!"):
-            out.append("⚠️ " + line[1:])
+            line = "⚠️ " + line[1:]
+        if "🆘" in line:
+            help_line = line.replace("⚠️ ", "").strip()
+            continue
+        if line.startswith("## "):
+            sections.append([line[3:].strip(), []])
+        elif not sections:
+            if line.strip():
+                intro.append(line)
         else:
-            out.append(line)
-    return "\n".join(out)
+            sections[-1][1].append(line)
+    fields = []
+    if intro:
+        fields.append({"name": "\u200b", "value": "\n".join(intro).strip()[:1024], "inline": False})
+    for name, lines in sections:
+        val = "\n".join(lines).strip()
+        if val:
+            fields.append({"name": name[:256], "value": val[:1024], "inline": False})
+    if help_line:
+        fields.append({"name": "🆘 Ayuda rápida", "value": help_line[:1024], "inline": False})
+    return fields
 
 
 async def _discord_notify_new(t, welcome_text=""):
@@ -483,31 +504,31 @@ async def _discord_notify_new(t, welcome_text=""):
     if t.get("discord_id"):
         inline_fields.append({"name": "💬 Discord", "value": f"<@{t['discord_id']}>", "inline": True})
 
+    welcome_fields = _welcome_to_embed_fields(welcome_text)
+    fields_list = list(inline_fields)
+    if ev:
+        fields_list.append({"name": "🔗 Evidencias", "value": ev[:1000], "inline": False})
+    fields_list += welcome_fields
+    fields_list.append({"name": "\u200b", "value": f"📩 **[Abrir el ticket en la web]({link})**" if PUBLIC_URL else "📩 Abrir en la web", "inline": False})
+    fields_list.append({"name": "💬 ¿Cómo responder?", "value": "Escribe **en este canal** y tu mensaje le llegará al usuario en la web en tiempo real.", "inline": False})
+
     embed = {
         "author": {"name": f"{t.get('user_name','Superviviente')} abrió un ticket", **({"icon_url": avatar} if avatar else {})},
         "title": f"{emoji}  {cat_name}",
         "url": link if PUBLIC_URL else None,
         "description": f"**`{t['code']}`**\n>>> {(t.get('description') or '—')[:900]}",
         "color": color,
-        "fields": inline_fields + [
-            {"name": "\u200b", "value": f"📩 **[Abrir el ticket en la web]({link})**" if PUBLIC_URL else "📩 Abrir en la web", "inline": False},
-            {"name": "💬 ¿Cómo responder?", "value": "Escribe **en este canal** y tu mensaje le llegará al usuario en la web en tiempo real.", "inline": False},
-        ],
+        "fields": fields_list[:25],
         "footer": {"text": "La Isla Nublar · Sistema de Soporte"},
         "timestamp": _iso(),
     }
     if avatar:
         embed["thumbnail"] = {"url": avatar}
-    if ev:
-        embed["fields"].insert(len(inline_fields), {"name": "🔗 Evidencias", "value": ev[:1000], "inline": False})
     embed = {k: v for k, v in embed.items() if v is not None}
 
     target = thread_id or TICKETS_CHANNEL_ID
     content = f"{PRIO_EMOJI.get(prio,'🟢')} Nuevo ticket **{t['code']}** — {emoji} {cat_name}"
     msg = await _discord_post(target, content=content, embeds=[embed])
-    # Publica el MISMO mensaje automático del ticket también en el canal de Discord.
-    if welcome_text and thread_id:
-        await _discord_post(thread_id, content=_welcome_to_discord(welcome_text))
     upd = {}
     if thread_id:
         upd["discord_thread_id"] = thread_id
