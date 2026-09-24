@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import httpx
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Response
 from pydantic import BaseModel
 
 logger = logging.getLogger("tickets")
@@ -22,16 +22,61 @@ _is_staff_fn = lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {
 
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
 TICKETS_CHANNEL_ID = os.environ.get("TICKETS_DISCORD_CHANNEL_ID", "").strip()
-PUBLIC_URL = os.environ.get("PUBLIC_APP_URL", "").strip()
+PUBLIC_URL = (os.environ.get("PUBLIC_APP_URL") or os.environ.get("PUBLIC_BASE_URL") or os.environ.get("FRONTEND_URL") or "").strip()
+
+# ─────────────── Object Storage (subida real de evidencias) ───────────────
+STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
+STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+STORAGE_APP = "laislanublar"
+_storage_key = None
+UPLOAD_EXT = {"png", "jpg", "jpeg", "gif", "webp", "mp4", "webm", "mov", "m4v"}
+UPLOAD_MIME = {
+    "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif",
+    "webp": "image/webp", "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime", "m4v": "video/x-m4v",
+}
+MAX_UPLOAD = 25 * 1024 * 1024
+
+
+async def _storage_init():
+    global _storage_key
+    if _storage_key:
+        return _storage_key
+    if not EMERGENT_KEY:
+        return None
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY})
+        r.raise_for_status()
+        _storage_key = r.json()["storage_key"]
+    return _storage_key
+
+
+async def _storage_put(path, data, content_type):
+    key = await _storage_init()
+    if not key:
+        raise HTTPException(503, "Almacenamiento no disponible.")
+    async with httpx.AsyncClient(timeout=120) as c:
+        r = await c.put(f"{STORAGE_URL}/objects/{path}",
+                        headers={"X-Storage-Key": key, "Content-Type": content_type}, content=data)
+        r.raise_for_status()
+        return r.json()
+
+
+async def _storage_get(path):
+    key = await _storage_init()
+    if not key:
+        raise HTTPException(404, "Archivo no encontrado.")
+    async with httpx.AsyncClient(timeout=60) as c:
+        r = await c.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key})
+        r.raise_for_status()
+        return r.content, r.headers.get("Content-Type", "application/octet-stream")
 
 STATUSES = ["open", "in_process", "waiting_user", "resolved", "closed"]
 PRIORITIES = ["normal", "media", "alta", "urgente"]
 _create_cooldown = {}  # user_id -> ts
 
 DEFAULT_SERVERS = [
-    {"id": "srv1", "name": "La Isla Nublar #1 — PvP"},
-    {"id": "srv2", "name": "La Isla Nublar #2 — PvE"},
-    {"id": "srv3", "name": "La Isla Nublar #3 — Small Tribes"},
+    {"id": "isla-nublar-x3", "name": "LA ISLA NUBLAR - X3 - SEMI-REALISMO - VC - ESP/LATAM"},
 ]
 
 # Campos por categoría (schema para formularios dinámicos, editable desde Admin)
@@ -170,7 +215,9 @@ async def ensure_indexes():
     await _db.tickets.create_index("steam_id")
     await _db.tickets.create_index("status")
     await _db.tickets.create_index("assigned_to")
+    await _db.tickets.create_index("discord_thread_id")
     await _db.ticket_messages.create_index("ticket_id")
+    await _db.ticket_messages.create_index("discord_message_id")
     await _db.ticket_events.create_index("ticket_id")
 
 
@@ -203,6 +250,93 @@ def _pub_ticket(t, is_staff=False):
     return d
 
 
+DISCORD_API = "https://discord.com/api/v10"
+
+
+def _bot_headers():
+    return {"Authorization": f"Bot {DISCORD_BOT_TOKEN}", "Content-Type": "application/json",
+            "User-Agent": "DiscordBot (https://laislanublar.net, 1.0)"}
+
+
+async def _discord_create_thread(name):
+    """Compat: crea un canal de texto por ticket bajo la categoría de tickets."""
+    return await _discord_create_channel(name)
+
+
+_DISCORD_GUILD_ID = None
+
+
+async def _resolve_guild_id():
+    global _DISCORD_GUILD_ID
+    if _DISCORD_GUILD_ID:
+        return _DISCORD_GUILD_ID
+    env_gid = os.environ.get("DISCORD_GUILD_ID", "").strip()
+    if env_gid:
+        _DISCORD_GUILD_ID = env_gid
+        return _DISCORD_GUILD_ID
+    if not (DISCORD_BOT_TOKEN and TICKETS_CHANNEL_ID):
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(f"{DISCORD_API}/channels/{TICKETS_CHANNEL_ID}", headers=_bot_headers())
+            if r.status_code < 300:
+                _DISCORD_GUILD_ID = str(r.json().get("guild_id") or "")
+                return _DISCORD_GUILD_ID or None
+    except Exception as e:
+        logger.warning("[tickets] resolve guild err: %r", e)
+    return None
+
+
+def _slug_channel(name):
+    s = re.sub(r"[^a-z0-9\- ]", "", (name or "ticket").lower())
+    s = re.sub(r"\s+", "-", s.strip()) or "ticket"
+    return s[:90]
+
+
+async def _discord_create_channel(name):
+    """Crea un canal de texto por ticket bajo la categoría TICKETS_CHANNEL_ID.
+    Devuelve el channel_id o None si falla (p. ej. sin permiso Manage Channels)."""
+    if not (DISCORD_BOT_TOKEN and TICKETS_CHANNEL_ID):
+        return None
+    gid = await _resolve_guild_id()
+    if not gid:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(f"{DISCORD_API}/guilds/{gid}/channels", headers=_bot_headers(),
+                             json={"name": _slug_channel(name), "type": 0,
+                                   "parent_id": TICKETS_CHANNEL_ID,
+                                   "topic": "Ticket de soporte — responde aquí y le llegará al usuario en la web."})
+            if r.status_code >= 300:
+                logger.warning("[tickets] crear canal %s: %s", r.status_code, r.text[:200])
+                return None
+            return str(r.json().get("id"))
+    except Exception as e:
+        logger.warning("[tickets] crear canal err: %r", e)
+        return None
+
+
+async def _discord_post(channel_id, content=None, embeds=None):
+    if not (DISCORD_BOT_TOKEN and channel_id):
+        return None
+    payload = {"allowed_mentions": {"parse": []}}
+    if content:
+        payload["content"] = content[:1900]
+    if embeds:
+        payload["embeds"] = embeds
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(f"{DISCORD_API}/channels/{channel_id}/messages",
+                             headers=_bot_headers(), json=payload)
+            if r.status_code >= 300:
+                logger.warning("[tickets] post msg %s: %s", r.status_code, r.text[:200])
+                return None
+            return r.json()
+    except Exception as e:
+        logger.warning("[tickets] post msg err: %r", e)
+        return None
+
+
 async def _discord_notify_new(t):
     if not (DISCORD_BOT_TOKEN and TICKETS_CHANNEL_ID):
         return
@@ -211,6 +345,7 @@ async def _discord_notify_new(t):
     fields = t.get("fields") or {}
     ev = fields.get("evidence") or ""
     link = f"{PUBLIC_URL}/soporte?t={t['id']}" if PUBLIC_URL else "Abrir en la web"
+    thread_id = await _discord_create_channel(f"ticket-{t['code']}")
     embed = {
         "title": f"NUEVO TICKET — {t['code']}",
         "color": 0x22C55E,
@@ -222,31 +357,110 @@ async def _discord_notify_new(t):
             {"name": "Servidor", "value": t.get("server_name") or "—", "inline": True},
             {"name": "Fecha/Hora", "value": f"{t.get('incident_date') or '—'} {t.get('incident_time') or ''}", "inline": True},
             {"name": "Descripción", "value": (t.get("description") or "—")[:1000], "inline": False},
+            {"name": "💬 Responder", "value": "Escribe en este hilo y tu respuesta le llegará al usuario en la web en tiempo real.", "inline": False},
         ],
         "footer": {"text": "La Isla Nublar · Soporte"},
     }
     if ev:
-        embed["fields"].append({"name": "Evidencias", "value": ev[:1000], "inline": False})
+        embed["fields"].insert(-1, {"name": "Evidencias", "value": ev[:1000], "inline": False})
+    target = thread_id or TICKETS_CHANNEL_ID
     content = f"🎫 **{t['code']}** · [Abrir Ticket en la Web]({link})"
-    try:
-        async with httpx.AsyncClient(timeout=8) as c:
-            await c.post(f"https://discord.com/api/v10/channels/{TICKETS_CHANNEL_ID}/messages",
-                         headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
-                         json={"content": content, "embeds": [embed]})
-    except Exception as e:
-        logger.warning("[tickets] discord notify: %r", e)
+    msg = await _discord_post(target, content=content, embeds=[embed])
+    upd = {}
+    if thread_id:
+        upd["discord_thread_id"] = thread_id
+    if msg and msg.get("id"):
+        upd["discord_opening_message_id"] = str(msg["id"])
+    if upd:
+        await _db.tickets.update_one({"id": t["id"]}, {"$set": upd})
+        t.update(upd)
 
 
-async def _discord_relay_message(t, author, text):
-    if not (DISCORD_BOT_TOKEN and TICKETS_CHANNEL_ID):
+async def _discord_relay_message(t, author, text, attachments=None):
+    """Reenvía a Discord un mensaje escrito desde la web (al canal del ticket)."""
+    if not DISCORD_BOT_TOKEN:
+        return
+    target = t.get("discord_thread_id")
+    if not target:
+        return
+    body = f"**{author}**: {text or ''}".rstrip()
+    for u in (attachments or []):
+        body += f"\n{u}"
+    await _discord_post(target, content=body or f"**{author}**: (sin texto)")
+
+
+# ─────────────── Discord Gateway (Discord -> Web) ───────────────
+_discord_client = None
+_discord_task = None
+
+
+def _build_discord_client():
+    import discord
+    intents = discord.Intents.default()
+    intents.message_content = True
+    client = discord.Client(intents=intents)
+
+    @client.event
+    async def on_ready():
+        logger.info("[tickets] Discord gateway conectado como %s", client.user)
+
+    @client.event
+    async def on_message(message):
+        try:
+            if client.user and message.author.id == client.user.id:
+                return
+            if getattr(message.author, "bot", False):
+                return
+            ch_id = str(getattr(message.channel, "id", "") or "")
+            if not ch_id:
+                return
+            t = await _db.tickets.find_one({"discord_thread_id": ch_id}, {"_id": 0})
+            if not t:
+                return
+            content = message.content or ""
+            atts = [a.url for a in message.attachments] if message.attachments else []
+            if not content and not atts:
+                return
+            did = str(message.id)
+            if await _db.ticket_messages.find_one({"discord_message_id": did}, {"_id": 1}):
+                return
+            avatar = ""
+            try:
+                avatar = str(message.author.display_avatar.url)
+            except Exception:
+                pass
+            author = {"id": None,
+                      "name": (getattr(message.author, "display_name", None) or getattr(message.author, "name", None) or "Staff"),
+                      "avatar": avatar}
+            await _add_message(t, author, content, role="staff", attachments=atts,
+                               origin="discord", discord_message_id=did)
+            await _log_event(t["id"], author["name"], "Respuesta desde Discord")
+        except Exception as e:
+            logger.warning("[tickets] on_message err: %r", e)
+
+    return client
+
+
+async def _discord_runner():
+    global _discord_client
+    if not DISCORD_BOT_TOKEN:
+        logger.info("[tickets] DISCORD_BOT_TOKEN ausente; gateway desactivado")
         return
     try:
-        async with httpx.AsyncClient(timeout=8) as c:
-            await c.post(f"https://discord.com/api/v10/channels/{TICKETS_CHANNEL_ID}/messages",
-                         headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
-                         json={"content": f"**{t['code']}** · {author}: {text[:1500]}"})
-    except Exception:
-        pass
+        _discord_client = _build_discord_client()
+        await _discord_client.start(DISCORD_BOT_TOKEN, reconnect=True)
+    except Exception as e:
+        logger.warning("[tickets] gateway detenido: %r", e)
+
+
+def start_discord_gateway():
+    global _discord_task
+    if _discord_task and not _discord_task.done():
+        return
+    try:
+        _discord_task = asyncio.create_task(_discord_runner())
+    except Exception as e:
+        logger.warning("[tickets] no se pudo iniciar el gateway: %r", e)
 
 
 def _can_view(t, user):
@@ -324,13 +538,14 @@ async def create_ticket(user, data):
     return pub
 
 
-async def _add_message(t, author, text, role="user", internal=False, attachments=None, origin="web", notify=True):
+async def _add_message(t, author, text, role="user", internal=False, attachments=None, origin="web", notify=True, discord_message_id=None):
     msg = {
         "id": _nid(), "ticket_id": t["id"],
         "author_id": author.get("id"), "author_name": author.get("name") or "?",
         "author_avatar": author.get("avatar") or "",
         "role": role, "text": _clean(text)[:4000], "internal": bool(internal),
         "attachments": attachments or [], "origin": origin,
+        "discord_message_id": discord_message_id,
         "created_at": _iso(), "read_by": [author.get("id")],
     }
     await _db.ticket_messages.insert_one(dict(msg))
@@ -342,8 +557,9 @@ async def _add_message(t, author, text, role="user", internal=False, attachments
         if internal:
             targets.discard(t["user_id"])
         await hub.send_many(list(targets), "message:new", {"ticket_id": t["id"], "message": msg})
-        if role == "user" and not internal:
-            await _discord_relay_message(t, author.get("name"), text)
+        # Reenvía a Discord SOLO lo escrito desde la web (evita bucle con mensajes de Discord)
+        if origin == "web" and not internal:
+            await _discord_relay_message(t, author.get("name"), text, attachments)
     return msg
 
 
@@ -404,6 +620,37 @@ async def _update_ticket(user, tid, changes, event_text):
     await hub.send_staff("ticket:updated", pub)
     await hub.send(t["user_id"], "ticket:updated", _pub_ticket(t2))
     return {"success": True, "ticket": pub}
+
+
+async def set_open_state(user, tid, closed):
+    """Cerrar / reabrir un ticket. Permitido al DUEÑO del ticket o al staff."""
+    t = await _db.tickets.find_one({"id": tid}, {"_id": 0})
+    if not t:
+        raise HTTPException(404, "Ticket no encontrado.")
+    is_owner = t.get("user_id") == user["id"]
+    if not (is_owner or _can_manage(t, user)):
+        raise HTTPException(403, "No tienes acceso a este ticket.")
+    new_status = "closed" if closed else "open"
+    if t.get("status") == new_status:
+        return {"success": True, "ticket": _pub_ticket(t, True)}
+    who = user.get("persona_name") or ("Staff" if _is_staff_fn(user) else "Usuario")
+    await _db.tickets.update_one({"id": tid}, {"$set": {"status": new_status, "updated_at": _iso(), "last_activity": _iso()}})
+    await _log_event(tid, who, "Ticket cerrado" if closed else "Ticket reabierto")
+    t2 = await _db.tickets.find_one({"id": tid}, {"_id": 0})
+    # Mensaje de sistema visible en el chat para ambas partes
+    sysmsg = {
+        "id": _nid(), "ticket_id": tid, "author_id": None,
+        "author_name": who, "author_avatar": "", "role": "system",
+        "text": f"🔒 {who} cerró el ticket." if closed else f"🔓 {who} reabrió el ticket.",
+        "internal": False, "attachments": [], "origin": "web",
+        "created_at": _iso(), "read_by": [],
+    }
+    await _db.ticket_messages.insert_one(dict(sysmsg))
+    targets = set([t["user_id"]]) | set(hub.staff)
+    await hub.send_many(list(targets), "message:new", {"ticket_id": tid, "message": sysmsg})
+    await hub.send_staff("ticket:updated", _pub_ticket(t2, True))
+    await hub.send(t["user_id"], "ticket:updated", _pub_ticket(t2))
+    return {"success": True, "ticket": _pub_ticket(t2, True)}
 
 
 async def staff_list(user, box="new", search="", limit=100):
@@ -487,10 +734,57 @@ def build_router(get_current_user, get_admin_user):
     async def message(tid: str, data: MessageIn, user=Depends(get_current_user)):
         return await post_message(user, tid, data.text, data.attachments, data.internal)
 
+    @router.post("/{tid}/upload")
+    async def upload_evidence(tid: str, file: UploadFile = File(...), user=Depends(get_current_user)):
+        t = await _db.tickets.find_one({"id": tid}, {"_id": 0})
+        if not t:
+            raise HTTPException(404, "Ticket no encontrado.")
+        if not _can_view(t, user):
+            raise HTTPException(403, "Sin acceso.")
+        fname = file.filename or ""
+        ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+        if ext not in UPLOAD_EXT:
+            raise HTTPException(400, "Tipo de archivo no permitido (imágenes o vídeos).")
+        data = await file.read()
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(400, "Archivo demasiado grande (máx 25 MB).")
+        if not data:
+            raise HTTPException(400, "Archivo vacío.")
+        fid = _nid()
+        ct = file.content_type or UPLOAD_MIME.get(ext, "application/octet-stream")
+        path = f"{STORAGE_APP}/tickets/{tid}/{fid}.{ext}"
+        res = await _storage_put(path, data, ct)
+        await _db.ticket_files.insert_one({
+            "id": fid, "ticket_id": tid, "user_id": user["id"],
+            "storage_path": res.get("path", path), "ext": ext, "content_type": ct,
+            "name": fname or f"{fid}.{ext}", "size": len(data),
+            "is_deleted": False, "created_at": _iso(),
+        })
+        base = PUBLIC_URL.rstrip("/") if PUBLIC_URL else ""
+        return {"url": f"{base}/api/tickets/files/{fid}.{ext}", "content_type": ct, "name": fname}
+
+    @router.get("/files/{fname}")
+    async def serve_file(fname: str):
+        fid = fname.rsplit(".", 1)[0]
+        rec = await _db.ticket_files.find_one({"id": fid, "is_deleted": False}, {"_id": 0})
+        if not rec:
+            raise HTTPException(404, "Archivo no encontrado.")
+        data, ct = await _storage_get(rec["storage_path"])
+        return Response(content=data, media_type=rec.get("content_type") or ct,
+                        headers={"Cache-Control": "public, max-age=86400"})
+
     @router.post("/{tid}/take")
     async def take(tid: str, user=Depends(get_current_user)):
         if not _is_staff_fn(user): raise HTTPException(403, "Solo staff.")
         return await _update_ticket(user, tid, {"assigned_to": user["id"], "assigned_name": user.get("persona_name"), "status": "in_process"}, f"{user.get('persona_name')} tomó el ticket")
+
+    @router.post("/{tid}/close")
+    async def close_ticket(tid: str, user=Depends(get_current_user)):
+        return await set_open_state(user, tid, True)
+
+    @router.post("/{tid}/reopen")
+    async def reopen_ticket(tid: str, user=Depends(get_current_user)):
+        return await set_open_state(user, tid, False)
 
     @router.post("/{tid}/update")
     async def update(tid: str, data: UpdateIn, user=Depends(get_current_user)):

@@ -61,6 +61,7 @@ function buildNav(user) {
         { to: "/proximity-voice", id: "proximity-voice", label: "Radio de Proximidad", icon: Radio, desc: "Voz por cercanía en el juego" },
         { to: "/bounty", id: "bounty", label: "Bounty Global", icon: Crosshair, desc: "Objetivo global ☠️ — elimínalo y gana" },
         { to: "/clanes", id: "clanes", label: "Clanes", icon: Shield, desc: "Funda tu clan, chatea y domina territorios" },
+        { to: "/soporte", id: "soporte", label: "Soporte", icon: Ticket, desc: "Abre un ticket y chatea con el staff en vivo" },
         { to: "/creator/dashboard", id: "creator", label: "Creators", icon: Video, desc: "Programa de creadores de contenido" },
         ...(user ? [{ to: "/skin-editor", id: "skin-lab", label: "Patreon", icon: Palette, desc: "Editor de skins para Patreons" }] : []),
       ],

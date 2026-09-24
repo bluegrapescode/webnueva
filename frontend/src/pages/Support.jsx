@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   LifeBuoy, Send, Paperclip, Search, Copy, Check, ChevronLeft, Plus, Shield,
-  AlertTriangle, Clock, User as UserIcon, MapPin, Tag, Lock, X, Loader2,
+  AlertTriangle, Clock, User as UserIcon, MapPin, Tag, Lock, X, Loader2, Link as LinkIcon,
 } from "lucide-react";
 import { api, ticketsWsUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -14,6 +14,7 @@ const STATUS = { open: "Abierto", in_process: "En proceso", waiting_user: "Esper
 const STAFF_BOXES = [["new", "Nuevos"], ["unassigned", "Sin asignar"], ["mine", "Mis tickets"], ["in_process", "En proceso"], ["waiting_user", "Esperando usuario"], ["resolved", "Resueltos"], ["closed", "Cerrados"]];
 const fmt = (iso) => { try { return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 const isImg = (u) => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u || "");
+const isVid = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u || "");
 
 function Copyable({ value, label, testid }) {
   const [ok, setOk] = useState(false);
@@ -39,11 +40,14 @@ export default function Support() {
   const [staffCounts, setStaffCounts] = useState({});
   const [staffOnline, setStaffOnline] = useState(0);
   const [search, setSearch] = useState("");
+  const [newKey, setNewKey] = useState(0);
   const [active, setActive] = useState(null);          // {ticket, messages, events, can_manage, is_staff}
   const wsRef = useRef(null);
   const activeIdRef = useRef(null);
+  const modeRef = useRef(mode);
 
   useEffect(() => { activeIdRef.current = active?.ticket?.id || null; }, [active]);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
 
   const loadList = useCallback(async () => {
     try { const { data } = await api.ticketMine(statusFilter || undefined); setTickets(data.tickets); } catch {}
@@ -55,10 +59,13 @@ export default function Support() {
   useEffect(() => { api.ticketConfig().then(({ data }) => { setCfg(data); setIsStaff(data.is_staff); }).catch(() => {}); }, []);
   useEffect(() => { if (mode === "list") loadList(); if (mode === "staff") loadStaff(); }, [mode, loadList, loadStaff]);
 
-  // WebSocket
+  // WebSocket — una sola conexión estable por sesión de usuario (depende solo de user?.id).
+  // Antes dependía de [user, mode] y reconectaba en cada cambio de balance/modo, dejando
+  // conexiones huérfanas que duplicaban/triplicaban los mensajes entrantes.
   useEffect(() => {
     let stop = false; let ws;
     const connect = () => {
+      if (stop) return;
       ws = new WebSocket(ticketsWsUrl()); wsRef.current = ws;
       ws.onmessage = (e) => {
         let m; try { m = JSON.parse(e.data); } catch { return; }
@@ -68,9 +75,9 @@ export default function Support() {
           if (data.ticket_id === activeIdRef.current) {
             setActive((a) => a ? { ...a, messages: [...a.messages.filter((x) => x.id !== data.message.id), data.message] } : a);
           }
-          if (data.message.author_id !== user?.id) play?.("ticketMsg");
+          if (data.message.author_id && data.message.author_id !== user?.id) play?.("ticketMsg");
         }
-        else if (event === "ticket:created") { play?.("ticketNew"); setTickets((t) => (mode === "staff" ? [data, ...t.filter((x) => x.id !== data.id)] : t)); }
+        else if (event === "ticket:created") { play?.("ticketNew"); setTickets((t) => (modeRef.current === "staff" ? [data, ...t.filter((x) => x.id !== data.id)] : t)); }
         else if (event === "ticket:updated") {
           setTickets((t) => t.map((x) => x.id === data.id ? data : x));
           setActive((a) => a && a.ticket.id === data.id ? { ...a, ticket: { ...a.ticket, ...data } } : a);
@@ -82,7 +89,7 @@ export default function Support() {
     };
     connect();
     return () => { stop = true; try { ws && ws.close(); } catch {} };
-  }, [user, mode]);  // eslint-disable-line
+  }, [user?.id]);  // eslint-disable-line
 
   const [typing, setTyping] = useState(null);
   const wsSend = (event, data) => { try { wsRef.current?.readyState === 1 && wsRef.current.send(JSON.stringify({ event, data })); } catch {} };
@@ -101,11 +108,11 @@ export default function Support() {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-400/30 rounded-full px-3 py-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> {staffOnline} Staff Online</span>
           {isStaff && <button data-testid="staff-mode-toggle" onClick={() => { setMode(mode === "staff" ? "list" : "staff"); setActive(null); }} className={`text-xs font-black uppercase rounded-lg px-3 py-2 border transition ${mode === "staff" ? "bg-amber-500/20 text-amber-300 border-amber-400/50" : "bg-white/5 text-white/60 border-white/10"}`}><Shield size={13} className="inline mr-1" /> Panel Staff</button>}
-          <button data-testid="new-ticket-btn" onClick={() => { setMode("new"); setActive(null); }} className="text-xs font-black uppercase rounded-lg px-3 py-2 bg-emerald-500 text-black hover:brightness-110"><Plus size={14} className="inline mr-1" /> Nuevo ticket</button>
+          <button data-testid="new-ticket-btn" onClick={() => { setMode("new"); setActive(null); setNewKey((k) => k + 1); }} className="text-xs font-black uppercase rounded-lg px-3 py-2 bg-emerald-500 text-black hover:brightness-110"><Plus size={14} className="inline mr-1" /> Nuevo ticket</button>
         </div>
       </div>
 
-      {mode === "new" ? <NewTicket cfg={cfg} onDone={(t) => { setMode("list"); openTicket(t.id); play?.("ticketNew"); }} onCancel={() => setMode("list")} />
+      {mode === "new" ? <NewTicket key={newKey} cfg={cfg} onDone={(t) => { setMode("list"); openTicket(t.id); play?.("ticketNew"); }} onCancel={() => setMode("list")} />
         : (
           <div className="grid lg:grid-cols-[300px_1fr] gap-4">
             {/* Izquierda: lista/colas */}
@@ -200,6 +207,8 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
   const [atts, setAtts] = useState([]);
   const [internal, setInternal] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  const fileRef = useRef(null);
   const endRef = useRef(null);
   const typingTO = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [data.messages.length]);
@@ -210,15 +219,31 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
     setBusy(true);
     try {
       const { data: r } = await api.ticketMessage(t.id, body, atts, internal);
-      setActive((a) => ({ ...a, messages: [...a.messages, r.message] }));
+      setActive((a) => a ? { ...a, messages: [...a.messages.filter((x) => x.id !== r.message.id), r.message] } : a);
       setText(""); setAtts([]); wsSend("typing:stop", { ticket_id: t.id });
     } catch (e) { toast.error(e?.response?.data?.detail || "No se pudo enviar"); }
     finally { setBusy(false); }
   };
   const onType = (v) => { setText(v); wsSend("typing:start", { ticket_id: t.id }); clearTimeout(typingTO.current); typingTO.current = setTimeout(() => wsSend("typing:stop", { ticket_id: t.id }), 1500); };
   const addLink = () => { const u = window.prompt("Pega el enlace de la evidencia (imagen, clip, vídeo, link):"); if (u && /^https?:\/\//i.test(u)) setAtts((a) => [...a, u.trim()]); else if (u) toast.error("Debe empezar por http(s)://"); };
+  const onFile = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = "";
+    if (!f) return;
+    if (f.size > 25 * 1024 * 1024) { toast.error("Archivo demasiado grande (máx 25 MB)."); return; }
+    setUploading(1);
+    try {
+      const { data } = await api.ticketUpload(t.id, f, (p) => setUploading(Math.max(1, p)));
+      setAtts((a) => [...a, data.url]);
+      toast.success("Archivo subido");
+    } catch (err) { toast.error(err?.response?.data?.detail || "No se pudo subir el archivo"); }
+    finally { setUploading(0); }
+  };
   const doUpdate = async (changes, sound) => { try { await api.ticketUpdate(t.id, changes); if (sound) play?.(sound); onChanged?.(); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const take = async () => { try { await api.ticketTake(t.id); play?.("ticketMsg"); onChanged?.(); } catch (e) { toast.error("Error"); } };
+  const closeTicket = async () => { try { await api.ticketClose(t.id); play?.("ticketMsg"); onChanged?.(); toast.success("Ticket cerrado"); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
+  const reopenTicket = async () => { try { await api.ticketReopen(t.id); play?.("ticketMsg"); onChanged?.(); toast.success("Ticket reabierto"); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
+  const isOwner = t.user_id === user?.id;
+  const canToggle = isOwner || data.can_manage;
 
   const cat = cfg.categories.find((c) => c.id === t.category);
 
@@ -230,9 +255,19 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
           <button className="lg:hidden text-white/50" onClick={() => setActive(null)}><ChevronLeft size={18} /></button>
           <div className="min-w-0 flex-1"><p className="font-black text-white truncate">{cat?.emoji} {t.subject}</p><p className="text-[11px] text-white/45 font-mono">{t.code} · {STATUS[t.status]}</p></div>
           <span className="text-[11px] font-bold px-2 py-1 rounded" style={{ color: PRIORITY[t.priority]?.color, background: `${PRIORITY[t.priority]?.color}22` }}>{PRIORITY[t.priority]?.label}</span>
+          {canToggle && (t.status === "closed"
+            ? <button data-testid="reopen-ticket" onClick={reopenTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/25 transition"><Check size={13} /> Reabrir</button>
+            : <button data-testid="close-ticket" onClick={closeTicket} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black uppercase rounded-lg px-2.5 py-1.5 bg-red-500/15 text-red-300 border border-red-400/40 hover:bg-red-500/25 transition"><Lock size={13} /> Cerrar</button>)}
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3" data-testid="ticket-messages">
           {data.messages.map((m) => {
+            if (m.role === "system") {
+              return (
+                <div key={m.id} className="flex justify-center my-1" data-testid="system-message">
+                  <span className="text-[11px] text-white/50 bg-white/5 border border-white/10 rounded-full px-3 py-1">{m.text} · <span className="font-mono text-white/35">{fmt(m.created_at)}</span></span>
+                </div>
+              );
+            }
             const mine = m.author_id === user?.id;
             return (
               <div key={m.id} className={`flex gap-2.5 ${mine ? "flex-row-reverse" : ""}`}>
@@ -241,6 +276,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
                   <div className={`flex items-center gap-1.5 mb-1 ${mine ? "flex-row-reverse" : ""}`}>
                     <span className="text-[12px] font-bold text-white/85">{mine ? "Tú" : m.author_name}</span>
                     {m.role === "staff" && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300">Staff</span>}
+                    {m.origin === "discord" && <span data-testid="discord-badge" className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-indigo-400/20 text-indigo-300">Discord</span>}
                     <span className="text-[10px] text-white/40 font-mono">{fmt(m.created_at)}</span>
                   </div>
                   {m.internal ? (
@@ -250,6 +286,8 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
                       {m.text && <p className="text-sm text-white/90 whitespace-pre-wrap break-words">{m.text}</p>}
                       {(m.attachments || []).map((u, i) => isImg(u)
                         ? <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" className="mt-1.5 rounded-lg max-h-48 border border-white/10" /></a>
+                        : isVid(u)
+                        ? <video key={i} data-testid="attachment-video" src={u} controls className="mt-1.5 rounded-lg max-h-56 max-w-full border border-white/10" />
                         : <a key={i} data-testid="attachment-link" href={u} target="_blank" rel="noreferrer" className="mt-1 block text-sky-300 text-xs underline break-all">🔗 {u}</a>)}
                     </div>
                   )}
@@ -262,10 +300,13 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
         </div>
         {t.status !== "closed" && (
           <div className="p-3 border-t border-white/10">
-            {atts.length > 0 && <div className="flex flex-wrap gap-1.5 mb-2">{atts.map((u, i) => <span key={i} className="text-[11px] bg-white/10 rounded px-2 py-1 flex items-center gap-1 max-w-[200px]"><span className="truncate">{u}</span><button onClick={() => setAtts(atts.filter((_, j) => j !== i))}><X size={11} /></button></span>)}</div>}
+            {atts.length > 0 && <div className="flex flex-wrap gap-1.5 mb-2">{atts.map((u, i) => <span key={i} className="text-[11px] bg-white/10 rounded px-2 py-1 flex items-center gap-1 max-w-[200px]"><span className="truncate">{isImg(u) ? "🖼️" : isVid(u) ? "🎬" : "🔗"} {u.split("/").pop()}</span><button onClick={() => setAtts(atts.filter((_, j) => j !== i))}><X size={11} /></button></span>)}</div>}
+            {uploading > 0 && <div className="mb-2" data-testid="upload-progress"><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-emerald-400 transition-all" style={{ width: `${uploading}%` }} /></div><p className="text-[10px] text-white/50 mt-1">Subiendo… {uploading}%</p></div>}
             {isStaff && data.can_manage && <label className="flex items-center gap-1.5 text-[11px] text-white/60 mb-2 cursor-pointer"><input data-testid="internal-toggle" type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} /> Nota interna (solo staff)</label>}
+            <input ref={fileRef} type="file" accept="image/*,video/*" onChange={onFile} className="hidden" data-testid="file-input" />
             <div className="flex items-center gap-2">
-              <button data-testid="attach-btn" onClick={addLink} className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5"><Paperclip size={17} /></button>
+              <button data-testid="upload-btn" onClick={() => fileRef.current?.click()} disabled={uploading > 0} title="Subir imagen o vídeo" className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-40">{uploading > 0 ? <Loader2 size={17} className="animate-spin" /> : <Paperclip size={17} />}</button>
+              <button data-testid="attach-link-btn" onClick={addLink} title="Adjuntar enlace" className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5"><LinkIcon size={16} /></button>
               <input data-testid="ticket-input" value={text} onChange={(e) => onType(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={internal ? "Escribe una nota interna…" : "Escribe un mensaje…"} className="flex-1 text-sm bg-black/40 border border-white/12 rounded-lg px-3 py-2.5 text-white/90 outline-none focus:border-emerald-400/50" />
               <button data-testid="ticket-send" disabled={busy} onClick={send} className="px-4 py-2.5 rounded-lg text-black font-bold disabled:opacity-50" style={{ background: internal ? "#F59E0B" : "#22C55E" }}><Send size={16} /></button>
             </div>

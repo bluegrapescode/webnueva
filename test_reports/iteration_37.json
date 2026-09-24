@@ -1,0 +1,34 @@
+{
+  "summary": "Phase 1 tickets/support system tested end-to-end. Backend pytest suite (24 tests) covering config, dynamic categories, create+validation+cooldown+429, GET persistence, message + internal-note, staff take/update priority/status, audit-log, staff-list boxes+counts+search, 404 and unauth 401 — all 24 passed. Frontend /soporte flow verified with the demo (admin) user: staff toggle visible, category picker with all 7 categories, dynamic forms (general, report_player, appeal->sanction_type, patreon->discord_user), ticket creation opening chat, WebSocket connect, staff panel with all 7 boxes+counts, ticket detail view showing chat bubbles (STAFF/tú), internal-note (amber), audit-log with 5 chronological events, priority/status selectors persist, copy-steamid present, no horizontal overflow, no console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_tickets.py",
+    "/app/test_reports/pytest/pytest_tickets.xml"
+  ],
+  "action_items": [
+    "(Nice-to-have UX) In the 'new ticket' flow, clicking 'Nuevo ticket' again while already in new-mode with a selected category does NOT reset the picker — the user must click 'Cambiar categoría' to switch. Consider having 'Nuevo ticket' always reset selected category to null so users can switch categories in one click."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/tickets.py TicketHub is a process-local in-memory set. In a multi-worker deployment (uvicorn --workers >1 or gunicorn), staff-broadcast, typing and 'viewing' events won't reach clients connected to a different worker. Consider Redis pub/sub or single-worker deployment.",
+    "_create_cooldown is an in-memory dict without eviction — grows unbounded over time. Add a periodic prune or use a small LRU/TTL structure.",
+    "staff_list search branch: `q = {'$and': [q, {'$or': [...]}]} if q else {'$or': []}` — if the initial `q` is empty (which currently only happens if box is not one of the known values), it falls into `{'$or': []}` which Mongo treats as always-false. Not a live bug (box has defaults) but the fallback is confusing; use `q = {'$or': [...]}` when there's no scope filter.",
+    "post_message: internal check runs `_can_manage` first but for a non-internal message from a non-staff user, `_can_view` is validated only in the else branch — the current control flow is correct but reads as if staff bypass view checks entirely. Add explicit comment.",
+    "_pub_ticket ignores the `is_staff` parameter — every field (including fields dict which may hold personal data such as steam_id / reported_player) is sent to both regular users and staff. This is fine here because only the ticket owner or staff can call get_ticket, but the boolean param is misleading — either remove it or actually strip staff-only fields when False.",
+    "get_config: DEFAULT_CATEGORIES / DEFAULT_SERVERS objects are shared by reference across requests when no override exists in DB; admin_save + get_config paths are OK, but if any code mutates the returned dict it will pollute the defaults. Return copies (copy.deepcopy) to be safe.",
+    "WebSocket handler accepts the socket before checking the JWT. Anonymous (uid=None) sockets can still hold a connection and receive nothing but keep resources alive. Consider closing with 4401 if no valid token when the route is meant to be authenticated.",
+    "Frontend Support.jsx clicking 'Nuevo ticket' while a category is already selected keeps the previous category form (minor UX)."
+  ],
+  "updated_files": ["/app/backend/tests/test_tickets.py"],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% for all requested flows"},
+  "test_credentials": "POST /api/auth/demo -> JWT; localStorage.primal_token; demo user role=admin (is_staff true).",
+  "seed_data_creation": "Created 1 test ticket (#NBL-28388, category=general, subject/description prefixed TEST_) with 2 messages (public + internal note); status ended as 'resolved', priority 'urgente'. Kept for inspection — safe to leave, or delete via Mongo tickets/{code:'#NBL-28388'} if cleanup desired.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend: pytest /app/backend/tests/test_tickets.py -v (24 tests, ~32s). Cooldown is 12s per user so tests use `time.sleep(13)` before each real create. Test ticket #NBL-28388 already exists; picking a fresh 'general' subject is fine as long as you sleep. Frontend testids validated: support-page, staff-mode-toggle, new-ticket-btn, category-picker, cat-{general,report_staff,report_player,appeal,membership,patreon,battlepass}, ticket-form, field-<key>, submit-ticket, ticket-list, staff-search, box-{new,unassigned,mine,in_process,waiting_user,resolved,closed}, filter-{all,open,in_process,resolved,closed}, ticket-item-<id>, ticket-chat, ticket-messages, typing-indicator, internal-toggle, ticket-input, ticket-send, attach-btn, attachment-link, internal-note, ticket-info, copy-{steamid,server,incident}, staff-actions, take-ticket, set-priority, set-status, audit-log. WS path /api/tickets/ws?token=<jwt>. Discord notify is no-op (no TICKETS_DISCORD_CHANNEL_ID).",
+  "rca_of_the_issue": "N/A — no defects. Only a small UX/code-quality list above."
+}

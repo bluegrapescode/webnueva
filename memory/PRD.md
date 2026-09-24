@@ -506,3 +506,18 @@ Verificado por testing_agent (iteration_36.json): backend 7/7, frontend 100%.
 **Diferido**: subida de imágenes en el chat (requiere integración de object storage) — pendiente para próxima iteración.
 Nota: mini-mapa refleja el estado real de turf (demo clan no posee zonas en el sim → "0 de 10"); el banner muestra 3 vía `territories_display`.
 
+
+## 2026-06-24 — NUEVO: Sistema de Tickets/Soporte en tiempo real (Fase 1)
+Verificado por testing_agent (iteration_37.json): **backend 24/24, frontend 100%**, sin bugs.
+**Backend** `/app/backend/tickets.py` (registrado en server.py ~19000, `tickets.configure(...)` + `build_router` + `ensure_indexes` en startup):
+- Colecciones: `tickets`, `ticket_messages`, `ticket_events` (auditoría), `ticket_config` (servers/categorías editables desde Admin).
+- Endpoints `/api/tickets`: GET /config, POST "" (crear, valida required por categoría, cooldown 12s, máx 8 abiertos, código #NBL-xxxxx), GET /mine, GET /staff?box&search, GET /{id}, POST /{id}/message (text+attachments URLs+internal), /{id}/take, /{id}/update (priority/status/category/assigned_to), Admin GET/PUT /admin/config, GET /admin/by-steam/{steam_id}, WS /ws.
+- WS `TicketHub`: eventos ticket:created/updated, message:new, typing:start/stop, staff:viewing, message:read, presencia staff_online. Auth por token (jwt) en query, patrón igual a clans.
+- Discord: `_discord_notify_new` (embed con botón "Abrir en la web") + `_discord_relay_message` (Web→Discord). No-op si falta `TICKETS_DISCORD_CHANNEL_ID`/`DISCORD_BOT_TOKEN`. Discord→Web = Fase 2.
+- Permisos: usuario solo ve sus tickets; staff (role admin / staff_rank owner/admin/mod/helper) gestiona; el staff reportado NO accede a su propio reporte (`_can_view/_can_manage`).
+- 7 categorías con formularios dinámicos (schema `fields`): general, report_staff, report_player, appeal, membership, patreon, battlepass. 3 servidores demo.
+**Frontend** `/app/frontend/src/pages/Support.jsx` (ruta `/soporte` en App.js, enlace en Navbar → Comunidad → Soporte):
+- 3 paneles: lista/colas (izq) · chat Messenger (centro) · info del ticket (der con copiar SteamID/Servidor/Fecha).
+- Selector de categoría → formulario dinámico → crear. "Mis Tickets" con filtros. Panel Staff (colas + contadores + búsqueda + tomar/prioridad/estado + notas internas + auditoría). Chat en vivo por WS con indicador de escritura, mensajes propios a la derecha, evidencias por URL (preview de imágenes). Sonidos `ticketNew/ticketMsg/ticketUrgent` en sounds.js. `ticketsWsUrl` + métodos en api.js.
+**Diferido a Fase 2**: Discord→Web (staff responde desde Discord, requiere bot gateway con intent Message Content), subida real de archivos (object storage), hilo/canal por ticket.
+

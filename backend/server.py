@@ -19638,6 +19638,11 @@ async def on_startup():
         await tickets.ensure_indexes()
     except Exception:
         logger.warning("[tickets] startup init skipped", exc_info=True)
+    # Soporte: arranca el gateway de Discord (Discord -> Web) si hay bot token.
+    try:
+        tickets.start_discord_gateway()
+    except Exception:
+        logger.warning("[tickets] discord gateway start skipped", exc_info=True)
     # Turf Wars (⚔️): seed de zonas/rivales + arranque del motor de captura.
     try:
         turfwars.start_loops()

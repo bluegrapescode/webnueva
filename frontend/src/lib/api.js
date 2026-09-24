@@ -592,8 +592,19 @@ export const api = {
   ticketStaff:     (box = "new", search = "") => client.get(`/tickets/staff?box=${box}&search=${encodeURIComponent(search)}`),
   ticketGet:       (id) => client.get(`/tickets/${id}`),
   ticketMessage:   (id, text, attachments = [], internal = false) => client.post(`/tickets/${id}/message`, { text, attachments, internal }),
+  ticketUpload:    (id, file, onProgress) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return client.post(`/tickets/${id}/upload`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 120000,
+      onUploadProgress: (e) => { if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100)); },
+    });
+  },
   ticketTake:      (id) => client.post(`/tickets/${id}/take`),
   ticketUpdate:    (id, changes) => client.post(`/tickets/${id}/update`, changes),
+  ticketClose:     (id) => client.post(`/tickets/${id}/close`),
+  ticketReopen:    (id) => client.post(`/tickets/${id}/reopen`),
 
   clanChatSend:     (text, channel = "clan") => client.post("/clans/chat", { text, channel }),
   clanAnnouncement: (text) => client.post("/clans/announcement", { text }),
