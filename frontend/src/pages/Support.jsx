@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   LifeBuoy, Send, Paperclip, Search, Copy, Check, ChevronLeft, Plus, Shield,
-  AlertTriangle, Clock, User as UserIcon, MapPin, Tag, Lock, X, Loader2, Link as LinkIcon,
+  AlertTriangle, Clock, User as UserIcon, MapPin, Tag, Lock, X, Loader2, Link as LinkIcon, Play,
 } from "lucide-react";
 import { api, ticketsWsUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -25,6 +25,40 @@ function Copyable({ value, label, testid }) {
       <div className="min-w-0"><p className="text-[10px] uppercase tracking-wide text-white/45">{label}</p><p className="text-sm font-mono text-white/90 truncate">{value}</p></div>
       {ok ? <Check size={15} className="text-emerald-400 shrink-0" /> : <Copy size={15} className="text-white/40 group-hover:text-white shrink-0" />}
     </button>
+  );
+}
+
+function LinkPreview({ url }) {
+  const [d, setD] = useState(undefined);
+  useEffect(() => {
+    let ok = true;
+    api.ticketLinkPreview(url).then(({ data }) => { if (ok) setD(data); }).catch(() => { if (ok) setD(null); });
+    return () => { ok = false; };
+  }, [url]);
+  let host = url;
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch {}
+  const isVideo = !!(d && d.video) || /youtube|youtu\.be|streamable|medal\.tv|twitch\.tv|clips\.twitch/i.test(url);
+  if (d === undefined) return <div data-testid="link-preview-loading" className="mt-1.5 w-full max-w-[320px] h-40 rounded-xl bg-white/5 animate-pulse" />;
+  if (!d || (!d.image && !d.title)) {
+    return <a href={url} target="_blank" rel="noreferrer" className="mt-1 block text-sky-300 text-xs underline break-all">🔗 {url}</a>;
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" data-testid="link-preview" className="mt-1.5 block w-full max-w-[320px] rounded-xl overflow-hidden border border-white/10 bg-black/30 hover:border-emerald-400/50 transition group">
+      {d.image && (
+        <div className="relative">
+          <img src={d.image} alt="" className="w-full max-h-44 object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          {isVideo && (
+            <span className="absolute inset-0 grid place-items-center bg-black/25 group-hover:bg-black/10 transition">
+              <span className="h-12 w-12 rounded-full bg-black/60 border border-white/30 grid place-items-center group-hover:scale-110 transition"><Play size={22} className="text-white translate-x-0.5" fill="white" /></span>
+            </span>
+          )}
+        </div>
+      )}
+      <div className="p-2.5">
+        <p className="text-[10px] uppercase tracking-wide text-white/40">{d.site || host}</p>
+        <p className="text-xs font-bold text-white/90 mt-0.5" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.title || url}</p>
+      </div>
+    </a>
   );
 }
 
@@ -288,7 +322,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
                         ? <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" className="mt-1.5 rounded-lg max-h-48 border border-white/10" /></a>
                         : isVid(u)
                         ? <video key={i} data-testid="attachment-video" src={u} controls className="mt-1.5 rounded-lg max-h-56 max-w-full border border-white/10" />
-                        : <a key={i} data-testid="attachment-link" href={u} target="_blank" rel="noreferrer" className="mt-1 block text-sky-300 text-xs underline break-all">🔗 {u}</a>)}
+                        : <LinkPreview key={i} url={u} />)}
                     </div>
                   )}
                 </div>

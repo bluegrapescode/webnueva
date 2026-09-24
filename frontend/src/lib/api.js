@@ -601,6 +601,7 @@ export const api = {
       onUploadProgress: (e) => { if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100)); },
     });
   },
+  ticketLinkPreview: (url) => client.get(`/tickets/link-preview?url=${encodeURIComponent(url)}`),
   ticketTake:      (id) => client.post(`/tickets/${id}/take`),
   ticketUpdate:    (id, changes) => client.post(`/tickets/${id}/update`, changes),
   ticketClose:     (id) => client.post(`/tickets/${id}/close`),

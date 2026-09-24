@@ -74,6 +74,7 @@ async def _storage_get(path):
 STATUSES = ["open", "in_process", "waiting_user", "resolved", "closed"]
 PRIORITIES = ["normal", "media", "alta", "urgente"]
 _create_cooldown = {}  # user_id -> ts
+_link_cache = {}       # url -> (ts, data)  cache en memoria para previews de enlaces
 
 DEFAULT_SERVERS = [
     {"id": "isla-nublar-x3", "name": "LA ISLA NUBLAR - X3 - SEMI-REALISMO - VC - ESP/LATAM"},
@@ -725,6 +726,43 @@ def build_router(get_current_user, get_admin_user):
     @router.get("/staff")
     async def staff(box: str = "new", search: str = "", user=Depends(get_current_user)):
         return await staff_list(user, box, search)
+
+    @router.get("/link-preview")
+    async def link_preview(url: str, user=Depends(get_current_user)):
+        u = (url or "").strip()
+        if not re.match(r"^https?://", u, re.I):
+            raise HTTPException(400, "URL inválida.")
+        now = time.time()
+        hit = _link_cache.get(u)
+        if hit and now - hit[0] < 3600:
+            return hit[1]
+        data = {"url": u, "title": None, "image": None, "video": None, "site": None, "description": None}
+
+        def _meta(html, prop):
+            m = re.search(r'<meta[^>]+(?:property|name)=["\']' + re.escape(prop) + r'["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
+            if not m:
+                m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']' + re.escape(prop) + r'["\']', html, re.I)
+            return m.group(1).strip() if m else None
+
+        try:
+            async with httpx.AsyncClient(timeout=8, follow_redirects=True, max_redirects=4,
+                                         headers={"User-Agent": "Mozilla/5.0 (compatible; LaIslaNublarBot/1.0; +https://laislanublar.net)"}) as c:
+                r = await c.get(u)
+                if "text/html" in (r.headers.get("content-type") or ""):
+                    html = r.text[:2500000]
+                    title = _meta(html, "og:title") or _meta(html, "twitter:title")
+                    if not title:
+                        tm = re.search(r"<title[^>]*>([^<]{1,300})</title>", html, re.I)
+                        title = tm.group(1).strip() if tm else None
+                    data["title"] = title
+                    data["image"] = _meta(html, "og:image") or _meta(html, "og:image:url") or _meta(html, "twitter:image") or _meta(html, "twitter:image:src")
+                    data["video"] = _meta(html, "og:video") or _meta(html, "og:video:url") or _meta(html, "og:video:secure_url")
+                    data["site"] = _meta(html, "og:site_name")
+                    data["description"] = _meta(html, "og:description")
+        except Exception as e:
+            logger.info("[tickets] link-preview %r: %r", u, e)
+        _link_cache[u] = (now, data)
+        return data
 
     @router.get("/{tid}")
     async def one(tid: str, user=Depends(get_current_user)):
