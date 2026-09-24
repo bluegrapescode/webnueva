@@ -75,6 +75,20 @@ async def _storage_get(path):
 
 STATUSES = ["open", "in_process", "waiting_user", "resolved", "closed"]
 PRIORITIES = ["normal", "media", "alta", "urgente"]
+# Prioridad por defecto según la gravedad de la categoría (reportes=rojo, apelación=amarillo, preguntas=verde)
+CAT_PRIORITY = {
+    "report_staff": "urgente", "report_player": "urgente",
+    "appeal": "media",
+    "general": "normal", "membership": "normal", "patreon": "normal", "battlepass": "normal",
+}
+
+
+def _default_priority(cat_id):
+    return CAT_PRIORITY.get(cat_id, "normal")
+
+
+def _is_img_url(u):
+    return bool(re.search(r"\.(png|jpe?g|gif|webp)(\?|$)", str(u or ""), re.I))
 _create_cooldown = {}  # user_id -> ts
 _link_cache = {}       # url -> (ts, data)  cache en memoria para previews de enlaces
 
@@ -539,17 +553,36 @@ async def _discord_notify_new(t, welcome_text=""):
         t.update(upd)
 
 
-async def _discord_relay_message(t, author, text, attachments=None):
-    """Reenvía a Discord un mensaje escrito desde la web (al canal del ticket)."""
+async def _discord_relay_message(t, author, text, attachments=None, role="user"):
+    """Reenvía a Discord un mensaje escrito desde la web (al canal del ticket), con estilo (embed)."""
     if not DISCORD_BOT_TOKEN:
         return
     target = t.get("discord_thread_id")
     if not target:
         return
-    body = f"**{author}**: {text or ''}".rstrip()
-    for u in (attachments or []):
-        body += f"\n{u}"
-    await _discord_post(target, content=body or f"**{author}**: (sin texto)")
+    a = author or {}
+    name = a.get("name") or "Usuario"
+    avatar = a.get("avatar") or ""
+    avatar = avatar if isinstance(avatar, str) and avatar.startswith("http") else None
+    is_staff = role == "staff"
+    atts = attachments or []
+    imgs = [u for u in atts if _is_img_url(u)]
+    others = [u for u in atts if not _is_img_url(u)]
+    desc = text or ""
+    if others:
+        desc += ("\n\n" if desc else "") + "\n".join(f"🔗 {u}" for u in others)
+    if len(imgs) > 1:
+        desc += ("\n\n" if desc else "") + "\n".join(imgs[1:])
+    embed = {
+        "author": {"name": f"{name}{'  ·  Staff' if is_staff else ''}", **({"icon_url": avatar} if avatar else {})},
+        "description": (desc or "*(sin texto)*")[:4000],
+        "color": 0x5865F2 if is_staff else 0x22C55E,
+        "footer": {"text": "💬 Respuesta del staff" if is_staff else "📨 Mensaje del usuario (web)"},
+        "timestamp": _iso(),
+    }
+    if imgs:
+        embed["image"] = {"url": imgs[0]}
+    await _discord_post(target, embeds=[embed])
 
 
 # ─────────────── Discord Gateway (Discord -> Web) ───────────────
@@ -707,7 +740,7 @@ async def create_ticket(user, data):
         "server": sid or "", "server_name": server_name,
         "incident_date": fields.get("incident_date") or "",
         "incident_time": fields.get("incident_time") or "",
-        "priority": "normal", "status": "open",
+        "priority": _default_priority(data.category), "status": "open",
         "assigned_to": None, "assigned_name": None,
         "reported_staff_id": None,
         "fields": fields,
@@ -751,7 +784,7 @@ async def _add_message(t, author, text, role="user", internal=False, attachments
         await hub.send_many(list(targets), "message:new", {"ticket_id": t["id"], "message": msg})
         # Reenvía a Discord SOLO lo escrito desde la web (evita bucle con mensajes de Discord)
         if origin == "web" and not internal:
-            await _discord_relay_message(t, author.get("name"), text, attachments)
+            await _discord_relay_message(t, author, text, attachments, role)
     return msg
 
 
