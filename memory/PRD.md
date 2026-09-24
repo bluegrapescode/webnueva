@@ -449,3 +449,12 @@ El usuario pidió: quitar la barra de tabs superior (redundante con el sidebar) 
 - ClansInner ahora tiene FONDO DE PÁGINA a pantalla completa (capa -z-10 sticky con PAGE_BG opacity .28 + overlays oscuros + glow verde). El hub va encima, como el mockup.
 - Verificado por screenshot: banner y T-Rex son los assets del usuario; el hub se ve sobre el fondo de selva.
 - Assets adicionales disponibles en el sheet para futuro (badges de rango en dorado/verde/púrpura/rojo, marcos hexagonales, texturas de botón con garras, banderas, huevo) si se quiere reemplazar iconos por sprites.
+
+
+## 2026-06-24 — Clan Hub match 1:1 con mockup BLUECITO (fondo bosque)
+- **Fondo de bosque**: nuevo `/app/frontend/public/clan/forestbg.jpg` (imagen del usuario, panorámica selva/volcán). Aplicado como fondo `fixed` a pantalla completa en `ClansInner` (opacity 0.6) con vignette radial + sombras laterales para dejar el follaje visible en los bordes y HUD legible. Reemplaza el antiguo `pagebg.jpg` (tira tenue).
+- **Barra de pestañas horizontal** (según mockup) añadida en `Hub` bajo el banner: Resumen, Miembros, Chat, Invitaciones, Rangos, Territorios, Turf Wars, Estadísticas, Configuración. Pestaña por defecto = Chat. `data-testid` `clan-top-tabs` / `toptab-*`. Sidebar izquierdo "Mi Clan" ahora mapea a `chat`.
+- **Datos demo del clan TEST (Escuadron Prueba)** poblados vía `/app/backend/_seed_clan_demo.py` (idempotente): ranks de colores (Comandante morado, Veterano azul, Oficial morado, Cazador verde, Miembro), 7 miembros, chat de conversación del mockup, 3 invitaciones pendientes (TTV_Killer/ShadowPR/RaptorQueen), 2 solicitudes (CrosFight/Zylux), pool de invitables con estados (En línea/En partida/Ausente). Nivel 12 (notoriety 74450 → 8450/12000 XP), idioma Español, tipo PvP/Territorios.
+- **Turf Wars fix (anti-spam de chat)**: en `turfwars.py::_compute_presence` los clanes de jugadores (con `leader_id`) YA NO participan de la simulación pasiva; solo entran al hacer rally. Las IA (ALBA/OBSD/CNBR) siguen peleando entre sí. Esto evita que el chat del clan del jugador se inunde de "Capturamos/Perdimos".
+- Verificado por screenshots: desktop 1536/1920 y móvil 390. Pendiente verificación visual final del usuario.
+

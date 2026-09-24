@@ -167,19 +167,25 @@ async def _compute_presence(zone_ids, s):
         except Exception:
             logger.warning("[turf] presence provider failed; usando simulación", exc_info=True)
     # Simulación estable por ventanas.
-    clans = await _db.clans.find({}, {"_id": 0, "id": 1, "member_count": 1}).to_list(300)
+    clans = await _db.clans.find({}, {"_id": 0, "id": 1, "member_count": 1, "leader_id": 1}).to_list(300)
     now = time.time()
     window = int(now // max(15, s["deploy_window"]))
     out = {}
     for c in clans:
         cid = c["id"]
+        # Los clanes de jugadores (con líder) NO participan de la simulación pasiva:
+        # solo entran a disputar zonas cuando hacen rally. Así su chat no se inunda de
+        # capturas automáticas. Los clanes IA (sin líder) siguen peleando entre sí.
+        if c.get("leader_id"):
+            continue
         mc = max(1, int(c.get("member_count", 1)))
         rng = random.Random(f"{cid}:{window}")
         k = rng.randint(1, min(3, len(zone_ids)))
         for zid in rng.sample(zone_ids, k):
             push = rng.randint(1, max(1, min(mc, 8)))
             out.setdefault(zid, {})[cid] = out.get(zid, {}).get(cid, 0) + push
-        rr = _rally.get(cid)
+    # Rally activo: cualquier clan (incluidos los de jugadores) puede disputar.
+    for cid, rr in _rally.items():
         if rr and rr["until"] > now:
             zid = rr["zone_id"]
             cur = out.setdefault(zid, {}).get(cid, 0)

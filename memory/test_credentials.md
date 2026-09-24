@@ -31,3 +31,10 @@ Base preview URL: https://synced-animations.preview.emergentagent.com
   - Token A (7 días, reseed 2026-06): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzYzQ1OTY2YjliYmY0YmY1OTAzNWViYWU4MjM3ZmFhNCIsImV4cCI6MTc4ODgxNTI3MH0.gLTiY7CKG-VTEDlDjF9Lr-LOQiyYGxdN1o9q1DwP_F8
   - Token B (7 días, reseed 2026-06): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5NmRmZmMzZmUwZGU0MjE3YTk2OWU1NmYyZWVjNzE2ZiIsImV4cCI6MTc4ODgxNTI3MH0.ya9zVXQhdxY9b0LrPpRBFIj1is-7GunceV9hUluHqm4
 - Reseed script: python3 /app/backend/_seed_trade_test.py (re-crea inventario y reimprime tokens).
+
+
+## Clan demo poblado (2026-06-24) — Hub estilo mockup
+- El clan demo **TEST / Escuadron Prueba** (líder = cuenta demo) fue poblado para lucir como el mockup BLUECITO.
+- Reseed: `python3 /app/backend/_seed_clan_demo.py` (idempotente). Crea usuarios seed (steam_id `seed_*`: Xirow, Luna, DarkRex, Maya, BlueHunter, Nova, CrisPR, ShadowPR, RaptorQueen, TTV_Killer, CrosFight, Zylux) con avatares pravatar.
+- Miembros con ranks de colores, chat sembrado, 3 invitaciones pendientes, 2 solicitudes, nivel 12, idioma Español, tipo PvP/Territorios.
+- Estos usuarios seed NO están en otros clanes (aparecen en "Invitar Jugadores").

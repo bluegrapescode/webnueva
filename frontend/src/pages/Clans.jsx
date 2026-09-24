@@ -20,7 +20,7 @@ function TagBadge({ tag, color, size = "md" }) {
 const CLAN_COLORS = ["#C08B5C", "#E11D48", "#F59E0B", "#22C55E", "#38BDF8", "#A855F7", "#EC4899", "#7C3AED"];
 const BANNER_IMG = "/clan/banner.jpg";
 const TREX_IMG = "/clan/trex.jpg";
-const PAGE_BG = "/clan/pagebg.jpg";
+const PAGE_BG = "/clan/forestbg.jpg";
 
 function roleColor(order, isLeader) {
   if (isLeader) return "#F5B841";
@@ -432,16 +432,21 @@ function Hub() {
   const { user } = useAuth();
   const clan = me.clan; const perms = me.my_perms || {}; const isLeader = me.is_leader;
   const canManage = isLeader || perms.invite || perms.manage_members;
-  const [tab, setTab] = useState("miclan");
+  const [tab, setTab] = useState("chat");
   const turf = useTurf(true);
   const myZones = (turf.zones || []).filter((z) => z.owner?.id === clan.id);
   const reqCount = (me.join_requests || []).length;
   const invCount = (me.sent_invites || []).length;
 
   const SIDE = [
-    ["miclan", "Mi Clan", Shield], ["explorar", "Explorar Clanes", Globe], ["solicitudes", "Solicitudes", Bell],
+    ["chat", "Mi Clan", Shield], ["explorar", "Explorar Clanes", Globe], ["solicitudes", "Solicitudes", Bell],
     ["invitaciones", "Invitaciones", UserPlus], ["territorios", "Territorios", MapPin], ["turfwars", "Turf Wars", Swords],
     ["ranking", "Ranking", BarChart3], ["config", "Configuración", Settings2],
+  ];
+  const TOP = [
+    ["resumen", "Resumen", BarChart3], ["miembros", "Miembros", Users], ["chat", "Chat", MessageSquare],
+    ["invitaciones", "Invitaciones", UserPlus], ["rangos", "Rangos", Star], ["territorios", "Territorios", Shield],
+    ["turfwars", "Turf Wars", Swords], ["estadisticas", "Estadísticas", BarChart3], ["config", "Configuración", Settings2],
   ];
   const navBtn = (t, label, Icon, mobile) => (
     <button key={label} data-testid={`side-${t}`} onClick={() => { play?.("click"); setTab(t); }}
@@ -488,10 +493,19 @@ function Hub() {
 
       <div className="space-y-5 min-w-0">
         <BannerHeader clan={clan} online={me.online_count || 0} canEdit={perms.edit_clan} onEdit={() => setTab("config")} />
+        {/* Barra de pestañas horizontal (según diseño) */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mt-1" data-testid="clan-top-tabs">
+          {TOP.map(([t, label, Icon]) => (
+            <button key={label} data-testid={`toptab-${t}`} onClick={() => { play?.("click"); setTab(t); }}
+              className={`shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wide transition ${tab === t ? "bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 shadow-[0_0_18px_rgba(34,197,94,0.28)]" : "bg-black/45 text-white/55 hover:text-white border border-white/10 backdrop-blur"}`}>
+              <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
         {/* Nav compacto (móvil) */}
         <nav className="lg:hidden flex gap-1.5 overflow-x-auto pb-1" data-testid="clan-mobile-nav">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, true))}</nav>
 
-        {tab === "miclan" && (
+        {(tab === "chat" || tab === "resumen") && (
           <div className="grid xl:grid-cols-[1fr_340px] gap-5">
             <ClanChat />
             {canManage ? <RightPanels me={me} canManage={canManage} act={act} /> : (
@@ -499,6 +513,14 @@ function Hub() {
             )}
           </div>
         )}
+
+        {tab === "miembros" && (
+          <Panel title="Miembros del clan" icon={Users} count={clan.member_count} testid="miembros-tab">
+            <div className="grid sm:grid-cols-2 gap-2">{(me.members || []).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={perms} isLeader={isLeader} user={user} act={act} />)}</div>
+          </Panel>
+        )}
+
+        {tab === "rangos" && <div className="forge-panel rounded-2xl border border-white/10 p-5" data-testid="rangos-tab"><h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-amber-300 mb-3"><Star size={15} /> Rangos y permisos</h3><RanksPanel clan={clan} /></div>}
 
         {tab === "solicitudes" && (canManage ? <div className="grid lg:grid-cols-2 gap-5"><InvitePlayersPanel act={act} /><RequestList /></div> : <Locked />)}
 
@@ -513,7 +535,7 @@ function Hub() {
         )}
 
         {tab === "explorar" && <DirectoryList />}
-        {tab === "ranking" && <DirectoryList ranking />}
+        {(tab === "ranking" || tab === "estadisticas") && <DirectoryList ranking />}
 
         {tab === "config" && (
           <div className="space-y-5" data-testid="config-tab">
@@ -615,11 +637,15 @@ function ClansInner() {
   const { me, loading } = useClan();
   return (
     <div className="relative isolate min-h-screen" data-testid="clan-page">
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <img src={PAGE_BG} alt="" className="w-full h-full object-cover opacity-[0.28]" style={{ position: "sticky", top: 0, height: "100vh" }} />
-        <div className="absolute inset-0 bg-[#05070a]/80" />
-        <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -8%, rgba(59,232,84,0.10), transparent 60%)" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#05070a]/60 via-transparent to-[#05070a]" />
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <img src={PAGE_BG} alt="" className="w-full h-full object-cover opacity-[0.6]" style={{ objectPosition: "center top" }} />
+        {/* Vignette oscuro para mantener legible el HUD, dejando el follaje visible en los bordes */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(115% 75% at 50% 0%, rgba(5,7,10,0.30) 0%, rgba(5,7,10,0.78) 55%, rgba(5,7,10,0.94) 100%)" }} />
+        {/* Sombras laterales para enmarcar */}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(5,7,10,0.55) 0%, transparent 22%, transparent 78%, rgba(5,7,10,0.55) 100%)" }} />
+        {/* Brillo verde agresivo superior */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 500px at 50% -6%, rgba(59,232,84,0.14), transparent 60%)" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#05070a]" />
       </div>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {loading ? <div className="h-[520px] rounded-3xl bg-white/[0.03] animate-pulse" /> : (me?.clan ? <Hub /> : <NoClan />)}
