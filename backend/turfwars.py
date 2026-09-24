@@ -274,6 +274,15 @@ async def _apply_capture(zone, new_owner, prev_owner, s):
     new_clan = await _db.clans.find_one({"id": new_owner}, {"_id": 0, "name": 1, "tag": 1})
     prev_clan = await _db.clans.find_one({"id": prev_owner}, {"_id": 0, "name": 1, "tag": 1}) if prev_owner else None
     zn = zone["name"]
+    now_iso = _iso(_now())
+    try:
+        await _db.turf_history.insert_one({"clan_id": new_owner, "zone_id": zone["id"], "zone_name": zn,
+                                           "action": "captured", "other_tag": (prev_clan or {}).get("tag"), "at": now_iso})
+        if prev_owner and prev_clan:
+            await _db.turf_history.insert_one({"clan_id": prev_owner, "zone_id": zone["id"], "zone_name": zn,
+                                               "action": "lost", "other_tag": (new_clan or {}).get("tag"), "at": now_iso})
+    except Exception:
+        pass
     if _announce:
         try:
             await _announce(new_owner, f"⚔️ ¡Capturamos {zn}! El territorio ahora es nuestro (+{noto} notoriedad).")

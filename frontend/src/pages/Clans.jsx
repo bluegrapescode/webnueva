@@ -185,21 +185,53 @@ function NoClan() {
 }
 
 // ═══════════ Chat en vivo (Clan / Global de clanes) ═══════════
+const REACT_EMOJIS = ["🔥", "👍", "😂", "❤️", "💪", "👑"];
+
+function renderText(text, myName) {
+  const parts = String(text || "").split(/(@[\p{L}0-9_]+)/gu);
+  return parts.map((p, i) => {
+    if (p.startsWith("@")) {
+      const isMe = myName && p.slice(1).toLowerCase() === myName.toLowerCase();
+      return <span key={i} className="font-bold px-1 rounded" style={{ color: isMe ? "#fde047" : "#7dd3fc", background: isMe ? "#fde04722" : "#7dd3fc18" }}>{p}</span>;
+    }
+    return <span key={i}>{p}</span>;
+  });
+}
+
 function ClanChat() {
-  const { me, messages, globalMessages, sendChat } = useClan();
+  const { me, messages, globalMessages, sendChat, api } = useClan();
   const { play } = useSound();
+  const { user } = useAuth();
   const clan = me?.clan || {};
   const [channel, setChannel] = useState("clan");
   const [text, setText] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+  const [reactFor, setReactFor] = useState(null);
+  const [mentionOpts, setMentionOpts] = useState([]);
+  const [editAnn, setEditAnn] = useState(false);
+  const [annText, setAnnText] = useState("");
   const listRef = useRef(null);
   const isGlobal = channel === "global";
   const list = isGlobal ? globalMessages : messages;
+  const myName = user?.persona_name;
+  const canEditAnn = me?.is_leader || me?.my_perms?.edit_clan;
   useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; }, [list.length, channel]);
-  const send = () => { const t = text.trim(); if (!t) return; play?.("chatSend"); sendChat(t, channel); setText(""); };
+  const send = () => { const t = text.trim(); if (!t) return; play?.("chatSend"); sendChat(t, channel); setText(""); setMentionOpts([]); };
   const toggle = () => { play?.("click"); setChannel(isGlobal ? "clan" : "global"); };
   const accent = isGlobal ? "#38BDF8" : "#22C55E";
   const roleOf = (uid) => { const m = (me?.members || []).find((x) => x.user_id === uid); return { rankId: m?.rank_id || "member", isLeader: clan.leader_id === uid }; };
+
+  const onChange = (e) => {
+    const v = e.target.value; setText(v);
+    const mt = v.match(/@([\p{L}0-9_]*)$/u);
+    if (mt && !isGlobal) {
+      const q = mt[1].toLowerCase();
+      setMentionOpts((me?.members || []).filter((m) => m.name.toLowerCase().startsWith(q) && m.user_id !== user?.id).slice(0, 5));
+    } else setMentionOpts([]);
+  };
+  const pickMention = (name) => { setText((t) => t.replace(/@([\p{L}0-9_]*)$/u, `@${name} `)); setMentionOpts([]); };
+  const react = async (mid, emoji) => { setReactFor(null); play?.("click"); try { await api.clanReact(mid, emoji); } catch {} };
+  const saveAnn = async () => { setEditAnn(false); try { await api.clanAnnouncement(annText.trim()); play?.("success"); } catch {} };
 
   return (
     <div className="forge-panel rounded-2xl border flex flex-col h-[600px] xl:h-full min-h-[520px]" style={{ borderColor: `${accent}33` }} data-testid="clan-chat">
@@ -214,11 +246,35 @@ function ClanChat() {
             <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200" style={{ left: isGlobal ? 22 : 2 }} />
           </button>
           <span className={isGlobal ? "text-sky-300" : "text-white/35"}>Chat Global (Clanes)</span>
-          <Settings2 size={15} className="text-white/30 ml-1" />
         </div>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 space-y-2" data-testid="chat-messages">
+      {/* Anuncio fijado del líder */}
+      {!isGlobal && (clan.announcement || canEditAnn) && (
+        <div className="mx-4 mt-3 rounded-xl border border-amber-400/40 bg-amber-500/[0.09] px-3 py-2" data-testid="clan-announcement">
+          {editAnn ? (
+            <div className="flex flex-col gap-2">
+              <textarea data-testid="announcement-input" value={annText} onChange={(e) => setAnnText(e.target.value)} maxLength={280} rows={2}
+                placeholder="Escribe el anuncio del clan…" className="w-full text-sm bg-black/40 border border-white/15 rounded-lg px-3 py-2 text-white/90 outline-none focus:border-amber-400/60 resize-none" />
+              <div className="flex gap-2 justify-end">
+                <button data-testid="announcement-cancel" onClick={() => setEditAnn(false)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white/60 hover:text-white bg-white/5">Cancelar</button>
+                <button data-testid="announcement-save" onClick={saveAnn} className="px-3 py-1.5 rounded-lg text-xs font-black text-black bg-amber-400 hover:brightness-110">Fijar anuncio</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2">
+              <Star size={15} className="text-amber-400 mt-0.5 shrink-0 fill-amber-400" />
+              <div className="min-w-0 flex-1">
+                <span className="text-[11px] font-black uppercase tracking-wide text-amber-300">Anuncio del líder</span>
+                <p className="text-sm text-white/90 break-words leading-snug">{clan.announcement || <span className="text-white/40 italic">Sin anuncio. Fija uno para tu clan.</span>}</p>
+              </div>
+              {canEditAnn && <button data-testid="announcement-edit" onClick={() => { setAnnText(clan.announcement || ""); setEditAnn(true); }} className="text-[11px] font-bold text-amber-300 hover:text-amber-200 shrink-0">Editar</button>}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 pt-3 space-y-2.5" data-testid="chat-messages">
         {list.length === 0 && <p className="text-sm text-white/35 text-center py-10">{isGlobal ? "Aún nadie ha escrito en el chat global de clanes. 🌐" : "Sé el primero en escribir. 💬"}</p>}
         {list.map((m) => m.system ? (
           <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border-l-2 border-emerald-400 bg-emerald-500/[0.08] px-3 py-2 flex items-start gap-2">
@@ -229,18 +285,38 @@ function ClanChat() {
           const r = roleOf(m.user_id);
           const rankObj = (clan.ranks || []).find((x) => x.id === r.rankId) || {};
           const rc = isGlobal ? (m.clan_color || "#38BDF8") : roleColor(rankObj.order ?? 5, r.isLeader);
+          const mine = m.user_id === user?.id;
+          const reactions = m.reactions || {};
           return (
-            <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5">
+            <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`group flex gap-2.5 ${mine ? "flex-row-reverse" : ""}`}>
               <Avatar src={m.avatar} size={34} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[13px] font-bold truncate" style={{ color: rc }}>{m.name}</span>
-                  {isGlobal ? (m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />) : <RoleBadge clan={clan} rankId={r.rankId} isLeader={r.isLeader} />}
-                  <span className="ml-auto text-[11px] text-white/55 font-mono shrink-0">{fmtTime(m.created_at)}</span>
+              <div className={`flex-1 min-w-0 ${mine ? "flex flex-col items-end" : ""}`}>
+                <div className={`flex items-center gap-1.5 mb-1 ${mine ? "flex-row-reverse" : ""}`}>
+                  <span className="text-[13px] font-bold truncate" style={{ color: mine ? accent : rc }}>{mine ? "Tú" : m.name}</span>
+                  {!mine && (isGlobal ? (m.clan_tag && <TagBadge tag={m.clan_tag} color={m.clan_color} size="sm" />) : <RoleBadge clan={clan} rankId={r.rankId} isLeader={r.isLeader} />)}
+                  <span className="text-[11px] text-white/55 font-mono shrink-0">{fmtTime(m.created_at)}</span>
+                  {!isGlobal && (
+                    <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button data-testid={`react-btn-${m.id}`} onClick={() => setReactFor(reactFor === m.id ? null : m.id)} className="text-white/40 hover:text-white text-xs px-1">＋</button>
+                      {reactFor === m.id && (
+                        <div className="absolute z-30 top-5 bg-[#0d0f15]/95 backdrop-blur border border-white/12 rounded-xl px-1.5 py-1 flex gap-0.5 shadow-2xl" style={{ [mine ? "left" : "right"]: 0 }}>
+                          {REACT_EMOJIS.map((e) => <button key={e} data-testid={`react-${m.id}-${e}`} onClick={() => react(m.id, e)} className="text-lg p-0.5 rounded hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>)}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="inline-block max-w-full rounded-2xl rounded-tl-md px-3 py-2 border-l-2" style={{ background: `${rc}18`, borderColor: rc }}>
-                  <p className="text-sm text-white/90 break-words leading-snug">{m.text}</p>
+                <div className="inline-block max-w-full rounded-2xl px-3 py-2 border-l-2" style={{ background: mine ? `${accent}22` : `${rc}18`, borderColor: mine ? accent : rc, borderRadius: mine ? "16px 4px 16px 16px" : "4px 16px 16px 16px" }}>
+                  <p className="text-sm text-white/90 break-words leading-snug whitespace-pre-wrap">{renderText(m.text, myName)}</p>
                 </div>
+                {Object.keys(reactions).length > 0 && (
+                  <div className={`flex flex-wrap gap-1 mt-1 ${mine ? "justify-end" : ""}`}>
+                    {Object.entries(reactions).map(([e, uids]) => (
+                      <button key={e} data-testid={`reaction-chip-${m.id}-${e}`} onClick={() => react(m.id, e)}
+                        className={`text-xs font-bold rounded-full px-2 py-0.5 border transition ${uids.includes(user?.id) ? "bg-emerald-500/25 border-emerald-400/60 text-emerald-200" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"}`}>{e} {uids.length}</button>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           );
@@ -248,8 +324,17 @@ function ClanChat() {
       </div>
 
       <div className="p-3 border-t border-white/8 flex items-center gap-2 relative">
+        {mentionOpts.length > 0 && (
+          <div className="absolute bottom-14 left-3 z-30 w-60 rounded-xl border border-white/12 bg-[#0d0f15]/95 backdrop-blur shadow-2xl overflow-hidden" data-testid="mention-list">
+            {mentionOpts.map((m) => (
+              <button key={m.user_id} data-testid={`mention-${m.name}`} onClick={() => pickMention(m.name)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 transition text-left">
+                <Avatar src={m.avatar} size={24} /><span className="text-sm font-bold text-white/90">{m.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <button type="button" className="p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"><Paperclip size={17} /></button>
-        <input data-testid="chat-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={isGlobal ? "Mensaje a todos los clanes…" : "Escribe un mensaje…"} className={input + " flex-1"} maxLength={500} />
+        <input data-testid="chat-input" value={text} onChange={onChange} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={isGlobal ? "Mensaje a todos los clanes…" : "Escribe… usa @ para mencionar"} className={input + " flex-1"} maxLength={500} />
         <div className="relative">
           <button type="button" data-testid="emoji-toggle" onClick={() => { play?.("click"); setShowEmoji((v) => !v); }} className={`p-2 rounded-lg transition-colors ${showEmoji ? "text-emerald-300 bg-emerald-500/10" : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}><Smile size={17} /></button>
           <AnimatePresence>
@@ -285,6 +370,17 @@ function BannerHeader({ clan, online, canEdit, onEdit }) {
       <div className="absolute inset-0"><img src={BANNER_IMG} alt="" className="w-full h-full object-cover" /></div>
       <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(6,9,13,0.94) 0%, rgba(6,9,13,0.6) 38%, rgba(6,9,13,0.2) 68%, transparent 100%)" }} />
       <div className="absolute inset-0 bg-gradient-to-t from-[#06090d] via-transparent to-transparent" />
+      {/* Capa animada: niebla + partículas flotantes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div className="absolute -top-12 left-1/4 w-72 h-72 rounded-full" style={{ background: `radial-gradient(circle, ${clan.color}22, transparent 70%)`, filter: "blur(34px)" }}
+          animate={{ x: [0, 40, 0], y: [0, 18, 0], opacity: [0.4, 0.75, 0.4] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.div className="absolute top-0 right-1/3 w-56 h-56 rounded-full" style={{ background: "radial-gradient(circle, rgba(59,232,84,0.16), transparent 70%)", filter: "blur(28px)" }}
+          animate={{ x: [0, -32, 0], y: [0, 22, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} />
+        {[...Array(7)].map((_, i) => (
+          <motion.span key={i} className="absolute rounded-full bg-emerald-300/50" style={{ width: 3, height: 3, left: `${10 + i * 12}%`, bottom: "8%" }}
+            animate={{ y: [0, -70, 0], opacity: [0, 0.8, 0] }} transition={{ duration: 6 + i, repeat: Infinity, delay: i * 0.6, ease: "easeInOut" }} />
+        ))}
+      </div>
       <div className="relative p-4 sm:p-5 flex flex-col md:flex-row md:items-start gap-4">
         <div className="flex items-start gap-3.5 flex-1 min-w-0">
           <div className="font-brush text-3xl sm:text-4xl px-3 py-1.5 rounded-xl shrink-0" style={{ color: clan.color, background: "rgba(0,0,0,0.4)", border: `2px solid ${clan.color}`, boxShadow: `0 0 22px ${clan.color}, inset 0 0 14px ${clan.color}44`, textShadow: `0 0 12px ${clan.color}` }}>{clan.tag}</div>
@@ -341,10 +437,22 @@ function ClanTabs({ tabs, tab, setTab, me }) {
 }
 
 function MemberRow({ m, clan, perms, isLeader, user, act }) {
+  const [open, setOpen] = useState(false);
+  const st = m.status_text || (m.online ? "En línea" : "Ausente");
+  const stCol = st === "En línea" ? "#22C55E" : st === "En partida" ? "#F59E0B" : "#94a3b8";
   return (
-    <div data-testid={`member-row-${m.user_id}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
-      <div className="relative h-9 w-9 rounded-full overflow-hidden bg-white/10 shrink-0">{m.avatar && <img src={m.avatar} alt="" className="w-full h-full object-cover" />}<span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0d0f15] ${m.online ? "bg-emerald-400" : "bg-white/25"}`} /></div>
-      <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate">{m.name}</p><RoleBadge clan={clan} rankId={m.rank_id} isLeader={clan.leader_id === m.user_id} /></div>
+    <div data-testid={`member-row-${m.user_id}`} className="relative flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
+      <button data-testid={`member-avatar-${m.user_id}`} onClick={() => setOpen((v) => !v)} className="relative h-9 w-9 rounded-full overflow-hidden bg-white/10 shrink-0 hover:ring-2 ring-emerald-400/60 transition">
+        {m.avatar && <img src={m.avatar} alt="" className="w-full h-full object-cover" />}
+        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0d0f15] ${m.online ? "bg-emerald-400" : "bg-white/25"}`} />
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm truncate flex items-center gap-1.5">{m.name}<span className="text-[10px] font-mono text-white/45">Nv.{m.level || 1}</span></p>
+        <div className="flex items-center gap-2">
+          <RoleBadge clan={clan} rankId={m.rank_id} isLeader={clan.leader_id === m.user_id} />
+          <span className="text-[10px] font-semibold" style={{ color: stCol }}>• {st}</span>
+        </div>
+      </div>
       {perms.assign_ranks && clan.leader_id !== m.user_id && (
         <select data-testid={`assign-${m.user_id}`} value={m.rank_id} onChange={(e) => act(() => import("@/lib/api").then(({ api }) => api.clanAssign(m.user_id, e.target.value)), "Rango asignado")} className="text-xs rounded-lg bg-white/[0.05] border border-white/12 px-2 py-1.5">
           {clan.ranks.filter((r) => r.id !== "leader").map((r) => <option key={r.id} value={r.id} className="bg-[#0d0f15]">{r.name}</option>)}
@@ -352,6 +460,24 @@ function MemberRow({ m, clan, perms, isLeader, user, act }) {
       )}
       {isLeader && clan.leader_id !== m.user_id && <button title="Transferir liderazgo" data-testid={`transfer-${m.user_id}`} onClick={() => window.confirm(`¿Transferir liderazgo a ${m.name}?`) && act(() => import("@/lib/api").then(({ api }) => api.clanTransfer(m.user_id)), "Liderazgo transferido")} className="p-1.5 rounded-lg text-amber-300 hover:bg-amber-400/10"><Crown size={15} /></button>}
       {perms.kick && clan.leader_id !== m.user_id && m.user_id !== user?.id && <button data-testid={`kick-${m.user_id}`} onClick={() => act(() => import("@/lib/api").then(({ api }) => api.clanKick(m.user_id)), "Miembro expulsado")} className="p-1.5 rounded-lg text-white/40 hover:text-red-300"><X size={15} /></button>}
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+            className="absolute z-40 top-14 left-2 w-60 rounded-2xl border border-white/12 bg-[#0d0f15]/97 backdrop-blur-xl shadow-2xl p-4" data-testid={`profile-card-${m.user_id}`}>
+            <button onClick={() => setOpen(false)} className="absolute top-2 right-2 text-white/40 hover:text-white"><X size={14} /></button>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full overflow-hidden bg-white/10 shrink-0">{m.avatar && <img src={m.avatar} alt="" className="w-full h-full object-cover" />}</div>
+              <div className="min-w-0"><p className="font-black text-white truncate">{m.name}</p><RoleBadge clan={clan} rankId={m.rank_id} isLeader={clan.leader_id === m.user_id} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3 text-center">
+              <div className="rounded-lg bg-white/5 py-1.5"><p className="font-mono font-black text-emerald-300">Nv.{m.level || 1}</p><p className="text-[10px] text-white/50">Nivel</p></div>
+              <div className="rounded-lg bg-white/5 py-1.5"><p className="font-mono font-black text-amber-300">{(m.contribution || 0).toLocaleString()}</p><p className="text-[10px] text-white/50">Aporte</p></div>
+              <div className="rounded-lg bg-white/5 py-1.5"><p className="font-mono font-black text-red-300">{m.kills || 0}</p><p className="text-[10px] text-white/50">Kills</p></div>
+              <div className="rounded-lg bg-white/5 py-1.5"><p className="font-bold text-xs" style={{ color: stCol }}>{st}</p><p className="text-[10px] text-white/50">Estado</p></div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -444,6 +570,148 @@ function DangerZone({ isLeader, act }) {
 }
 
 // ═══════════ Hub del clan ═══════════
+// ═══════════ Insights: logros, misiones, ranking ═══════════
+const ICONS = { users: Users, star: Star, crown: Crown, map: MapPin, chat: MessageSquare, swords: Swords, "user-plus": UserPlus };
+
+function useInsights() {
+  const { api } = useClan();
+  const [data, setData] = useState(null);
+  useEffect(() => { let ok = true; api.clanInsights().then(({ data }) => ok && setData(data)).catch(() => {}); return () => { ok = false; }; }, []);  // eslint-disable-line
+  return data;
+}
+
+function ProgressBar({ value, goal, color = "#22C55E" }) {
+  const pct = Math.min(100, Math.round((value / Math.max(1, goal)) * 100));
+  return <div className="h-1.5 rounded-full bg-black/50 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} /></div>;
+}
+
+function AchievementsPanel() {
+  const data = useInsights();
+  return (
+    <Panel title="Logros del clan" icon={Star} accent="#F59E0B" testid="achievements-panel">
+      {!data ? <p className="text-sm text-white/40">Cargando…</p> : (
+        <div className="grid sm:grid-cols-2 gap-2.5">
+          {data.achievements.map((a) => { const Ic = ICONS[a.icon] || Star; return (
+            <div key={a.id} data-testid={`achievement-${a.id}`} className={`rounded-xl border p-3 ${a.unlocked ? "border-amber-400/50 bg-amber-500/[0.08]" : "border-white/10 bg-black/30"}`}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`p-1.5 rounded-lg ${a.unlocked ? "bg-amber-400/20 text-amber-300" : "bg-white/5 text-white/40"}`}><Ic size={15} /></div>
+                <div className="min-w-0"><p className="text-sm font-bold text-white/90 truncate">{a.title}</p><p className="text-[11px] text-white/50">{a.desc}</p></div>
+                {a.unlocked && <Check size={16} className="text-amber-300 ml-auto shrink-0" />}
+              </div>
+              <ProgressBar value={a.value} goal={a.goal} color={a.unlocked ? "#F59E0B" : "#64748b"} />
+              <p className="text-[10px] text-white/45 font-mono mt-1 text-right">{a.value}/{a.goal}</p>
+            </div>
+          ); })}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function MissionsPanel() {
+  const data = useInsights();
+  return (
+    <Panel title="Misiones semanales" icon={Flame} accent="#22C55E" testid="missions-panel">
+      {!data ? <p className="text-sm text-white/40">Cargando…</p> : (
+        <div className="space-y-2.5">
+          {data.missions.map((mi) => { const Ic = ICONS[mi.icon] || Flame; return (
+            <div key={mi.id} data-testid={`mission-${mi.id}`} className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`p-1.5 rounded-lg ${mi.done ? "bg-emerald-400/20 text-emerald-300" : "bg-white/5 text-white/50"}`}><Ic size={15} /></div>
+                <p className="text-sm font-bold text-white/90 flex-1">{mi.title}</p>
+                <span className="text-[11px] font-bold text-emerald-300">🎁 {mi.reward}</span>
+              </div>
+              <ProgressBar value={mi.value} goal={mi.goal} color={mi.done ? "#22C55E" : "#38BDF8"} />
+              <p className="text-[10px] text-white/45 font-mono mt-1 text-right">{mi.value}/{mi.goal}{mi.done ? " · ¡Completada!" : ""}</p>
+            </div>
+          ); })}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function LeaderboardPanel({ clan }) {
+  const data = useInsights();
+  const medal = ["🥇", "🥈", "🥉"];
+  return (
+    <Panel title="Ranking de miembros" icon={BarChart3} accent="#F59E0B" testid="leaderboard-panel">
+      {!data ? <p className="text-sm text-white/40">Cargando…</p> : (
+        <div className="space-y-1.5">
+          {data.leaderboard.map((m, i) => (
+            <div key={m.user_id} data-testid={`lb-${m.user_id}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
+              <span className="w-6 text-center font-black text-sm">{medal[i] || <span className="text-white/40">{i + 1}</span>}</span>
+              <Avatar src={m.avatar} size={30} />
+              <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{m.name}</p><RoleBadge clan={clan} rankId={m.rank_id} isLeader={clan.leader_id === m.user_id} /></div>
+              <div className="text-right shrink-0"><p className="text-sm font-black text-amber-300 font-mono">{(m.contribution || 0).toLocaleString()}</p><p className="text-[10px] text-white/45">{m.kills || 0} kills · Nv.{m.level}</p></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function TurfHistoryPanel() {
+  const { api } = useClan();
+  const [events, setEvents] = useState(null);
+  useEffect(() => { let ok = true; api.clanTurfHistory().then(({ data }) => ok && setEvents(data.events || [])).catch(() => {}); return () => { ok = false; }; }, []);  // eslint-disable-line
+  return (
+    <Panel title="Historial de Turf Wars" icon={Clock} accent="#38BDF8" testid="turf-history">
+      {!events ? <p className="text-sm text-white/40">Cargando…</p> : events.length === 0 ? <p className="text-sm text-white/40">Aún no hay capturas registradas.</p> : (
+        <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+          {events.map((e, i) => (
+            <div key={i} data-testid={`turf-event-${i}`} className="flex items-center gap-2 text-sm rounded-lg border border-white/8 bg-black/25 px-3 py-2">
+              {e.action === "captured" ? <ArrowUpRight size={15} className="text-emerald-400 shrink-0" /> : <LogOut size={15} className="text-red-400 shrink-0" />}
+              <span className="flex-1 min-w-0 truncate"><b className={e.action === "captured" ? "text-emerald-300" : "text-red-300"}>{e.action === "captured" ? "Capturaron" : "Perdieron"}</b> <span className="text-white/80">{e.zone_name}</span>{e.other_tag && <span className="text-white/40"> · vs [{e.other_tag}]</span>}</span>
+              <span className="text-[11px] text-white/40 font-mono shrink-0">{fmtTime(e.at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function TurfMiniMap({ clan }) {
+  const turf = useTurf(true);
+  const { play } = useSound();
+  const zones = turf.zones || [];
+  const mine = zones.filter((z) => z.owner?.id === clan.id);
+  const contested = zones.filter((z) => z.owner?.id === clan.id && (z.contest_progress > 0 || z.contested));
+  useEffect(() => { if (contested.length) play?.("notification"); }, [contested.length]);  // eslint-disable-line
+  return (
+    <div className="space-y-4">
+      {contested.length > 0 && (
+        <div data-testid="attack-alert" className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 flex items-center gap-3 animate-pulse">
+          <Swords className="text-red-400" size={20} />
+          <p className="text-sm font-bold text-red-200">⚠️ ¡{contested.length} de tus zonas están bajo ataque! Lanza un rally para defenderlas.</p>
+        </div>
+      )}
+      <Panel title="Mapa de territorios" icon={MapPin} accent="#38BDF8" testid="turf-minimap">
+        <div className="relative rounded-xl border border-white/10 overflow-hidden bg-[#0a1420]" style={{ aspectRatio: "16 / 9" }}>
+          <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 50% 40%, rgba(56,189,248,0.10), transparent 60%)" }} />
+          {zones.map((z) => {
+            const owned = z.owner?.id === clan.id;
+            const col = z.owner?.color || (z.owner ? "#94a3b8" : "#475569");
+            return (
+              <div key={z.id} data-testid={`zone-${z.id}`} title={`${z.name}${z.owner ? ` · [${z.owner.tag}]` : " · libre"}`}
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center" style={{ left: `${z.x ?? 50}%`, top: `${z.y ?? 50}%` }}>
+                <span className="rounded-full border-2" style={{ width: owned ? 18 : 13, height: owned ? 18 : 13, background: `${col}cc`, borderColor: col, boxShadow: owned ? `0 0 12px ${col}` : "none" }} />
+                <span className="text-[9px] font-bold mt-0.5 whitespace-nowrap" style={{ color: owned ? col : "rgba(255,255,255,0.55)" }}>{z.name}</span>
+              </div>
+            );
+          })}
+          {zones.length === 0 && <p className="absolute inset-0 grid place-items-center text-sm text-white/40">Sin datos de zonas.</p>}
+        </div>
+        <p className="text-sm text-white/70 mt-3">Controlas <b className="text-white">{mine.length}</b> de <b className="text-white">{zones.length}</b> zonas.</p>
+        <a href="/my-dino?tab=map" data-testid="goto-turf-map" className="inline-flex items-center gap-2 mt-2 px-4 py-2.5 rounded-lg bg-emerald-500 text-black font-black text-sm uppercase"><MapPin size={16} /> Abrir mapa completo</a>
+      </Panel>
+      <TurfHistoryPanel />
+    </div>
+  );
+}
+
 function Hub() {
   const { me, act } = useClan();
   const { play } = useSound();
@@ -522,13 +790,17 @@ function Hub() {
         {/* Nav compacto (móvil) */}
         <nav className="lg:hidden flex gap-1.5 overflow-x-auto pb-1" data-testid="clan-mobile-nav">{SIDE.map(([t, label, Icon]) => navBtn(t, label, Icon, true))}</nav>
 
-        {(tab === "chat" || tab === "resumen") && (
+        {tab === "chat" && (
           <div className="grid xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_480px] gap-5 2xl:gap-6 xl:h-[calc(100vh-360px)] xl:min-h-[440px] 2xl:min-h-[520px]">
             <ClanChat />
             {canManage ? <RightPanels me={me} canManage={canManage} act={act} /> : (
               <Panel title="Miembros" icon={Users} count={clan.member_count}><div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">{(me.members || []).map((m) => <MemberRow key={m.user_id} m={m} clan={clan} perms={{}} isLeader={false} user={user} act={act} />)}</div></Panel>
             )}
           </div>
+        )}
+
+        {tab === "resumen" && (
+          <div className="grid lg:grid-cols-2 gap-5" data-testid="resumen-tab"><AchievementsPanel /><MissionsPanel /></div>
         )}
 
         {tab === "miembros" && (
@@ -543,16 +815,11 @@ function Hub() {
 
         {tab === "invitaciones" && (canManage ? <div className="grid lg:grid-cols-2 gap-5"><InvitePlayersPanel act={act} /><SentList /></div> : <Locked />)}
 
-        {(tab === "territorios" || tab === "turfwars") && (
-          <Panel title={tab === "territorios" ? "Territorios controlados" : "Turf Wars"} icon={tab === "territorios" ? MapPin : Swords} accent="#38BDF8">
-            <p className="text-sm text-white/60 mb-3">Tu clan controla <b className="text-white">{myZones.length}</b> {myZones.length === 1 ? "territorio" : "territorios"}. La guerra por las zonas ocurre en el mapa en vivo.</p>
-            {myZones.length > 0 && <div className="flex flex-wrap gap-2 mb-4">{myZones.map((z) => <span key={z.id} className="text-xs font-bold px-2.5 py-1 rounded-lg border" style={{ color: clan.color, borderColor: `${clan.color}55`, background: `${clan.color}14` }}>{z.name}</span>)}</div>}
-            <a href="/my-dino?tab=map" data-testid="goto-turf-map" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 text-black font-black text-sm uppercase"><MapPin size={16} /> Abrir mapa · Turf Wars</a>
-          </Panel>
-        )}
+        {(tab === "territorios" || tab === "turfwars") && <TurfMiniMap clan={clan} />}
 
         {tab === "explorar" && <DirectoryList />}
-        {(tab === "ranking" || tab === "estadisticas") && <DirectoryList ranking />}
+        {tab === "ranking" && <DirectoryList ranking />}
+        {tab === "estadisticas" && <div className="grid lg:grid-cols-2 gap-5" data-testid="estadisticas-tab"><LeaderboardPanel clan={clan} /><AchievementsPanel /></div>}
 
         {tab === "config" && (
           <div className="space-y-5" data-testid="config-tab">

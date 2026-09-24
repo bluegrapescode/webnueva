@@ -635,4 +635,9 @@ export const SOUNDS = {
     voice({ freq: 1040, type: "sine", dur: 0.11, gain: 0.03, delay: 0.065, slideTo: 1240, attack: 0.002, release: 0.08, filterType: "lowpass", filterFreq: 4400 });
     bell({ freq: 1760, dur: 0.18, gain: 0.014, delay: 0.065, ratio: 2, index: 55 });
   },
+  // MENCIÓN: triple ping brillante y llamativo (te nombraron en el chat).
+  mention: () => {
+    [880, 1174.66, 1567.98].forEach((f, i) => bell({ freq: f, dur: 0.34, gain: 0.05, delay: i * 0.05, ratio: 2, index: 90 }));
+    voice({ freq: 200, type: "sine", dur: 0.28, gain: 0.028, slideTo: 150, delay: 0.03, filterType: "lowpass", filterFreq: 900 });
+  },
 };

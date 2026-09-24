@@ -195,6 +195,10 @@ async def _pub_clan(clan, settings=None):
         "language": clan.get("language", "Español"), "clan_type": clan.get("clan_type", "PvP / Territorios"),
         "level": lvl["level"], "xp_into": lvl["xp_into"], "xp_needed": lvl["xp_needed"],
         "territories": territories,
+        "announcement": clan.get("announcement") or "",
+        "announcement_by": clan.get("announcement_by") or "",
+        "announcement_at": clan.get("announcement_at") or "",
+        "wins": int(clan.get("wins", 0) or 0),
     }
 
 
@@ -203,7 +207,7 @@ async def _members_view(clan):
     order_map = {r["id"]: r.get("order", 50) for r in clan.get("ranks", [])}
     mems = await _db.clan_members.find({"clan_id": clan_id}, {"_id": 0}).to_list(1000)
     ids = [m["user_id"] for m in mems]
-    fresh = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1, "last_login": 1})}
+    fresh = {u["id"]: u async for u in _db.users.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "persona_name": 1, "avatar": 1, "last_login": 1, "active_dino": 1, "coins": 1})}
     now_ts = _now()
     for m in mems:
         u = fresh.get(m["user_id"], {})
@@ -217,6 +221,10 @@ async def _members_view(clan):
             except Exception:
                 online = False
         m["online"] = online
+        m["status_text"] = "En línea" if (m["user_id"] in hub.by_uid) else _player_status(u)
+        m["level"] = _acct_level(u)
+        m["contribution"] = int(m.get("contribution", 0) or 0)
+        m["kills"] = int(m.get("kills", 0) or 0)
     return sorted(mems, key=lambda m: (order_map.get(m.get("rank_id"), 50), m["name"].lower()))
 
 
@@ -303,6 +311,13 @@ class ClanIdIn(BaseModel):
 class ChatIn(BaseModel):
     text: str
     channel: str = "clan"
+
+class AnnouncementIn(BaseModel):
+    text: str = ""
+
+class ReactIn(BaseModel):
+    message_id: str
+    emoji: str
 
 
 # ─────────────── Lógica ───────────────
@@ -528,10 +543,10 @@ async def _sys_msg(clan_id, text):
 
 async def _post_message(clan_id, uid, name, text, system=False):
     msg = {"id": _nid(), "clan_id": clan_id, "user_id": uid, "name": name, "text": text,
-           "system": system, "created_at": _iso(_now())}
+           "system": system, "reactions": {}, "created_at": _iso(_now())}
     await _db.clan_messages.insert_one(dict(msg))
     ids = await _clan_member_ids(clan_id)
-    await hub.send_clan(ids, "clan:message", {k: msg[k] for k in ("id", "user_id", "name", "text", "system", "created_at")})
+    await hub.send_clan(ids, "clan:message", {k: msg[k] for k in ("id", "user_id", "name", "text", "system", "reactions", "created_at")})
     return msg
 
 
@@ -560,7 +575,96 @@ async def get_chat_history(user, limit=50, channel="clan"):
     mem, clan = await _require_clan(user["id"])
     room = GLOBAL_ROOM if channel == "global" else clan["id"]
     rows = await _db.clan_messages.find({"clan_id": room}, {"_id": 0}).sort("created_at", -1).to_list(min(100, limit))
+    for r in rows:
+        r.setdefault("reactions", {})
     return {"messages": list(reversed(rows))}
+
+
+async def do_set_announcement(user, text):
+    mem, clan = await _require_clan(user["id"])
+    perms, is_leader = _perms_for(clan, user["id"], mem.get("rank_id"))
+    if not (is_leader or perms.get("edit_clan")):
+        raise HTTPException(403, "Sin permiso para fijar anuncios.")
+    text = (text or "").strip()[:280]
+    await _db.clans.update_one({"id": clan["id"]}, {"$set": {
+        "announcement": text, "announcement_by": user.get("persona_name") or "Líder",
+        "announcement_at": _iso(_now())}})
+    if text:
+        await _sys_msg(clan["id"], f"📌 {user.get('persona_name') or 'El líder'} fijó un anuncio.")
+    await _push_clan_update(clan["id"])
+    return {"success": True}
+
+
+async def do_react(user, message_id, emoji):
+    mem, clan = await _require_clan(user["id"])
+    emoji = (emoji or "")[:8]
+    if not emoji: raise HTTPException(400, "Emoji vacío.")
+    msg = await _db.clan_messages.find_one({"id": message_id, "clan_id": clan["id"]}, {"_id": 0})
+    if not msg: raise HTTPException(404, "Mensaje no encontrado.")
+    reactions = msg.get("reactions") or {}
+    users = set(reactions.get(emoji, []))
+    if user["id"] in users: users.discard(user["id"])
+    else: users.add(user["id"])
+    if users: reactions[emoji] = list(users)
+    else: reactions.pop(emoji, None)
+    await _db.clan_messages.update_one({"id": message_id}, {"$set": {"reactions": reactions}})
+    ids = await _clan_member_ids(clan["id"])
+    await hub.send_clan(ids, "clan:reaction", {"message_id": message_id, "reactions": reactions})
+    return {"success": True, "reactions": reactions}
+
+
+def _week_start_iso():
+    from datetime import timedelta
+    n = _now()
+    monday = n - timedelta(days=n.weekday(), hours=n.hour, minutes=n.minute, seconds=n.second, microseconds=n.microsecond)
+    return _iso(monday)
+
+
+async def get_insights(user):
+    mem, clan = await _require_clan(user["id"])
+    members = await _members_view(clan)
+    lvl = _level_info(clan.get("notoriety", 0))
+    territories = 0
+    try: territories = await _db.turf_zones.count_documents({"owner_clan_id": clan["id"]})
+    except Exception: pass
+    if not territories and clan.get("territories_display"): territories = int(clan["territories_display"])
+    total_msgs = await _db.clan_messages.count_documents({"clan_id": clan["id"]})
+    wins = int(clan.get("wins", 0) or 0)
+    mc = clan.get("member_count", len(members))
+
+    def ach(_id, title, desc, icon, val, goal):
+        return {"id": _id, "title": title, "desc": desc, "icon": icon, "value": min(val, goal), "goal": goal, "unlocked": val >= goal}
+    achievements = [
+        ach("recruits", "Reclutadores", "Alcanza 10 miembros", "users", mc, 10),
+        ach("army", "Ejército", "Alcanza 25 miembros", "users", mc, 25),
+        ach("veterans", "Veteranos", "Sube al nivel 10", "star", lvl["level"], 10),
+        ach("warlords", "Señores de la guerra", "Sube al nivel 20", "crown", lvl["level"], 20),
+        ach("conquerors", "Conquistadores", "Controla 3 territorios", "map", territories, 3),
+        ach("chatters", "Comunicados", "Envía 100 mensajes", "chat", total_msgs, 100),
+        ach("champions", "Campeones", "Gana 10 Turf Wars", "swords", wins, 10),
+    ]
+    week = _week_start_iso()
+    msgs_week = await _db.clan_messages.count_documents({"clan_id": clan["id"], "created_at": {"$gte": week}})
+    joined_week = await _db.clan_members.count_documents({"clan_id": clan["id"], "joined_at": {"$gte": week}})
+
+    def mission(_id, title, icon, val, goal, reward):
+        return {"id": _id, "title": title, "icon": icon, "value": min(val, goal), "goal": goal, "reward": reward, "done": val >= goal}
+    missions = [
+        mission("talk", "Coordinación semanal", "chat", msgs_week, 50, "500 Notoriedad"),
+        mission("recruit", "Reclutamiento", "user-plus", joined_week, 3, "300 Amberium"),
+        mission("hold", "Dominio de zonas", "map", territories, 2, "800 Notoriedad"),
+    ]
+    lb = sorted(members, key=lambda m: (m.get("contribution", 0), m.get("kills", 0), m.get("level", 0)), reverse=True)[:10]
+    leaderboard = [{"user_id": m["user_id"], "name": m["name"], "avatar": m.get("avatar"),
+                    "rank_id": m.get("rank_id"), "level": m.get("level", 1),
+                    "contribution": m.get("contribution", 0), "kills": m.get("kills", 0)} for m in lb]
+    return {"achievements": achievements, "missions": missions, "leaderboard": leaderboard}
+
+
+async def get_turf_history(user):
+    mem, clan = await _require_clan(user["id"])
+    rows = await _db.turf_history.find({"clan_id": clan["id"]}, {"_id": 0}).sort("at", -1).to_list(20)
+    return {"events": rows}
 
 
 async def get_directory():
@@ -716,6 +820,18 @@ def build_router(get_current_user, get_admin_user):
 
     @router.post("/chat")
     async def chat_send(data: ChatIn, user=Depends(get_current_user)): return await do_chat(user, data.text, data.channel or "clan")
+
+    @router.post("/announcement")
+    async def announcement(data: AnnouncementIn, user=Depends(get_current_user)): return await do_set_announcement(user, data.text)
+
+    @router.post("/react")
+    async def react(data: ReactIn, user=Depends(get_current_user)): return await do_react(user, data.message_id, data.emoji)
+
+    @router.get("/insights")
+    async def insights(user=Depends(get_current_user)): return await get_insights(user)
+
+    @router.get("/turf-history")
+    async def turf_history(user=Depends(get_current_user)): return await get_turf_history(user)
 
     @router.websocket("/ws")
     async def clan_ws(ws: WebSocket):

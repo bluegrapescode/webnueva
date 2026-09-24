@@ -113,10 +113,13 @@ async def main():
     for persona, steam, rank, level, img in MEMBERS:
         uid = await ensure_user(db, persona, steam, level, img, "online")
         name_to_id[persona] = uid
+        contribution = level * 120 + (hash(steam) % 400)
+        kills = level * 3 + (hash(persona) % 25)
         await db.clan_members.update_one(
             {"user_id": uid},
             {"$set": {"clan_id": cid, "user_id": uid, "rank_id": rank, "name": persona,
-                      "avatar": AV(img), "joined_at": iso(datetime.now(timezone.utc))}},
+                      "avatar": AV(img), "joined_at": iso(datetime.now(timezone.utc)),
+                      "contribution": contribution, "kills": kills}},
             upsert=True,
         )
 
@@ -168,7 +171,25 @@ async def main():
 
     # 7) Contadores del clan + notoriedad para nivel/XP visibles
     total = await db.clan_members.count_documents({"clan_id": cid})
-    await db.clans.update_one({"id": cid}, {"$set": {"member_count": total, "notoriety": 74450, "territories_display": 3}})
+    await db.clans.update_one({"id": cid}, {"$set": {
+        "member_count": total, "notoriety": 74450, "territories_display": 3, "wins": 7,
+        "announcement": "¡Todos conectados el sábado 8PM para la guerra de territorios! Reforzamos Highland y Delta. 🦖",
+        "announcement_by": "Demo Survivor", "announcement_at": iso(datetime.now(timezone.utc))}})
+    # Aporte/kills del líder
+    await db.clan_members.update_one({"clan_id": cid, "rank_id": "leader"},
+                                     {"$set": {"contribution": 5200, "kills": 148}})
+
+    # 8b) Historial de Turf Wars demo
+    await db.turf_history.delete_many({"clan_id": cid})
+    hist = [
+        ("captured", "Highland", "OBSD", 0), ("captured", "Delta", "CNBR", 2),
+        ("lost", "West Coast", "ALBA", 5), ("captured", "West Coast", "ALBA", 8),
+        ("captured", "Volcano Ridge", "OBSD", 26), ("lost", "Swamp", "CNBR", 51),
+    ]
+    for action, zone, other, mins_ago in hist:
+        await db.turf_history.insert_one({"clan_id": cid, "zone_id": nid(), "zone_name": zone,
+                                          "action": action, "other_tag": other,
+                                          "at": iso(datetime.now(timezone.utc) - timedelta(minutes=mins_ago))})
 
     # 8) Liberar zonas que tuviera el clan de jugador (para dejar el chat limpio de turf)
     await db.turf_zones.update_many(

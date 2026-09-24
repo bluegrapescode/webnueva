@@ -35,6 +35,6 @@ Base preview URL: https://synced-animations.preview.emergentagent.com
 
 ## Clan demo poblado (2026-06-24) — Hub estilo mockup
 - El clan demo **TEST / Escuadron Prueba** (líder = cuenta demo) fue poblado para lucir como el mockup BLUECITO.
-- Reseed: `python3 /app/backend/_seed_clan_demo.py` (idempotente). Crea usuarios seed (steam_id `seed_*`: Xirow, Luna, DarkRex, Maya, BlueHunter, Nova, CrisPR, ShadowPR, RaptorQueen, TTV_Killer, CrosFight, Zylux) con avatares pravatar.
-- Miembros con ranks de colores, chat sembrado, 3 invitaciones pendientes, 2 solicitudes, nivel 12, idioma Español, tipo PvP/Territorios.
+- Reseed: `python3 /app/backend/_seed_clan_demo.py` (idempotente). Crea usuarios seed (steam_id `seed_*`: Xirow, Luna, DarkRex, Maya, BlueHunter, RaptorsPR, NeonCL, AztecX, VolcanDino, SelvaCO, CieloISLA, TitanGG, EmberX, OnyxPro, Nova, CrisPR, ShadowPR, RaptorQueen, TTV_Killer, CrosFight, Zylux) con avatares pravatar.
+- Miembros con ranks de colores + `contribution`/`kills`, chat sembrado, 3 invitaciones, 2 solicitudes, nivel 12, idioma Español, tipo PvP/Territorios, `announcement` fijado, `wins=7`, `territories_display=3`, e historial de turf (`turf_history`) demo.
 - Estos usuarios seed NO están en otros clanes (aparecen en "Invitar Jugadores").

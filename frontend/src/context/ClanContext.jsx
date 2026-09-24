@@ -47,12 +47,25 @@ export function ClanProvider({ children }) {
         switch (m.event) {
           case "clan:message":
             setMessages((s) => [...s.slice(-99), m.data]);
-            if (!m.data.system && m.data.user_id !== user?.id) play?.("chatReceive");
+            if (!m.data.system && m.data.user_id !== user?.id) {
+              const mn = user?.persona_name && (m.data.text || "").toLowerCase().includes("@" + user.persona_name.toLowerCase());
+              play?.(mn ? "mention" : "chatReceive");
+              if (mn) toast.info(`💬 ${m.data.name} te mencionó`);
+            }
             break;
           case "clan:global":
             setGlobalMessages((s) => [...s.slice(-99), m.data]);
-            if (!m.data.system && m.data.user_id !== user?.id) play?.("chatReceive");
+            if (!m.data.system && m.data.user_id !== user?.id) {
+              const mn = user?.persona_name && (m.data.text || "").toLowerCase().includes("@" + user.persona_name.toLowerCase());
+              play?.(mn ? "mention" : "chatReceive");
+            }
             break;
+          case "clan:reaction": {
+            const { message_id, reactions } = m.data;
+            setMessages((s) => s.map((x) => (x.id === message_id ? { ...x, reactions } : x)));
+            setGlobalMessages((s) => s.map((x) => (x.id === message_id ? { ...x, reactions } : x)));
+            break;
+          }
           case "clan:updated": refresh(); break;
           case "clan:removed": toast.message("Ya no perteneces al clan."); refresh(); setMessages([]); setGlobalMessages([]); break;
           case "clan:invited": play?.("open"); toast.info(`Invitación al clan [${m.data.tag}] ${m.data.name}`); refresh(); break;
