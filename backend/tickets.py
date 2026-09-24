@@ -23,6 +23,7 @@ _is_staff_fn = lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
 TICKETS_CHANNEL_ID = os.environ.get("TICKETS_DISCORD_CHANNEL_ID", "").strip()
 TICKETS_CLOSED_CATEGORY_ID = os.environ.get("TICKETS_CLOSED_CHANNEL_ID", "").strip()
+TICKETS_HELP_CHANNEL_ID = os.environ.get("TICKETS_HELP_CHANNEL_ID", "").strip()
 PUBLIC_URL = (os.environ.get("PUBLIC_APP_URL") or os.environ.get("PUBLIC_BASE_URL") or os.environ.get("FRONTEND_URL") or "").strip()
 
 # ─────────────── Object Storage (subida real de evidencias) ───────────────
@@ -268,7 +269,7 @@ async def _estimate_response():
     return eta, n
 
 
-def _welcome_message(cat_id, eta, queue):
+def _welcome_message(cat_id, eta, queue, help_url=""):
     lines = [
         "👋 ¡Gracias por abrir tu ticket! Ten TODA la evidencia a la mano e insértala aquí antes de que te atienda el staff.",
         "",
@@ -286,6 +287,11 @@ def _welcome_message(cat_id, eta, queue):
             "• Descripción clara de lo ocurrido",
             "• No aceptamos clips sueltos ni archivos directos en el ticket: envía las pruebas mediante un enlace (ej. Medal u otra plataforma similar).",
             "• Los reportes sin evidencia suficiente podrán ser rechazados.",
+        ]
+    if help_url:
+        lines += [
+            "",
+            f"🆘 ¿Crees que el staff está tardando mucho? Puedes pedir ayuda más rápido en nuestro canal de ayuda: {help_url}",
         ]
     return "\n".join(lines)
 
@@ -593,8 +599,13 @@ async def create_ticket(user, data):
     await _db.tickets.insert_one(dict(t))
     # Aviso del sistema (requisitos + tiempo estimado dinámico) como PRIMER mensaje
     eta, queue = await _estimate_response()
+    help_url = ""
+    if TICKETS_HELP_CHANNEL_ID:
+        gid = await _resolve_guild_id()
+        if gid:
+            help_url = f"https://discord.com/channels/{gid}/{TICKETS_HELP_CHANNEL_ID}"
     await _add_message(t, {"id": None, "name": "Soporte La Isla Nublar", "avatar": ""},
-                       _welcome_message(t["category"], eta, queue), role="notice", notify=False)
+                       _welcome_message(t["category"], eta, queue, help_url), role="notice", notify=False)
     # primer mensaje del sistema con el resumen
     await _add_message(t, {"id": user["id"], "name": t["user_name"], "avatar": t["user_avatar"]},
                        t["description"] or t["subject"], role="user", notify=False)

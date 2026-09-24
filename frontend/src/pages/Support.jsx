@@ -19,6 +19,10 @@ const STAFF_BOXES = [["new", "Nuevos"], ["unassigned", "Sin asignar"], ["mine", 
 const fmt = (iso) => { try { return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 const isImg = (u) => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u || "");
 const isVid = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u || "");
+const linkify = (text) => String(text || "").split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
+  /^https?:\/\//i.test(p)
+    ? <a key={i} href={p} target="_blank" rel="noreferrer" className="text-emerald-300 underline break-all hover:text-emerald-200">{p}</a>
+    : <span key={i}>{p}</span>);
 
 function Copyable({ value, label, testid }) {
   const [ok, setOk] = useState(false);
@@ -319,7 +323,7 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
                 <div key={m.id} className="my-1" data-testid="notice-message">
                   <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.06] px-3.5 py-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-emerald-300 flex items-center gap-1.5 mb-1.5"><LifeBuoy size={13} /> Aviso de soporte</p>
-                    <p className="text-[13px] text-white/80 whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                    <p className="text-[13px] text-white/80 whitespace-pre-wrap leading-relaxed">{linkify(m.text)}</p>
                   </div>
                 </div>
               );
