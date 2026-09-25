@@ -280,6 +280,7 @@ export const api = {
   airdropState:        () => client.get("/airdrop/state"),
   airdropClaim:        () => client.post("/airdrop/claim"),
   airdropHistory:      (limit = 25) => client.get(`/airdrop/history?limit=${limit}`),
+  airdropPool:         () => client.get("/airdrop/pool"),
   airdropSettings:     () => client.get("/airdrop/settings"),
   airdropSaveSettings: (settings) => client.put("/airdrop/settings", { settings }),
   airdropLaunch:       (rarity) => client.post("/airdrop/launch", { rarity }),

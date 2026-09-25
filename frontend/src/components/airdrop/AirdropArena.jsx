@@ -328,6 +328,82 @@ function RewardCard({ reward, index, revealed, onReveal, img }) {
   );
 }
 
+// ─── Pool de botín posible (estilo "Premios posibles" de la Ruleta) ───
+function lootRows(lt, matImg) {
+  if (!lt) return [];
+  const rows = [];
+  const mat = lt.materials || {};
+  if ((mat.chance || 0) > 0) {
+    rows.push({ key: "materials", name: "Materiales de crafteo", detail: `×${mat.picks || 1} tipos · ${mat.min}–${mat.max} c/u`,
+      chance: mat.chance, imgs: ["bones", "metal", "leather", "polymer"].map((k) => matImg && matImg[k]).filter(Boolean) });
+  }
+  const pm = lt.primemeat || {};
+  if ((pm.chance || 0) > 0) rows.push({ key: "primemeat", name: "PrimeMeat", detail: `${Number(pm.min || 0).toLocaleString()}–${Number(pm.max || 0).toLocaleString()}`, chance: pm.chance, img: "/coins/meat.png" });
+  const am = lt.amberium || {};
+  if ((am.chance || 0) > 0) rows.push({ key: "amberium", name: "Amberium", detail: `${Number(am.min || 0).toLocaleString()}–${Number(am.max || 0).toLocaleString()}`, chance: am.chance, img: "/coins/amber.png" });
+  [["growth_token", "Growth Token", "/tokens/growth.png"], ["diet_token", "Diet Token", "/tokens/diet.png"], ["resurrection_token", "Resurrection Token", "/fossil.png"]].forEach(([k, nm, img]) => {
+    const c = (lt[k] || {}).chance || 0;
+    if (c > 0) rows.push({ key: k, name: nm, detail: "×1", chance: c, img, special: k === "resurrection_token" });
+  });
+  return rows;
+}
+
+function LootPool({ pool, matImg }) {
+  if (!pool || !pool.loot) return null;
+  const weights = pool.rarity_weights || {};
+  const totalW = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+  const order = ["common", "rare", "epic", "legendary"];
+  return (
+    <div className="relative px-4 sm:px-6 md:px-8 pb-6 pt-2" data-testid="airdrop-pool">
+      <div className="rounded-xl overflow-hidden" style={{ background: "linear-gradient(180deg, rgba(24,4,24,0.92) 0%, rgba(6,0,4,0.92) 100%)", boxShadow: "inset 0 0 0 1px rgba(236,72,153,0.25)" }}>
+        <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2 min-w-0">
+            <Package size={13} className="text-pink-400 shrink-0" />
+            <span className="text-[11px] font-black tracking-[0.3em] text-white uppercase whitespace-nowrap">Botín posible</span>
+          </div>
+          <span className="hidden sm:block text-[9px] font-black tracking-[0.25em] text-white/40 uppercase truncate">Cada suministro es de una rareza · el contenido se genera al caer</span>
+        </div>
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {order.map((r) => {
+            const th = pal(r);
+            const rows = lootRows(pool.loot[r], matImg);
+            const wPct = Math.round((Number(weights[r]) || 0) / totalW * 100);
+            return (
+              <div key={r} className="rounded-lg overflow-hidden" style={{ background: "rgba(0,0,0,0.35)", boxShadow: `inset 0 0 0 1px ${th.accent}55` }} data-testid={`airdrop-pool-${r}`}>
+                <div className="px-3 py-2 flex items-center justify-between" style={{ background: `linear-gradient(180deg, ${th.accent}33, transparent)` }}>
+                  <span className="text-[11px] font-black tracking-[0.22em] uppercase" style={{ color: th.accent }}>{th.es}</span>
+                  <span className="text-[10px] font-black tabular-nums px-2 py-0.5 rounded-full" style={{ background: `${th.accent}22`, color: th.accent }}>{wPct}%</span>
+                </div>
+                <ul className="p-2 space-y-1.5">
+                  {rows.map((row) => (
+                    <li key={row.key} className="flex items-center gap-2.5 rounded-md px-2 py-1.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <div className="shrink-0 h-9 w-9 rounded-md flex items-center justify-center overflow-hidden" style={{ background: `radial-gradient(circle at 40% 30%, ${(row.special ? "#F59E0B" : th.accent)}55, ${(row.special ? "#F59E0B" : th.accent)}18)`, border: `1.5px solid ${(row.special ? "#F59E0B" : th.accent)}88` }}>
+                        {row.imgs && row.imgs.length ? (
+                          <div className="grid grid-cols-2 gap-px p-0.5">
+                            {row.imgs.slice(0, 4).map((src, i) => <img key={i} src={src} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} loading="lazy" />)}
+                          </div>
+                        ) : row.img ? (
+                          <img src={row.img} alt="" className="h-6 w-6 object-contain" draggable={false} loading="lazy" />
+                        ) : <Gift size={16} style={{ color: th.accent }} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-black text-white uppercase truncate leading-tight">{row.name}</div>
+                        <div className="text-[9px] font-bold text-white/50 tabular-nums truncate">{row.detail}</div>
+                      </div>
+                      <span className="shrink-0 text-[10px] font-black tabular-nums" style={{ color: th.accent }}>{row.chance}%</span>
+                    </li>
+                  ))}
+                  {rows.length === 0 && <li className="text-[10px] text-white/40 italic px-2 py-1">Sin recompensas</li>}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AirdropArena() {
   const { state, connected, serverNow, claim } = useAirdrop();
   const { user } = useAuth();
@@ -340,8 +416,10 @@ export default function AirdropArena() {
   const lastAirdropId = useRef(null);
   const confettiRef = useRef(null);
   const [matImg, setMatImg] = useState({});
+  const [pool, setPool] = useState(null);
 
-  // Carga los iconos reales de materiales (mismos que el sistema de crafteo).
+  // Carga los iconos reales de materiales (mismos que el sistema de crafteo)
+  // y el pool de botín posible por rareza.
   useEffect(() => {
     let alive = true;
     api.craftingState()
@@ -351,6 +429,9 @@ export default function AirdropArena() {
         (r.data?.materials || []).forEach((m) => { if (m?.id && m?.icon) map[m.id] = m.icon; });
         setMatImg(map);
       })
+      .catch(() => {});
+    api.airdropPool()
+      .then((r) => { if (alive) setPool(r.data); })
       .catch(() => {});
     return () => { alive = false; };
   }, []);
@@ -604,6 +685,9 @@ export default function AirdropArena() {
           Necesitas iniciar sesión con Steam para reclamar el Airdrop
         </p>
       )}
+
+      {/* Pool de botín posible por rareza */}
+      <LootPool pool={pool} matImg={matImg} />
     </div>
   );
 }

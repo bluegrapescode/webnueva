@@ -441,6 +441,13 @@ def build_router(get_current_user, get_admin_user):
         items = await _db.airdrop_history.find({}, {"_id": 0}).sort("claimed_at", -1).to_list(min(limit, 100))
         return {"history": items}
 
+    @router.get("/pool")
+    async def pool(user=Depends(get_current_user)):
+        """Botín posible por rareza (para mostrar a los jugadores). No revela el
+        loot del airdrop actual, solo la tabla configurada y los pesos de rareza."""
+        s = await get_settings()
+        return {"rarity_weights": s["rarity_weights"], "loot": s["loot"]}
+
     @router.get("/settings")
     async def get_admin_settings(admin=Depends(get_admin_user)):
         return await get_settings()
