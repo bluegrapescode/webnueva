@@ -33,6 +33,7 @@ const COIN_TOKEN_IMG = {
   amberium: "/coins/amber.png",
   growth_token: "/tokens/growth.png",
   diet_token: "/tokens/diet.png",
+  resurrection_token: "/fossil.png",
 };
 function rewardImage(rw, matImg) {
   if (rw.type === "material") return (matImg && matImg[rw.key]) || null;
