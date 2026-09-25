@@ -187,58 +187,61 @@ function StageBar() {
   );
 }
 
-// ─── El COFRE que se abre (HTML/CSS 3D, tintado por rareza) ───
-// Ojo: los nodos con animación de Motion NO pueden centrarse con `-translate-x-1/2`
-// de Tailwind (Motion sobreescribe `transform`). Por eso el centrado va en un
-// wrapper estático y la rotación/entrada van en un hijo motion.
-function Chest({ accent, open = false, size = 190, shake = false }) {
-  const lid = open ? -125 : 0;
-  const bodyW = size * 0.74, lidH = size * 0.34;
+// ─── La CAJA Jurassic (imagen premium por rareza) ───
+// mode: idle (flota) | ready (flota + anticipación) | burst (estalla) | spent (vaciada)
+function Crate({ rarity = "common", accent, size = 250, mode = "idle" }) {
+  const img = `/airdrop/crate_${rarity}.png`;
+  const burst = mode === "burst";
   return (
-    <div className="relative" style={{ width: size, height: size * 0.92 }} data-testid="airdrop-crate">
+    <div className="relative" style={{ width: size, height: size }} data-testid="airdrop-crate">
       {/* Halo de rareza */}
-      <div className="absolute left-1/2 top-1/2 rounded-full" style={{ width: size * 1.3, height: size * 1.3, transform: "translate(-50%,-50%)",
-        background: `radial-gradient(circle, ${accent}88 0%, transparent 65%)`, filter: "blur(24px)", opacity: open ? 0.95 : 0.55 }} />
-      {/* Rayos de luz al abrir */}
+      <motion.div className="absolute left-1/2 top-1/2 rounded-full" style={{ width: size * 1.2, height: size * 1.2, transform: "translate(-50%,-50%)",
+        background: `radial-gradient(circle, ${accent}cc 0%, transparent 65%)`, filter: "blur(34px)" }}
+        animate={burst ? { opacity: [0.7, 1, 0], scale: [1, 2.3] } : { opacity: mode === "spent" ? 0.4 : [0.35, 0.6, 0.35], scale: mode === "spent" ? 1 : [1, 1.08, 1] }}
+        transition={burst ? { duration: 0.7, ease: "easeOut" } : { duration: 2.6, repeat: Infinity }} />
+
+      {/* Ondas de choque al estallar */}
       <AnimatePresence>
-        {open && (
-          <div key="rays" className="absolute left-1/2" style={{ bottom: size * 0.42, width: size * 0.7, height: size * 0.9, transform: "translateX(-50%)" }}>
-            <motion.div initial={{ opacity: 0, scaleY: 0.4 }} animate={{ opacity: 1, scaleY: 1 }} exit={{ opacity: 0 }} className="w-full h-full"
-              style={{ transformOrigin: "50% 100%", filter: "blur(2px)", mixBlendMode: "screen",
-                background: `conic-gradient(from 200deg at 50% 100%, transparent 0deg, ${accent}00 20deg, ${accent}cc 40deg, #fff 50deg, ${accent}cc 60deg, ${accent}00 80deg, transparent 100deg)` }} />
-          </div>
+        {burst && [0, 0.12, 0.24].map((d, i) => (
+          <motion.div key={`ring-${i}`} className="absolute left-1/2 top-1/2 rounded-full"
+            style={{ width: size * 0.55, height: size * 0.55, x: "-50%", y: "-50%", border: `3px solid ${accent}` }}
+            initial={{ scale: 0.4, opacity: 0.85 }} animate={{ scale: 3.6, opacity: 0 }} transition={{ duration: 0.8, delay: d, ease: "easeOut" }} />
+        ))}
+      </AnimatePresence>
+
+      {/* Rayos de luz explotando */}
+      <AnimatePresence>
+        {burst && (
+          <motion.div key="rays" className="absolute left-1/2 top-1/2" style={{ width: size * 1.5, height: size * 1.5, x: "-50%", y: "-50%", mixBlendMode: "screen",
+            background: `conic-gradient(${accent}00 0deg, ${accent}dd 10deg, ${accent}00 24deg, #ffffffcc 46deg, ${accent}00 66deg, ${accent}dd 92deg, ${accent}00 116deg, #ffffffcc 156deg, ${accent}00 180deg, ${accent}dd 214deg, ${accent}00 238deg, #ffffffcc 282deg, ${accent}00 306deg, ${accent}dd 332deg, ${accent}00 356deg)`,
+            WebkitMaskImage: "radial-gradient(transparent 18%, black 24%, black 58%, transparent 76%)", maskImage: "radial-gradient(transparent 18%, black 24%, black 58%, transparent 76%)" }}
+            initial={{ scale: 0.3, opacity: 0, rotate: 0 }} animate={{ scale: 1.7, opacity: [0, 1, 0], rotate: 45 }} transition={{ duration: 0.85, ease: "easeOut" }} />
         )}
       </AnimatePresence>
 
-      <motion.div className="absolute inset-0" animate={shake && !open ? { x: [0, -2, 2, -2, 2, 0] } : { x: 0 }} transition={shake ? { duration: 1.2, repeat: Infinity } : { duration: 0.3 }}>
-        {/* Interior brillante (visible al abrir) */}
-        <div className="absolute left-1/2" style={{ bottom: size * 0.14, width: size * 0.64, height: size * 0.3, transform: "translateX(-50%)", borderRadius: "8px 8px 0 0",
-          background: `radial-gradient(60% 90% at 50% 100%, #fff 0%, ${accent} 45%, ${accent}55 100%)`, opacity: open ? 1 : 0, transition: "opacity .25s", boxShadow: `0 0 40px ${accent}` }} />
+      {/* Destello central al estallar */}
+      <AnimatePresence>
+        {burst && (
+          <motion.div key="flash" className="absolute left-1/2 top-1/2 rounded-full" style={{ width: size * 0.7, height: size * 0.7, x: "-50%", y: "-50%",
+            background: `radial-gradient(circle, #fff 0%, ${accent} 40%, transparent 70%)`, mixBlendMode: "screen" }}
+            initial={{ scale: 0.2, opacity: 0 }} animate={{ scale: [0.2, 1.4], opacity: [0, 1, 0] }} transition={{ duration: 0.5, ease: "easeOut" }} />
+        )}
+      </AnimatePresence>
 
-        {/* Cuerpo del cofre */}
-        <div className="absolute left-1/2 overflow-hidden" style={{ bottom: 0, width: bodyW, height: size * 0.5, transform: "translateX(-50%)", borderRadius: 10,
-          background: "linear-gradient(180deg, #5a3a22 0%, #3a2414 60%, #26160b 100%)",
-          boxShadow: `0 18px 40px rgba(0,0,0,0.6), inset 0 0 0 2px ${accent}, inset 0 -14px 26px rgba(0,0,0,0.45)` }}>
-          <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.12) 0%, transparent 45%)" }} />
-          {[0.2, 0.5, 0.8].map((l) => (
-            <div key={l} className="absolute top-0 bottom-0" style={{ left: `${l * 100}%`, width: 6, transform: "translateX(-50%)", background: `linear-gradient(180deg, ${accent}, ${accent}77)`, opacity: 0.7 }} />
-          ))}
-          <div className="absolute left-1/2 top-1 h-8 w-8 rounded-md flex items-center justify-center"
-            style={{ transform: "translateX(-50%)", background: `radial-gradient(circle at 40% 30%, #fff6, ${accent})`, boxShadow: `0 2px 8px rgba(0,0,0,.5), inset 0 0 0 1.5px ${accent}` }}>
-            <div className="h-3 w-2 rounded-sm bg-black/50" />
-          </div>
-        </div>
-
-        {/* Tapa: wrapper estático (centrado) + hijo motion (bisagra 3D) */}
-        <div className="absolute left-1/2" style={{ bottom: size * 0.46, width: bodyW, height: lidH, transform: "translateX(-50%)", perspective: 800 }}>
-          <motion.div className="relative w-full h-full overflow-hidden" style={{ transformOrigin: "50% 100%", borderRadius: "12px 12px 0 0",
-            background: "linear-gradient(180deg, #6a4526 0%, #4a2e18 100%)", boxShadow: `inset 0 0 0 2px ${accent}, 0 -6px 18px rgba(0,0,0,0.4)` }}
-            animate={{ rotateX: lid }} transition={{ type: "spring", stiffness: 120, damping: 14 }}>
-            <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.18) 0%, transparent 50%)" }} />
-            <div className="absolute left-1/2 top-1 h-2.5 w-2.5 rounded-full" style={{ transform: "translateX(-50%)", background: accent, boxShadow: `0 0 10px ${accent}` }} />
-          </motion.div>
-        </div>
-      </motion.div>
+      {/* Imagen de la caja */}
+      <motion.img src={img} alt="" draggable={false} loading="eager" className="absolute inset-0 w-full h-full object-contain"
+        style={{ filter: `drop-shadow(0 16px 36px ${accent}bb)` }}
+        animate={
+          burst ? { scale: [1, 0.9, 1.55], opacity: [1, 1, 0], rotate: [0, -2, 4] }
+          : mode === "spent" ? { scale: 0.82, opacity: 0.3, y: 8 }
+          : mode === "ready" ? { y: [0, -10, 0], rotate: [-1.5, 1.5, -1.5] }
+          : { y: [0, -9, 0] }
+        }
+        transition={
+          burst ? { duration: 0.6, times: [0, 0.35, 1], ease: "easeIn" }
+          : mode === "spent" ? { duration: 0.4 }
+          : { duration: mode === "ready" ? 1.4 : 3, repeat: Infinity, ease: "easeInOut" }
+        } />
     </div>
   );
 }
@@ -412,6 +415,7 @@ export default function AirdropArena() {
 
   const [claiming, setClaiming] = useState(false);
   const [claimResult, setClaimResult] = useState(null);
+  const [bursting, setBursting] = useState(false);
   const [revealed, setRevealed] = useState(new Set());
   const lastAirdropId = useRef(null);
   const confettiRef = useRef(null);
@@ -459,11 +463,14 @@ export default function AirdropArena() {
     try {
       const r = await claim();
       setClaimResult(r);
-      play("airdropClaimed");
-      // Confeti al abrir el cofre — como en la Ruleta. Salta en TODAS las
+      play("airdropLanded");
+      setTimeout(() => play("airdropClaimed"), 180);
+      // Estallido de la caja + confeti (como la Ruleta). Salta en TODAS las
       // rarezas (más intenso en épico/legendario).
       const big = state?.rarity === "legendary" || state?.rarity === "epic";
-      setTimeout(() => fireConfetti(confettiRef.current, big), 250);
+      setBursting(true);
+      setTimeout(() => fireConfetti(confettiRef.current, big), 200);
+      setTimeout(() => setBursting(false), 950);
     } catch (e) {
       const detail = e?.response?.data?.detail || "No se pudo reclamar el Airdrop.";
       toast.error(detail, { icon: <ShieldAlert className="w-4 h-4 text-[#ff6b74]" /> });
@@ -499,6 +506,14 @@ export default function AirdropArena() {
       style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)" }}>
       <AmbientBackdrop />
       <canvas ref={confettiRef} className="pointer-events-none fixed inset-0 z-[60]" aria-hidden="true" />
+      {/* Destello de pantalla al estallar la caja */}
+      <AnimatePresence>
+        {bursting && (
+          <motion.div key="scene-flash" className="pointer-events-none fixed inset-0 z-[58]"
+            style={{ background: `radial-gradient(circle at 50% 42%, #ffffff 0%, ${p.accent} 45%, transparent 72%)` }}
+            initial={{ opacity: 0 }} animate={{ opacity: [0, 0.9, 0] }} exit={{ opacity: 0 }} transition={{ duration: 0.5, times: [0, 0.18, 1] }} />
+        )}
+      </AnimatePresence>
       <style>{`@keyframes ad-beam { 0%,100% { transform: rotate(-16deg); opacity:.25 } 50% { transform: rotate(16deg); opacity:.55 } }`}</style>
 
       {/* Barra superior */}
@@ -521,7 +536,9 @@ export default function AirdropArena() {
       </div>
 
       {/* Escenario */}
-      <div className="relative" style={{ minHeight: 430 }} data-testid="airdrop-scene">
+      <motion.div className="relative" style={{ minHeight: 430 }} data-testid="airdrop-scene"
+        animate={bursting ? { x: [0, -12, 11, -8, 7, -4, 2, 0], y: [0, 6, -6, 5, -3, 2, 0] } : { x: 0, y: 0 }}
+        transition={{ duration: 0.55, ease: "easeOut" }}>
         <IndicatorTriangle />
         <StageBar />
 
@@ -538,9 +555,7 @@ export default function AirdropArena() {
             {/* WAITING */}
             {st === "waiting" && (
               <motion.div key="waiting" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-4">
-                <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity }}>
-                  <Chest accent={p.accent} />
-                </motion.div>
+                <Crate rarity={state?.rarity} accent={p.accent} mode="idle" />
                 <div>
                   <p className="text-[11px] font-black tracking-[0.35em] text-white/70 uppercase mb-1">Próximo suministro global en</p>
                   <p className="font-black italic text-5xl sm:text-6xl tabular-nums leading-none" data-testid="airdrop-countdown"
@@ -580,9 +595,7 @@ export default function AirdropArena() {
             {/* AVAILABLE */}
             {st === "available" && (
               <motion.div key="available" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-3">
-                <motion.div animate={iAmWinner ? {} : { y: [0, -7, 0], scale: [1, 1.03, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                  <Chest accent={p.accent} open={iAmWinner} shake={!iAmWinner} />
-                </motion.div>
+                <Crate rarity={state?.rarity} accent={p.accent} mode={bursting ? "burst" : iAmWinner ? "spent" : "ready"} />
                 {iAmWinner ? (
                   <p className="font-black italic text-lg" style={{ color: p.accent, textShadow: `0 0 18px ${p.accent}` }}>¡Es tuyo! Abre tus recompensas abajo 👇</p>
                 ) : (
@@ -603,7 +616,7 @@ export default function AirdropArena() {
             {/* CLAIMED */}
             {st === "claimed" && (
               <motion.div key="claimed" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-3">
-                <Chest accent={p.accent} open />
+                <Crate rarity={state?.rarity} accent={p.accent} mode={bursting ? "burst" : "spent"} />
                 {iAmWinner ? (
                   <>
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200 }} className="flex items-center gap-2">
@@ -630,7 +643,7 @@ export default function AirdropArena() {
             {/* EXPIRED */}
             {st === "expired" && (
               <motion.div key="expired" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-3">
-                <div className="opacity-50 grayscale"><Chest accent={p.accent} /></div>
+                <div className="opacity-60 grayscale"><Crate rarity={state?.rarity} accent={p.accent} mode="spent" /></div>
                 <p className="font-black italic text-lg text-white/70">Nadie reclamó el suministro</p>
                 <div className="flex items-center gap-2 h-8 px-4 rounded-md" style={{ background: "linear-gradient(180deg, #12040F 0%, #060004 100%)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}>
                   <Clock size={12} className="text-pink-300" />
@@ -642,13 +655,13 @@ export default function AirdropArena() {
             {/* DISABLED / sin datos */}
             {(st === "disabled" || !st) && (
               <motion.div key="disabled" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-3">
-                <div className="opacity-40"><Chest accent={p.accent} /></div>
+                <div className="opacity-40"><Crate rarity={state?.rarity} accent={p.accent} mode="idle" /></div>
                 <p className="text-white/60 text-sm">{st === "disabled" ? "Los Airdrops están desactivados por ahora." : "Sincronizando evento global…"}</p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
       {/* Panel de recompensas del ganador (carta por carta) */}
       <AnimatePresence>
