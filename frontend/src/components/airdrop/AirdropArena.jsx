@@ -460,9 +460,10 @@ export default function AirdropArena() {
       const r = await claim();
       setClaimResult(r);
       play("airdropClaimed");
-      if (state?.rarity === "legendary" || state?.rarity === "epic") {
-        setTimeout(() => fireConfetti(confettiRef.current, state?.rarity === "legendary"), 250);
-      }
+      // Confeti al abrir el cofre — como en la Ruleta. Salta en TODAS las
+      // rarezas (más intenso en épico/legendario).
+      const big = state?.rarity === "legendary" || state?.rarity === "epic";
+      setTimeout(() => fireConfetti(confettiRef.current, big), 250);
     } catch (e) {
       const detail = e?.response?.data?.detail || "No se pudo reclamar el Airdrop.";
       toast.error(detail, { icon: <ShieldAlert className="w-4 h-4 text-[#ff6b74]" /> });
@@ -497,7 +498,7 @@ export default function AirdropArena() {
     <div className="relative rounded-2xl overflow-hidden text-white" data-testid="airdrop-arena"
       style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)" }}>
       <AmbientBackdrop />
-      <canvas ref={confettiRef} className="pointer-events-none absolute inset-0 z-[45]" aria-hidden="true" />
+      <canvas ref={confettiRef} className="pointer-events-none fixed inset-0 z-[60]" aria-hidden="true" />
       <style>{`@keyframes ad-beam { 0%,100% { transform: rotate(-16deg); opacity:.25 } 50% { transform: rotate(16deg); opacity:.55 } }`}</style>
 
       {/* Barra superior */}

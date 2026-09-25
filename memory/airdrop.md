@@ -28,6 +28,8 @@ Archivo: `/app/backend/airdrop.py` (registrado en server.py junto a tickets).
 - POOL DE BOTÍN 2026-09-25: nuevo `GET /api/airdrop/pool` (auth, no revela el loot del drop actual, solo la tabla) → `{rarity_weights, loot}`. Frontend `LootPool` en AirdropArena (siempre visible bajo la escena, estilo "Premios posibles" de la Ruleta): 4 columnas por rareza (COMÚN/RARO/ÉPICO/LEGENDARIO) con su peso % y filas de recompensas posibles (Materiales con 4 mini-iconos reales, PrimeMeat, Amberium, tokens) con rango min–max y % de probabilidad. `api.airdropPool`. testid airdrop-pool / airdrop-pool-<rarity>. Verificado desktop+móvil sin overflow.
 - La pestaña "Airdrop" YA existe en Mini Juegos (`Casino.jsx`, primera en GAMES + FULL_WIDTH). Si no se ve en producción es porque falta redeploy.
 
+- CONFETI 2026-09-25: `fireConfetti` (clonado de la Ruleta) salta al abrir el cofre en TODAS las rarezas (big=épico/legendario con lluvia continua). Canvas movido a `fixed inset-0 z-[60]` para verse siempre (antes salía fuera de vista por el contenedor alto). Ojo: headless activa prefers-reduced-motion (desactiva confeti) → verificar con `emulate_media(reduced_motion="no-preference")`.
+
 ## Fase 3 — Panel de Admin (PENDIENTE)
 Sección en el Admin Dashboard para editar `airdrop_settings` (intervalo, warning, falling, cooldown, pesos de rareza, loot table por rareza) vía GET/PUT `/api/airdrop/settings`, ver `/api/airdrop/history`, y lanzar manualmente vía POST `/api/airdrop/launch {rarity}`.
 
