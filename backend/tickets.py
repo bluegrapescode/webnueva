@@ -262,8 +262,10 @@ def _pub_ticket(t, is_staff=False):
     d = {k: t.get(k) for k in ("id", "code", "user_id", "user_name", "user_avatar", "steam_id",
                                "discord_id", "category", "subject", "description", "server", "server_name",
                                "incident_date", "incident_time", "priority", "status", "assigned_to",
-                               "assigned_name", "fields", "created_at", "updated_at", "last_activity", "unread")}
+                               "assigned_name", "escalated", "escalated_by_name", "escalated_note",
+                               "fields", "created_at", "updated_at", "last_activity", "unread")}
     d["fields"] = t.get("fields") or {}
+    d["escalated"] = bool(t.get("escalated"))
     return d
 
 
@@ -891,6 +893,80 @@ async def _update_ticket(user, tid, changes, event_text):
     return {"success": True, "ticket": pub}
 
 
+async def _discord_escalation(t, who, note):
+    """Publica un aviso de refuerzo en el canal del ticket y hace @here al staff."""
+    if not DISCORD_BOT_TOKEN:
+        return
+    target = t.get("discord_thread_id") or TICKETS_CHANNEL_ID
+    if not target:
+        return
+    link = f"{PUBLIC_URL}/soporte?t={t['id']}" if PUBLIC_URL else None
+    prio = t.get("priority", "normal")
+    PRIO = {"normal": "🟢", "media": "🟡", "alta": "🟠", "urgente": "🔴"}
+    fields = [
+        {"name": "👤 Solicitado por", "value": who or "Staff", "inline": True},
+        {"name": "🏷️ Prioridad", "value": f"{PRIO.get(prio, '🟢')} {prio.capitalize()}", "inline": True},
+    ]
+    if link:
+        fields.append({"name": "\u200b", "value": f"📩 **[Abrir el ticket en la web]({link})**", "inline": False})
+    embed = {
+        "title": f"🆘 Refuerzo solicitado — {t.get('code')}",
+        "description": (f">>> {note[:900]}" if note else "Un miembro del staff necesita ayuda con este ticket."),
+        "color": 0xF59E0B,
+        "fields": fields,
+        "footer": {"text": "La Isla Nublar · Refuerzo de soporte"},
+        "timestamp": _iso(),
+    }
+    payload = {"content": "🆘 @here **se necesita ayuda en este ticket**",
+               "embeds": [embed], "allowed_mentions": {"parse": ["everyone"]}}
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(f"{DISCORD_API}/channels/{target}/messages", headers=_bot_headers(), json=payload)
+            if r.status_code >= 300:
+                logger.warning("[tickets] escalation post %s: %s", r.status_code, r.text[:200])
+    except Exception as e:
+        logger.warning("[tickets] escalation err: %r", e)
+
+
+async def escalate_ticket(user, tid, note="", on=True):
+    """Pide/retira refuerzo en un ticket. Avisa a TODO el staff (web + Discord)
+    y deja una nota interna (solo staff) con el motivo. Marca el ticket como
+    'escalado' para que aparezca en la bandeja de Escalados."""
+    t = await _db.tickets.find_one({"id": tid}, {"_id": 0})
+    if not t:
+        raise HTTPException(404, "Ticket no encontrado.")
+    if not _can_manage(t, user):
+        raise HTTPException(403, "Solo el staff puede pedir refuerzo.")
+    who = user.get("persona_name") or "Staff"
+    note = _clean(note)[:500]
+    if on:
+        changes = {"escalated": True, "escalated_by": user["id"], "escalated_by_name": who,
+                   "escalated_at": _iso(), "escalated_note": note}
+        txt = f"🆘 **{who} pidió refuerzo.**" + (f"\n{note}" if note else "")
+        ev_txt = "Pidió refuerzo" + (f": {note}" if note else "")
+    else:
+        changes = {"escalated": False, "escalated_by": None, "escalated_by_name": None,
+                   "escalated_at": None, "escalated_note": ""}
+        txt = f"✅ **{who} marcó el refuerzo como atendido.**"
+        ev_txt = "Refuerzo atendido"
+    changes["updated_at"] = _iso()
+    await _db.tickets.update_one({"id": tid}, {"$set": changes})
+    author = {"id": user["id"], "name": who, "avatar": user.get("avatar") or ""}
+    await _add_message(t, author, txt, role="staff", internal=True)
+    await _log_event(tid, who, ev_txt)
+    t2 = await _db.tickets.find_one({"id": tid}, {"_id": 0})
+    pub = _pub_ticket(t2, True)
+    if on:
+        await hub.send_staff("ticket:escalated", {"ticket_id": tid, "code": t.get("code"),
+                                                  "subject": t.get("subject"), "by": who,
+                                                  "note": note, "priority": t.get("priority")})
+    await hub.send_staff("ticket:updated", pub)
+    await hub.send(t["user_id"], "ticket:updated", _pub_ticket(t2))
+    if on:
+        await _discord_escalation(t2, who, note)
+    return {"success": True, "ticket": pub}
+
+
 async def set_open_state(user, tid, closed):
     """Cerrar / reabrir un ticket. Permitido al DUEÑO del ticket o al staff."""
     t = await _db.tickets.find_one({"id": tid}, {"_id": 0})
@@ -939,6 +1015,8 @@ async def staff_list(user, box="new", search="", limit=100):
         q = {"assigned_to": None, "status": {"$ne": "closed"}}
     elif box == "mine":
         q = {"assigned_to": user["id"]}
+    elif box == "escalated":
+        q = {"escalated": True, "status": {"$ne": "closed"}}
     elif box in ("in_process", "waiting_user", "resolved", "closed"):
         q = {"status": box}
     if search:
@@ -957,6 +1035,7 @@ async def staff_list(user, box="new", search="", limit=100):
         "new": await _db.tickets.count_documents({"status": "open", "assigned_to": None}),
         "unassigned": await _db.tickets.count_documents({"assigned_to": None, "status": {"$ne": "closed"}}),
         "mine": await _db.tickets.count_documents({"assigned_to": user["id"]}),
+        "escalated": await _db.tickets.count_documents({"escalated": True, "status": {"$ne": "closed"}}),
         "in_process": await _db.tickets.count_documents({"status": "in_process"}),
         "waiting_user": await _db.tickets.count_documents({"status": "waiting_user"}),
         "resolved": await _db.tickets.count_documents({"status": "resolved"}),
@@ -980,6 +1059,10 @@ class UpdateIn(BaseModel):
     status: Optional[str] = None
     category: Optional[str] = None
     assigned_to: Optional[str] = None
+
+class EscalateIn(BaseModel):
+    note: str = ""
+    on: bool = True
 
 
 def build_router(get_current_user, get_admin_user):
@@ -1090,6 +1173,11 @@ def build_router(get_current_user, get_admin_user):
     async def take(tid: str, user=Depends(get_current_user)):
         if not _is_staff_fn(user): raise HTTPException(403, "Solo staff.")
         return await _update_ticket(user, tid, {"assigned_to": user["id"], "assigned_name": user.get("persona_name"), "status": "in_process"}, f"{user.get('persona_name')} tomó el ticket")
+
+    @router.post("/{tid}/escalate")
+    async def escalate(tid: str, data: EscalateIn, user=Depends(get_current_user)):
+        if not _is_staff_fn(user): raise HTTPException(403, "Solo staff.")
+        return await escalate_ticket(user, tid, data.note, data.on)
 
     @router.post("/{tid}/close")
     async def close_ticket(tid: str, user=Depends(get_current_user)):

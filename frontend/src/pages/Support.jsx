@@ -15,7 +15,7 @@ import {
 
 const PRIORITY = { normal: { label: "Normal", color: "#22C55E" }, media: { label: "Media", color: "#EAB308" }, alta: { label: "Alta", color: "#F97316" }, urgente: { label: "Urgente", color: "#EF4444" } };
 const STATUS = { open: "Abierto", in_process: "En proceso", waiting_user: "Esperando usuario", resolved: "Resuelto", closed: "Cerrado" };
-const STAFF_BOXES = [["new", "Nuevos"], ["unassigned", "Sin asignar"], ["mine", "Mis tickets"], ["in_process", "En proceso"], ["waiting_user", "Esperando usuario"], ["resolved", "Resueltos"], ["closed", "Cerrados"]];
+const STAFF_BOXES = [["new", "Nuevos"], ["unassigned", "Sin asignar"], ["mine", "Mis tickets"], ["escalated", "🆘 Escalados"], ["in_process", "En proceso"], ["waiting_user", "Esperando usuario"], ["resolved", "Resueltos"], ["closed", "Cerrados"]];
 const fmt = (iso) => { try { return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 const isImg = (u) => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u || "");
 const isVid = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u || "");
@@ -124,6 +124,8 @@ export default function Support() {
   const loadStaff = useCallback(async () => {
     try { const { data } = await api.ticketStaff(staffBox, search); setTickets(data.tickets); setStaffCounts(data.counts); setStaffOnline(data.staff_online); } catch {}
   }, [staffBox, search]);
+  const loadStaffRef = useRef(loadStaff);
+  loadStaffRef.current = loadStaff;
 
   useEffect(() => { api.ticketConfig().then(({ data }) => { setCfg(data); setIsStaff(data.is_staff); }).catch(() => {}); }, []);
   useEffect(() => { if (mode === "list") loadList(); if (mode === "staff") loadStaff(); }, [mode, loadList, loadStaff]);
@@ -153,6 +155,13 @@ export default function Support() {
         }
         else if (event === "typing:start" && data.ticket_id === activeIdRef.current) setTyping(data.name);
         else if (event === "typing:stop" && data.ticket_id === activeIdRef.current) setTyping(null);
+        else if (event === "ticket:escalated") {
+          play?.("ticketUrgent");
+          if (modeRef.current === "staff") {
+            toast("🆘 Refuerzo solicitado", { description: `${data.by || "Staff"} pide ayuda en ${data.code || "un ticket"}${data.note ? ": " + data.note : ""}`, icon: <LifeBuoy className="w-4 h-4 text-amber-400" />, duration: 9000 });
+            loadStaffRef.current && loadStaffRef.current();
+          }
+        }
       };
       ws.onclose = () => { if (!stop) setTimeout(connect, 2500); };
     };
@@ -200,7 +209,7 @@ export default function Support() {
                   <button key={t.id} data-testid={`ticket-item-${t.id}`} onClick={() => openTicket(t.id)}
                     className={`w-full text-left rounded-xl border p-2.5 transition ${active?.ticket?.id === t.id ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10 bg-black/25 hover:border-white/25"}`}>
                     <div className="flex items-center justify-between gap-2"><span className="font-mono font-black text-xs text-emerald-300">{t.code}</span><span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: PRIORITY[t.priority]?.color, background: `${PRIORITY[t.priority]?.color}22` }}>{PRIORITY[t.priority]?.label}</span></div>
-                    <p className="text-sm font-bold text-white/90 truncate mt-0.5">{t.subject}</p>
+                    <p className="text-sm font-bold text-white/90 truncate mt-0.5">{t.escalated && <span className="text-amber-400 mr-1" title="Escalado — se pidió refuerzo">🆘</span>}{t.subject}</p>
                     <p className="text-[11px] text-white/45 truncate">{t.user_name} · {STATUS[t.status]}</p>
                   </button>
                 ))}
@@ -310,6 +319,15 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
   };
   const doUpdate = async (changes, sound) => { try { await api.ticketUpdate(t.id, changes); if (sound) play?.(sound); onChanged?.(); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const take = async () => { try { await api.ticketTake(t.id); play?.("ticketMsg"); onChanged?.(); } catch (e) { toast.error("Error"); } };
+  const escalate = async () => {
+    const note = (window.prompt("¿Qué ayuda necesitas? (opcional) — se avisará a todo el staff") ?? "").trim();
+    try { await api.ticketEscalate(t.id, note, true); play?.("ticketUrgent"); toast.success("🆘 Refuerzo solicitado — se avisó a todo el staff"); onChanged?.(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Error"); }
+  };
+  const deescalate = async () => {
+    try { await api.ticketEscalate(t.id, "", false); play?.("ticketMsg"); toast.success("Refuerzo marcado como atendido"); onChanged?.(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Error"); }
+  };
   const closeTicket = async () => { try { await api.ticketClose(t.id); play?.("ticketMsg"); toast.success("Ticket cerrado y enviado al historial"); goToHistory?.(); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const reopenTicket = async () => { try { await api.ticketReopen(t.id); play?.("ticketMsg"); onChanged?.(); toast.success("Ticket reabierto"); } catch (e) { toast.error(e?.response?.data?.detail || "Error"); } };
   const isOwner = t.user_id === user?.id;
@@ -445,6 +463,15 @@ function TicketView({ data, setActive, isStaff, user, typing, wsSend, onChanged,
           <div className="space-y-2 pt-2 border-t border-white/10" data-testid="staff-actions">
             {!t.assigned_to && <button data-testid="take-ticket" onClick={take} className="w-full py-2 rounded-lg bg-emerald-500 text-black font-black text-sm">Tomar ticket</button>}
             {t.assigned_name && <p className="text-[12px] text-white/60">Asignado a <b className="text-white">{t.assigned_name}</b></p>}
+            {t.escalated ? (
+              <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 space-y-1.5" data-testid="escalated-banner">
+                <p className="text-[11px] font-black uppercase text-amber-300 flex items-center gap-1"><LifeBuoy size={12} /> Escalado{t.escalated_by_name ? ` · ${t.escalated_by_name}` : ""}</p>
+                {t.escalated_note && <p className="text-xs text-white/85 whitespace-pre-wrap">{t.escalated_note}</p>}
+                <button data-testid="deescalate-ticket" onClick={deescalate} className="text-[11px] font-bold text-amber-200/90 underline">Marcar refuerzo atendido</button>
+              </div>
+            ) : (
+              <button data-testid="escalate-ticket" onClick={escalate} className="w-full py-2 rounded-lg border border-amber-400/50 text-amber-200 font-black text-sm hover:bg-amber-500/10 transition flex items-center justify-center gap-1.5"><LifeBuoy size={14} /> Pedir refuerzo</button>
+            )}
             <div><label className="text-[10px] uppercase text-white/45">Prioridad</label>
               <select data-testid="set-priority" value={t.priority} onChange={(e) => doUpdate({ priority: e.target.value }, e.target.value === "urgente" ? "ticketUrgent" : null)} className="w-full mt-1 text-sm bg-black/40 border border-white/12 rounded-lg px-2 py-1.5 text-white/90">{Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k} className="bg-[#0d0f15]">{v.label}</option>)}</select></div>
             <div><label className="text-[10px] uppercase text-white/45">Estado</label>

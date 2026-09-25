@@ -620,6 +620,7 @@ export const api = {
   },
   ticketLinkPreview: (url) => client.get(`/tickets/link-preview?url=${encodeURIComponent(url)}`),
   ticketTake:      (id) => client.post(`/tickets/${id}/take`),
+  ticketEscalate:  (id, note = "", on = true) => client.post(`/tickets/${id}/escalate`, { note, on }),
   ticketUpdate:    (id, changes) => client.post(`/tickets/${id}/update`, changes),
   ticketClose:     (id) => client.post(`/tickets/${id}/close`),
   ticketReopen:    (id) => client.post(`/tickets/${id}/reopen`),
