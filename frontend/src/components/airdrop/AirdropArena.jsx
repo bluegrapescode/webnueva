@@ -5,6 +5,7 @@ import { Coins, Gem, Clock, Trophy, Sparkles, Gift, ShieldAlert, Package } from 
 import { useAirdrop } from "@/context/AirdropContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
+import { api } from "@/lib/api";
 
 // Airdrop Global — misma temática que la Ruleta (Nublar Spin): fondo magenta
 // neón con palmeras, título italic a dos tonos, HUDs glossy, tarima con brillo
@@ -23,6 +24,20 @@ const glowOf = (r) => `${pal(r).accent}`;
 
 const MAT_ICON = { bones: "🦴", metal: "⚙️", leather: "🟫", polymer: "🧪" };
 const rewardIcon = (rw) => (rw.type === "material" && MAT_ICON[rw.key]) || rw.icon || "🎁";
+
+// Imágenes reales que ya usa la web (mismas rutas que la Ruleta / crafteo).
+// Los iconos de materiales llegan de la colección de crafteo (matImg, cargado
+// desde /crafting/state) para respetar cualquier cambio del admin.
+const COIN_TOKEN_IMG = {
+  primemeat: "/coins/meat.png",
+  amberium: "/coins/amber.png",
+  growth_token: "/tokens/growth.png",
+  diet_token: "/tokens/diet.png",
+};
+function rewardImage(rw, matImg) {
+  if (rw.type === "material") return (matImg && matImg[rw.key]) || null;
+  return COIN_TOKEN_IMG[rw.key] || null;
+}
 
 const ms = (iso) => (iso ? new Date(iso).getTime() : 0);
 function fmt(msLeft) {
@@ -262,7 +277,7 @@ function GlossyButton({ children, onClick, disabled, active = true, testId }) {
 }
 
 // ─── Tarjeta de recompensa estilo placa de la Ruleta (flip al clic) ───
-function RewardCard({ reward, index, revealed, onReveal }) {
+function RewardCard({ reward, index, revealed, onReveal, img }) {
   const th = pal(reward._rarity);
   const isSpecial = reward.special || reward.key === "resurrection_token";
   const accent = isSpecial ? "#F59E0B" : th.accent;
@@ -291,12 +306,17 @@ function RewardCard({ reward, index, revealed, onReveal }) {
               {isSpecial ? "ESPECIAL" : th.es}
             </span>
           </div>
-          {/* Disco radial con icono */}
+          {/* Disco radial con imagen real (o emoji de respaldo) */}
           <div className="relative flex-1 w-full flex items-center justify-center">
             <div className="relative flex items-center justify-center h-[62px] w-[62px] rounded-full"
               style={{ background: `radial-gradient(circle at 40% 30%, rgba(255,255,255,0.35), rgba(255,255,255,0.05) 40%, transparent 70%), radial-gradient(circle at 50% 60%, ${accent} 0%, ${accent}88 55%, ${accent}22 100%)`,
                 border: `2px solid ${accent}`, boxShadow: `0 8px 20px rgba(0,0,0,0.5), 0 0 26px ${accent}66` }}>
-              <span className="text-2xl leading-none">{rewardIcon(reward)}</span>
+              {img ? (
+                <img src={img} alt={reward.name} className="h-[46px] w-[46px] object-contain" draggable={false} loading="lazy"
+                  style={{ filter: `drop-shadow(0 3px 6px ${accent}88) drop-shadow(0 0 8px rgba(255,255,255,0.3))` }} />
+              ) : (
+                <span className="text-2xl leading-none">{rewardIcon(reward)}</span>
+              )}
             </div>
           </div>
           <div className="text-[10px] font-black tracking-[0.06em] text-white uppercase text-center leading-tight truncate w-full">{reward.name}</div>
@@ -318,6 +338,21 @@ export default function AirdropArena() {
   const [revealed, setRevealed] = useState(new Set());
   const lastAirdropId = useRef(null);
   const confettiRef = useRef(null);
+  const [matImg, setMatImg] = useState({});
+
+  // Carga los iconos reales de materiales (mismos que el sistema de crafteo).
+  useEffect(() => {
+    let alive = true;
+    api.craftingState()
+      .then((r) => {
+        if (!alive) return;
+        const map = {};
+        (r.data?.materials || []).forEach((m) => { if (m?.id && m?.icon) map[m.id] = m.icon; });
+        setMatImg(map);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (state?.id && state.id !== lastAirdropId.current) {
@@ -550,7 +585,7 @@ export default function AirdropArena() {
               </div>
               <div className="p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {myRewards.map((rw, i) => (
-                  <RewardCard key={i} reward={rw} index={i} revealed={revealed.has(i)} onReveal={onReveal} />
+                  <RewardCard key={i} reward={rw} index={i} revealed={revealed.has(i)} onReveal={onReveal} img={rewardImage(rw, matImg)} />
                 ))}
               </div>
               {revealed.size === myRewards.length && (
