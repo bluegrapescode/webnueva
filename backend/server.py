@@ -19003,7 +19003,7 @@ app.include_router(turfwars.build_router(get_current_user, get_admin_user), pref
 import tickets
 
 tickets.configure(db, admin_ids=ADMIN_STEAM_IDS, add_log=add_log, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO,
-                  is_staff_fn=lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {"owner", "admin", "mod", "helper"}) or (u.get("steam_id") in ADMIN_STEAM_IDS))
+                  is_staff_fn=lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {"owner", "admin", "mod"}) or (u.get("steam_id") in ADMIN_STEAM_IDS))
 app.include_router(tickets.build_router(get_current_user, get_admin_user), prefix="/api")
 
 import airdrop

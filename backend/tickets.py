@@ -18,7 +18,7 @@ _admin_ids = set()
 _add_log = None
 _jwt_secret = None
 _jwt_algo = "HS256"
-_is_staff_fn = lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {"owner", "admin", "mod", "helper"})
+_is_staff_fn = lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {"owner", "admin", "mod"})
 
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
 TICKETS_CHANNEL_ID = os.environ.get("TICKETS_DISCORD_CHANNEL_ID", "").strip()
