@@ -19006,6 +19006,11 @@ tickets.configure(db, admin_ids=ADMIN_STEAM_IDS, add_log=add_log, jwt_secret=JWT
                   is_staff_fn=lambda u: (u.get("role") == "admin") or (u.get("staff_rank") in {"owner", "admin", "mod", "helper"}) or (u.get("steam_id") in ADMIN_STEAM_IDS))
 app.include_router(tickets.build_router(get_current_user, get_admin_user), prefix="/api")
 
+import airdrop
+airdrop.configure(db, add_transaction=add_transaction, grant_materials=crafting._grant_materials,
+                  admin_ids=ADMIN_STEAM_IDS, jwt_secret=JWT_SECRET, jwt_algo=JWT_ALGO)
+app.include_router(airdrop.build_router(get_current_user, get_admin_user), prefix="/api")
+
 app.include_router(api_router)
 app.include_router(crash_game.router, prefix="/api")
 # Pase de Batalla: same dependency-injection handoff crash_game uses, then the
@@ -19643,6 +19648,12 @@ async def on_startup():
         tickets.start_discord_gateway()
     except Exception:
         logger.warning("[tickets] discord gateway start skipped", exc_info=True)
+    # Airdrop: índices + motor de estado global (evento por hora)
+    try:
+        await airdrop.ensure_indexes()
+        airdrop.start_engine()
+    except Exception:
+        logger.warning("[airdrop] engine start skipped", exc_info=True)
     # Turf Wars (⚔️): seed de zonas/rivales + arranque del motor de captura.
     try:
         turfwars.start_loops()

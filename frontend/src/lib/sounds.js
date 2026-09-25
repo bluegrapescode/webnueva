@@ -657,4 +657,62 @@ export const SOUNDS = {
     [1046.5, 1046.5, 1318.5].forEach((f, i) => bell({ freq: f, dur: 0.3, gain: 0.055, delay: i * 0.13, ratio: 2, index: 110 }));
     voice({ freq: 180, type: "triangle", dur: 0.5, gain: 0.03, slideTo: 130, delay: 0.02, filterType: "lowpass", filterFreq: 800 });
   },
+
+  // ─── Airdrop Global (🪂) — 6 cues cinemáticos sintetizados ───
+  // 1) AVISO ENTRANTE: sirena grave de dos tonos + swell de tensión (60s antes).
+  airdropIncoming: () => {
+    voice({ freq: 340, type: "sawtooth", dur: 0.55, gain: 0.045, slideTo: 480, attack: 0.05, release: 0.3, filterType: "lowpass", filterFreq: 2200 });
+    voice({ freq: 300, type: "sawtooth", dur: 0.55, gain: 0.04, slideTo: 420, delay: 0.5, attack: 0.05, release: 0.3, filterType: "lowpass", filterFreq: 2000 });
+    voice({ freq: 70, type: "sine", dur: 1.0, gain: 0.05, slideTo: 90, attack: 0.2, release: 0.6, filterType: "lowpass", filterFreq: 400 });
+    bell({ freq: 880, dur: 0.5, gain: 0.02, delay: 0.1, ratio: 2, index: 70 });
+  },
+  // 2) CAYENDO: viento descendente (ruido filtrado bajando) + silbido del paracaídas.
+  airdropFalling: () => {
+    const ac = getCtx(); if (!ac) return;
+    const t0 = ac.currentTime;
+    const len = Math.floor(ac.sampleRate * 2.2);
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1);
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.8;
+    bp.frequency.setValueAtTime(1800, t0);
+    bp.frequency.exponentialRampToValueAtTime(260, t0 + 2.0);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.25);
+    g.gain.setValueAtTime(0.05, t0 + 1.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.15);
+    src.connect(bp); bp.connect(g); g.connect(master || ac.destination);
+    src.start(t0); src.stop(t0 + 2.2);
+    voice({ freq: 900, type: "sine", dur: 1.8, gain: 0.02, slideTo: 220, attack: 0.15, release: 0.5, filterType: "lowpass", filterFreq: 2600 });
+  },
+  // 3) ATERRIZAJE: impacto profundo (thud sub + polvo) cuando la caja toca el suelo.
+  airdropLanded: () => {
+    voice({ freq: 90, type: "sine", dur: 0.7, gain: 0.12, slideTo: 32, attack: 0.001, release: 0.5, filterType: "lowpass", filterFreq: 260 });
+    voice({ freq: 150, type: "triangle", dur: 0.35, gain: 0.08, slideTo: 60, attack: 0.001, release: 0.28, filterType: "lowpass", filterFreq: 420 });
+    noise({ dur: 0.4, gain: 0.06, filterType: "lowpass", filterFreq: 900, filterQ: 0.6 });
+    noise({ dur: 0.6, gain: 0.02, delay: 0.05, filterType: "bandpass", filterFreq: 500, filterQ: 0.8 });
+  },
+  // 4) DISPONIBLE: campana brillante de "¡reclama ya!" (llamativa, ascendente rápida).
+  airdropAvailable: () => {
+    [659.25, 987.77, 1318.5].forEach((f, i) => bell({ freq: f, dur: 0.55, gain: 0.06, delay: i * 0.08, ratio: 2, index: 120 }));
+    voice({ freq: 200, type: "sine", dur: 0.5, gain: 0.03, slideTo: 150, delay: 0.05, filterType: "lowpass", filterFreq: 900 });
+    bell({ freq: 2093, dur: 0.5, gain: 0.016, delay: 0.28, ratio: 3, index: 60 });
+  },
+  // 5) RECLAMADO: fanfarria triunfal (arpegio mayor + sub cálido + shimmer).
+  airdropClaimed: () => {
+    const scale = [523.25, 659.25, 784.0, 1046.5, 1318.5];
+    scale.forEach((f, i) => bell({ freq: f, dur: 0.6, gain: 0.058, delay: i * 0.07, ratio: 2, index: 130 }));
+    voice({ freq: 160, type: "sine", dur: 0.6, gain: 0.045, slideTo: 110, delay: 0.05, filterType: "lowpass", filterFreq: 800 });
+    noise({ dur: 0.5, gain: 0.02, delay: 0.34, filterType: "highpass", filterFreq: 5200, filterQ: 0.4 });
+  },
+  // 6) LEGENDARIO: revelado épico (shimmer largo ascendente + choir grave + brillo).
+  airdropLegendary: () => {
+    const scale = [392.0, 523.25, 659.25, 784.0, 987.77, 1174.66, 1567.98];
+    scale.forEach((f, i) => bell({ freq: f, dur: 0.85, gain: 0.055, delay: i * 0.09, ratio: 2, index: 150 }));
+    voice({ freq: 98, type: "sawtooth", dur: 1.2, gain: 0.04, slideTo: 196, attack: 0.15, release: 0.8, filterType: "lowpass", filterFreq: 1200 });
+    voice({ freq: 130.81, type: "sine", dur: 1.4, gain: 0.05, slideTo: 261.63, attack: 0.2, release: 0.9, filterType: "lowpass", filterFreq: 900 });
+    noise({ dur: 1.0, gain: 0.02, delay: 0.5, filterType: "highpass", filterFreq: 6000, filterQ: 0.3 });
+  },
 };

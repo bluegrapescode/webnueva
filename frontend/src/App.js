@@ -48,6 +48,7 @@ import CelebrationOverlay from "@/components/creator/CelebrationOverlay";
 import { BountyWidget } from "@/components/bounty/BountyWidget";
 import { BountySelfInvite } from "@/components/bounty/BountySelfInvite";
 import { BountyProvider } from "@/context/BountyContext";
+import { AirdropProvider } from "@/context/AirdropContext";
 
 function PageFallback() {
   return (
@@ -159,6 +160,7 @@ function App() {
           <LiveSimProvider>
           <BrowserRouter>
             <BountyProvider>
+            <AirdropProvider>
             <ScrollToTop />
             <Layout>
               <AnimatedRoutes />
@@ -183,6 +185,7 @@ function App() {
                 },
               }}
             />
+            </AirdropProvider>
             </BountyProvider>
           </BrowserRouter>
           </LiveSimProvider>

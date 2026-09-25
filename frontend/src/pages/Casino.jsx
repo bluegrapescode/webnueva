@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Spade, Rocket, Dices, Trophy, BarChart3, History, Coins, Crown, Package, Dice5, Gift } from "lucide-react";
+import { Spade, Rocket, Dices, Trophy, BarChart3, History, Coins, Crown, Package, Dice5, Gift, Plane } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/context/SoundContext";
@@ -10,6 +10,7 @@ import Blackjack from "@/components/casino/Blackjack";
 import Roll from "@/components/casino/Roll";
 import Wheel from "@/components/casino/Wheel";
 import Cases from "@/pages/Cases";
+import AirdropArena from "@/components/airdrop/AirdropArena";
 
 // Crash retired 2026-08-20 (owner order). Its tab and component are gone; the
 // icon map keeps the crash entry so ledger history rows from before the
@@ -17,13 +18,14 @@ import Cases from "@/pages/Cases";
 // Nublar Spin (2026-08-23): the daily free wheel lives here as a tab (owner:
 // "put it in casino tab"); ?tab=wheel deep-links straight to it.
 const GAMES = [
+  { k: "airdrop", label: "Airdrop", icon: Plane, C: () => <AirdropArena /> },
   { k: "blackjack", label: "Blackjack", icon: Spade, C: Blackjack },
   { k: "roll", label: "Roll", icon: Dices, C: Roll },
   { k: "wheel", label: "Ruleta Diaria", icon: Gift, C: Wheel },
   { k: "crates", label: "Cajas", icon: Package, C: () => <Cases embedded /> },
 ];
 // Tabs that own the full width (no stats/leaderboard sidebar).
-const FULL_WIDTH = ["crates", "crash", "roll", "wheel"];
+const FULL_WIDTH = ["airdrop", "crates", "crash", "roll", "wheel"];
 
 const GAME_ICON = { blackjack: Spade, roll: Dices, crash: Rocket };
 

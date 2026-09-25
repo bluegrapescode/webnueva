@@ -109,6 +109,14 @@ export function turfWsUrl() {
   return `${base}/api/turf/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
 
+// Airdrop Global — WebSocket para /api/airdrop/ws (estado global sincronizado del
+// suministro que cae por hora: incoming, falling, available, claimed, rewards).
+export function airdropWsUrl() {
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
+  const token = localStorage.getItem("primal_token");
+  return `${base}/api/airdrop/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}
+
 // A "subscriber" (sub) = active Patreon patron, Discord Patreon tier role
 // (Apex / Elder / Adult / Sub Adult / Juvie), Discord VIP role, or an admin.
 export function isSubscriber(user) {
@@ -267,6 +275,14 @@ export const api = {
   wheelAdminReset: () => client.post("/wheel/admin/reset-defaults"),
   wheelAdminGrantSpins: (user_id, amount, reason) => client.post("/wheel/admin/grant-spins", { user_id, amount, reason }),
   wheelAdminRecent: () => client.get("/wheel/admin/recent"),
+  // ── Airdrop Global (🪂) ──
+  airdropWsUrl,
+  airdropState:        () => client.get("/airdrop/state"),
+  airdropClaim:        () => client.post("/airdrop/claim"),
+  airdropHistory:      (limit = 25) => client.get(`/airdrop/history?limit=${limit}`),
+  airdropSettings:     () => client.get("/airdrop/settings"),
+  airdropSaveSettings: (settings) => client.put("/airdrop/settings", { settings }),
+  airdropLaunch:       (rarity) => client.post("/airdrop/launch", { rarity }),
   // chat
   chatPoll: (channel, after) => client.get("/chat/poll", { params: { channel, ...(after ? { after } : {}) } }),
   chatSend: (text, channel) => client.post("/chat/send", { text, channel }),
